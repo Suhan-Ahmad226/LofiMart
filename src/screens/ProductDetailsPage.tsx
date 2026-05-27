@@ -434,7 +434,7 @@ export const ProductDetailsPage = () => {
       : product.old_price;
   const selectedVariantSummary = selectedVariantEntries
     .map((entry) => `${entry.optionName}: ${entry.selectedLabel}`)
-    .join(' • ');
+    .join(' â€¢ ');
   const selectedVariantKey = selectedVariantEntries.map((entry) => `${entry.optionName}:${entry.selectedLabel}`).join('|');
   const selectedVariantSkuSuffix = selectedVariantEntries
     .map((entry) => getVariantValueSkuSuffix(entry.selectedValue as any))
@@ -1025,7 +1025,7 @@ export const ProductDetailsPage = () => {
                     </button>
                   </div>
                   <div className="min-w-0 flex-1 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                    Qty {quantity} • Total {formatPrice(effectivePrice * quantity)}
+                    Qty {quantity} â€¢ Total {formatPrice(effectivePrice * quantity)}
                   </div>
                 </div>
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -1146,7 +1146,7 @@ export const ProductDetailsPage = () => {
                     ) : null}
                   </div>
                   <p className="mt-1 text-sm text-slate-500">
-                    {sellerRatingLabel ? `${sellerRatingLabel}/5 seller rating` : 'Trusted marketplace seller'} • {sellerResponseLabel}
+                    {sellerRatingLabel ? `${sellerRatingLabel}/5 seller rating` : 'Trusted marketplace seller'} â€¢ {sellerResponseLabel}
                   </p>
                 </div>
               </div>
@@ -1241,7 +1241,7 @@ export const ProductDetailsPage = () => {
                   {product.reseller_base_price || product.reseller_suggested_price ? (
                     <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
                       Base {formatPrice(product.reseller_base_price || effectivePrice)}
-                      {product.reseller_suggested_price ? ` • Suggest ${formatPrice(product.reseller_suggested_price)}` : ''}
+                      {product.reseller_suggested_price ? ` â€¢ Suggest ${formatPrice(product.reseller_suggested_price)}` : ''}
                     </div>
                   ) : null}
                 </div>
@@ -1423,7 +1423,7 @@ export const ProductDetailsPage = () => {
               ) : null}
             </div>
             <p className={`mt-1 text-xs font-medium ${isOutOfStock ? 'text-rose-600' : 'text-slate-500'}`}>
-              {isOutOfStock ? 'Unavailable right now' : `${quantity} selected • delivery by ${estimatedDelivery}`}
+              {isOutOfStock ? 'Unavailable right now' : `${quantity} selected â€¢ delivery by ${estimatedDelivery}`}
             </p>
           </div>
           <button
