@@ -1,0 +1,23 @@
+# Copy these values into your real `.env` before enabling live Pathao booking.
+# Do not commit real credentials.
+
+PATHAO_BASE_URL=https://api-hermes.pathao.com
+PATHAO_CLIENT_ID=your_live_client_id
+PATHAO_CLIENT_SECRET=your_live_client_secret
+PATHAO_USERNAME=your_merchant_login_email
+PATHAO_PASSWORD=your_live_merchant_password
+PATHAO_BOOKING_ENDPOINT=/aladdin/api/v1/orders
+PATHAO_WEBHOOK_TOKEN=your_private_webhook_token
+
+# Your public webhook URL in Pathao merchant panel should be:
+# https://your-domain.com/api/logistics/webhooks/pathao
+
+# Pathao webhook integration challenge response header is handled automatically by the app:
+# X-Pathao-Merchant-Webhook-Integration-Secret: f3992ecc-59da-4cbe-a049-a13da2018d51
+
+# Before go-live, verify:
+# 1. At least one warehouse has Pathao city/zone/area mapping
+# 2. At least one warehouse has a linked Pathao store, or store creation permission is working
+# 3. Warehouse phone numbers are valid 11-digit Bangladeshi numbers
+# 4. Recipient shipping addresses include valid phone + full address
+# 5. `/admin/logistics` shows no critical Pathao blockers

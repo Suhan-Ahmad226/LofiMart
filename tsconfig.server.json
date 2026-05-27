@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "allowJs": false,
+    "noEmitOnError": true,
+    "strict": false
+  },
+  "include": [
+    "server.ts",
+    "src/server/**/*.ts",
+    "src/services/**/*.ts",
+    "src/events/**/*.ts",
+    "src/workers/**/*.ts",
+    "src/modules/inventory/**/*.ts",
+    "src/lib/env.ts"
+  ],
+  "exclude": ["node_modules", ".next", "dist", "src/server/next/**/*.ts"]
+}

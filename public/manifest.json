@@ -1,0 +1,19 @@
+{
+  "name": "LofiMart - AI-Powered E-Commerce",
+  "short_name": "LofiMart",
+  "description": "Next-generation shopping with AI, 3D visualization, and voice commands",
+  "theme_color": "#1f2937",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["shopping"]
+}
