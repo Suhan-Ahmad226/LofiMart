@@ -2,7 +2,14 @@ import { v2 as cloudinary } from 'cloudinary';
 import { getServerEnv } from '../../lib/env';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  'application/pdf',
+]);
 
 let configured = false;
 

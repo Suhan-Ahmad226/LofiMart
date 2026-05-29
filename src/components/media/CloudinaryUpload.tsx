@@ -22,6 +22,11 @@ type CloudinaryUploadSuccess = {
   };
 };
 
+type ServerUploadResponse = {
+  url?: string;
+  error?: string;
+};
+
 type CloudinaryUploadResult = CloudinaryUploadSuccess | { event?: string; info?: unknown };
 
 type CloudinaryWidgetInstance = {
@@ -144,6 +149,22 @@ async function optimizeImageForUpload(file: File) {
   };
 }
 
+async function readFileAsDataUrl(file: File) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('Could not prepare the selected image.'));
+    };
+    reader.onerror = () => reject(new Error('Could not read the selected image.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 declare global {
   interface Window {
     cloudinary?: CloudinaryWidgetApi;
@@ -203,6 +224,73 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
     return signature;
   };
 
+  const uploadDirectToCloudinary = async (file: File, signature: CloudinarySignatureResponse) => {
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${signature.cloudName}/auto/upload`;
+    const formData = new FormData();
+
+    formData.append('file', file);
+    formData.append('api_key', signature.apiKey);
+    formData.append('timestamp', String(signature.timestamp));
+    formData.append('signature', signature.signature);
+
+    return await new Promise<string>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', uploadUrl);
+      xhr.timeout = 30000;
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+
+      xhr.onerror = () => reject(new Error('Cloudinary upload connection failed'));
+      xhr.ontimeout = () => reject(new Error('Cloudinary upload timed out'));
+      xhr.onload = () => {
+        try {
+          const response = JSON.parse(xhr.responseText || '{}') as { secure_url?: string; error?: { message?: string } };
+          if (xhr.status >= 200 && xhr.status < 300 && response.secure_url) {
+            resolve(response.secure_url);
+            return;
+          }
+
+          reject(new Error(response.error?.message || 'Image upload failed'));
+        } catch {
+          reject(new Error('Image upload failed'));
+        }
+      };
+
+      xhr.send(formData);
+    });
+  };
+
+  const uploadViaServer = async (file: File) => {
+    const token = window.localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Please log in as an admin or seller before uploading media');
+    }
+
+    const response = await fetch('/api/media/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dataUrl: await readFileAsDataUrl(file),
+        mimeType: file.type,
+        sizeBytes: file.size,
+      }),
+    });
+
+    const result = (await response.json()) as ServerUploadResponse;
+    if (!response.ok || !result.url) {
+      throw new Error(result.error || 'Image upload failed');
+    }
+
+    return result.url;
+  };
+
   const uploadFile = async (file: File) => {
     setError('');
     validateFile(file);
@@ -220,41 +308,14 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
       }
 
       const signature = await getSignature();
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${signature.cloudName}/auto/upload`;
-      const formData = new FormData();
+      let secureUrl: string;
 
-      formData.append('file', prepared.file);
-      formData.append('api_key', signature.apiKey);
-      formData.append('timestamp', String(signature.timestamp));
-      formData.append('signature', signature.signature);
-
-      const secureUrl = await new Promise<string>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', uploadUrl);
-
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            setUploadProgress(Math.round((event.loaded / event.total) * 100));
-          }
-        });
-
-        xhr.onerror = () => reject(new Error('Image upload failed'));
-        xhr.onload = () => {
-          try {
-            const response = JSON.parse(xhr.responseText || '{}') as { secure_url?: string; error?: { message?: string } };
-            if (xhr.status >= 200 && xhr.status < 300 && response.secure_url) {
-              resolve(response.secure_url);
-              return;
-            }
-
-            reject(new Error(response.error?.message || 'Image upload failed'));
-          } catch {
-            reject(new Error('Image upload failed'));
-          }
-        };
-
-        xhr.send(formData);
-      });
+      try {
+        secureUrl = await uploadDirectToCloudinary(prepared.file, signature);
+      } catch {
+        setUploadProgress(0);
+        secureUrl = await uploadViaServer(prepared.file);
+      }
 
       setUrl(secureUrl);
       setUploadProgress(100);
