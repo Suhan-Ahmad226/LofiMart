@@ -149,6 +149,13 @@ function legacyGetPayload(path: string, request: NextRequest) {
     };
   }
 
+  if (path === 'shop-page') {
+    return {
+      products: [],
+      categories: [],
+    };
+  }
+
   if (path.includes('flash-sale')) {
     return {
       campaign: null,
