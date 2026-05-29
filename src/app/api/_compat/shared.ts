@@ -140,6 +140,106 @@ export function serializeOrder(order: any) {
   };
 }
 
+export function serializeWalletTransaction(transaction: any) {
+  return {
+    id: transaction.id,
+    type: transaction.type,
+    amount: toPlainNumber(transaction.amount),
+    currency: transaction.currency,
+    status: transaction.status,
+    source: transaction.source,
+    description: transaction.description,
+    balance_after: toPlainNumber(transaction.balanceAfter ?? 0),
+    metadata: transaction.metadata ?? null,
+    created_at: transaction.createdAt ? new Date(transaction.createdAt).toISOString() : undefined,
+  };
+}
+
+export function serializeLoginStreak(streak: any) {
+  return {
+    current_streak: streak?.currentStreak ?? 0,
+    longest_streak: streak?.longestStreak ?? 0,
+    total_claimed_coins: streak?.totalClaimedCoins ?? 0,
+    last_claimed_on: streak?.lastClaimedOn ? new Date(streak.lastClaimedOn).toISOString() : null,
+  };
+}
+
+export function serializeReferralCode(code: any) {
+  return {
+    id: code.id,
+    code: code.code,
+    clicks: code.clicks ?? 0,
+    successful_referrals: code.successfulReferrals ?? 0,
+    earnings: toPlainNumber(code.earnings ?? 0),
+    created_at: code.createdAt ? new Date(code.createdAt).toISOString() : undefined,
+    updated_at: code.updatedAt ? new Date(code.updatedAt).toISOString() : undefined,
+  };
+}
+
+export function serializeSpinReward(reward: any) {
+  return {
+    id: reward.id,
+    label: reward.label,
+    reward_type: reward.rewardType,
+    reward_value: toPlainNumber(reward.rewardValue),
+    probability: reward.probability,
+    is_active: reward.isActive,
+    display_order: reward.displayOrder,
+  };
+}
+
+export function serializeSpinHistory(history: any) {
+  return {
+    id: history.id,
+    reward_label: history.rewardLabel,
+    reward_type: history.rewardType,
+    reward_value: toPlainNumber(history.rewardValue),
+    date_key: history.dateKey,
+    created_at: history.createdAt ? new Date(history.createdAt).toISOString() : undefined,
+  };
+}
+
+export function serializeMissionProgress(progress: any) {
+  return {
+    id: progress.id,
+    progress: progress.progress,
+    completed_at: progress.completedAt ? new Date(progress.completedAt).toISOString() : null,
+    claimed_at: progress.claimedAt ? new Date(progress.claimedAt).toISOString() : null,
+    mission: progress.mission
+      ? {
+          id: progress.mission.id,
+          key: progress.mission.key,
+          title: progress.mission.title,
+          description: progress.mission.description,
+          target_count: progress.mission.targetCount,
+          reward_coins: progress.mission.rewardCoins,
+          reward_wallet: toPlainNumber(progress.mission.rewardWallet),
+        }
+      : null,
+  };
+}
+
+export function serializeTenantSetting(setting: any) {
+  if (!setting) return null;
+
+  return {
+    tenant_id: setting.tenantId,
+    currency: setting.currency,
+    locale: setting.locale,
+    free_shipping_threshold: toPlainNumber(setting.freeShippingThreshold),
+    cart_recovery_delay_mins: setting.cartRecoveryDelayMins,
+    signup_bonus_coins: setting.signupBonusCoins,
+    daily_login_base_coins: setting.dailyLoginBaseCoins,
+    daily_login_max_coins: setting.dailyLoginMaxCoins,
+    order_cashback_bps: setting.orderCashbackBps,
+    referral_inviter_coins: setting.referralInviterCoins,
+    referral_invitee_coins: setting.referralInviteeCoins,
+    surprise_reward_chance: setting.surpriseRewardChance,
+    spin_enabled: setting.spinEnabled,
+    spin_daily_limit: setting.spinDailyLimit,
+  };
+}
+
 export async function getProfilePayload(userId: string) {
   const [user, notificationPreference, addresses] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
