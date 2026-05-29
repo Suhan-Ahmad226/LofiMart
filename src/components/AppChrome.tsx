@@ -79,11 +79,39 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     }
 
     let active = true;
+    let controllerChanged = false;
+
+    const handleControllerChange = () => {
+      if (controllerChanged) return;
+      controllerChanged = true;
+
+      try {
+        const reloadKey = 'lofimart-sw-controller-refreshed';
+        if (!window.sessionStorage.getItem(reloadKey)) {
+          window.sessionStorage.setItem(reloadKey, 'true');
+          window.location.reload();
+        }
+      } catch {
+        window.location.reload();
+      }
+    };
 
     const registerServiceWorker = async () => {
       try {
+        if ('caches' in window) {
+          const keys = await window.caches.keys();
+          await Promise.all(
+            keys
+              .filter((key) => key.startsWith('amarshop-'))
+              .map((key) => window.caches.delete(key)),
+          );
+        }
+
         const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
         await registration.update();
+
+        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+        registration.active?.postMessage({ type: 'CLEAR_OLD_CACHES' });
       } catch (error) {
         if (active) {
           console.warn('Failed to register production service worker:', error);
@@ -91,10 +119,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       }
     };
 
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
     void registerServiceWorker();
 
     return () => {
       active = false;
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
     };
   }, [idleReady]);
 

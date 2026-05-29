@@ -1,6 +1,7 @@
-const STATIC_CACHE = 'amarshop-static-v1';
-const PAGE_CACHE = 'amarshop-pages-v1';
-const API_CACHE = 'amarshop-api-v1';
+const CACHE_VERSION = 'lofimart-v20260530';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const PAGE_CACHE = `${CACHE_VERSION}-pages`;
+const API_CACHE = `${CACHE_VERSION}-api`;
 const OFFLINE_FALLBACK_URL = '/offline.html';
 const ESSENTIAL_URLS = [
   '/',
@@ -61,6 +62,55 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  const type = event.data?.type;
+
+  if (type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
+  if (type === 'CLEAR_OLD_CACHES') {
+    event.waitUntil(
+      (async () => {
+        const validCaches = new Set([STATIC_CACHE, PAGE_CACHE, API_CACHE]);
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => (validCaches.has(key) ? Promise.resolve() : caches.delete(key))));
+      })(),
+    );
+  }
+});
+
+async function networkFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+
+  try {
+    const networkResponse = await fetch(request, { cache: 'no-store' });
+    if (networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch {
+    const cachedResponse = await cache.match(request);
+    return cachedResponse || Response.error();
+  }
+}
+
+async function cacheFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const networkResponse = await fetch(request);
+  if (networkResponse.ok) {
+    await cache.put(request, networkResponse.clone());
+  }
+  return networkResponse;
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -110,42 +160,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (request.destination === 'style' || request.destination === 'script' || request.destination === 'font' || request.destination === 'image') {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(STATIC_CACHE);
-        const cachedResponse = await cache.match(request);
-        const networkPromise = fetch(request)
-          .then(async (networkResponse) => {
-            if (networkResponse.ok) {
-              await cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => null);
+  if (request.destination === 'style' || request.destination === 'script' || request.destination === 'worker') {
+    event.respondWith(networkFirst(request, STATIC_CACHE));
+    return;
+  }
 
-        return cachedResponse || networkPromise || Response.error();
-      })(),
-    );
+  if (request.destination === 'font' || request.destination === 'image') {
+    event.respondWith(cacheFirst(request, STATIC_CACHE));
     return;
   }
 
   if (pathname.startsWith('/api/public/')) {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(API_CACHE);
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse.ok) {
-            await cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch {
-          const cachedResponse = await cache.match(request);
-          return cachedResponse || Response.error();
-        }
-      })(),
-    );
+    event.respondWith(networkFirst(request, API_CACHE));
   }
 });
 
