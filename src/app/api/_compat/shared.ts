@@ -348,3 +348,33 @@ export function buildHourlySeriesFromOrders(orders: Array<{ createdAt: Date; tot
 
   return buckets;
 }
+
+export function buildWeeklyHeatmapFromOrders(orders: Array<{ createdAt: Date }>) {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const hours = [0, 4, 8, 12, 16, 20];
+  const buckets = days.flatMap((day, dayIndex) =>
+    hours.map((hour) => ({
+      day,
+      day_index: dayIndex,
+      hour,
+      count: 0,
+    })),
+  );
+
+  for (const order of orders) {
+    const date = new Date(order.createdAt);
+    const hourBucket = hours.reduce((selected, hour) => (date.getHours() >= hour ? hour : selected), 0);
+    const bucket = buckets.find((item) => item.day_index === date.getDay() && item.hour === hourBucket);
+    if (bucket) bucket.count += 1;
+  }
+
+  return buckets;
+}
+
+export function requireAdminRole(user: { role?: string }) {
+  if (String(user.role || '') !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  return null;
+}
