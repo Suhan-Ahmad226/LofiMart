@@ -267,3 +267,84 @@ export async function getProfilePayload(userId: string) {
 export function jsonUnauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
+
+export function requireSellerRole(user: { role?: string }) {
+  if (!['seller', 'admin'].includes(String(user.role || ''))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  return null;
+}
+
+export function serializeFlashSaleEntry(entry: any) {
+  return {
+    id: entry.id,
+    campaign_id: entry.campaignId,
+    seller_id: entry.sellerId,
+    product_id: entry.productId,
+    sale_price: toPlainNumber(entry.salePrice),
+    allocated_stock: entry.allocatedStock ?? 0,
+    status: entry.status,
+    note: entry.note ?? null,
+    rejection_reason: entry.rejectionReason ?? null,
+    reviewed_at: entry.reviewedAt ? new Date(entry.reviewedAt).toISOString() : null,
+    created_at: entry.createdAt ? new Date(entry.createdAt).toISOString() : undefined,
+    updated_at: entry.updatedAt ? new Date(entry.updatedAt).toISOString() : undefined,
+    seller_name: entry.seller?.name ?? null,
+    reviewed_by_name: entry.reviewedBy?.name ?? null,
+    product: entry.product
+      ? {
+          id: entry.product.id,
+          name: entry.product.name,
+          slug: entry.product.slug,
+          price: toPlainNumber(entry.product.price),
+          old_price: toPlainNumber(entry.product.oldPrice ?? entry.product.price),
+          image: entry.product.image ?? null,
+          category: entry.product.category ?? null,
+          stock: entry.product.stock ?? 0,
+        }
+      : null,
+  };
+}
+
+export function serializeFlashSaleCampaign(campaign: any) {
+  return {
+    id: campaign.id,
+    title: campaign.title,
+    slug: campaign.slug,
+    description: campaign.description ?? '',
+    banner_image: campaign.bannerImage ?? '',
+    starts_at: campaign.startsAt ? new Date(campaign.startsAt).toISOString() : undefined,
+    ends_at: campaign.endsAt ? new Date(campaign.endsAt).toISOString() : undefined,
+    status: campaign.status,
+    created_by_id: campaign.createdById ?? null,
+    created_by_name: campaign.createdBy?.name ?? null,
+    created_at: campaign.createdAt ? new Date(campaign.createdAt).toISOString() : undefined,
+    updated_at: campaign.updatedAt ? new Date(campaign.updatedAt).toISOString() : undefined,
+  };
+}
+
+export function buildHourlySeriesFromOrders(orders: Array<{ createdAt: Date; total?: unknown }>, days = 7) {
+  const bucketCount = Math.max(1, days) * 24;
+  const now = Date.now();
+  const start = now - bucketCount * 60 * 60 * 1000;
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const bucketStart = start + index * 60 * 60 * 1000;
+    return {
+      label: new Date(bucketStart).toISOString(),
+      total: 0,
+      orders: 0,
+    };
+  });
+
+  for (const order of orders) {
+    const timestamp = new Date(order.createdAt).getTime();
+    const index = Math.floor((timestamp - start) / (60 * 60 * 1000));
+    if (index >= 0 && index < buckets.length) {
+      buckets[index].total += Number(order.total ?? 0);
+      buckets[index].orders += 1;
+    }
+  }
+
+  return buckets;
+}
