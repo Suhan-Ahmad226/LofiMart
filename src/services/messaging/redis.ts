@@ -10,8 +10,14 @@ function createRedisClient() {
 
   return new Redis(REDIS_URL, {
     lazyConnect: true,
-    maxRetriesPerRequest: null,
+    connectTimeout: Number(process.env.REDIS_CONNECT_TIMEOUT_MS || 3000),
+    commandTimeout: Number(process.env.REDIS_COMMAND_TIMEOUT_MS || 3000),
+    maxRetriesPerRequest: Number(process.env.REDIS_MAX_RETRIES_PER_REQUEST || 1),
     enableReadyCheck: true,
+    retryStrategy(times) {
+      if (times > 2) return null;
+      return Math.min(times * 250, 1000);
+    },
   });
 }
 
