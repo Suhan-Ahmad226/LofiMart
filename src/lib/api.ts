@@ -2,6 +2,9 @@ import axios from 'axios';
 
 function resolveApiBase() {
   const configuredBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').trim();
+  const browserLocation = typeof globalThis === 'object' && 'location' in globalThis
+    ? (globalThis as typeof globalThis & { location?: { origin?: string } }).location
+    : undefined;
 
   if (!configuredBase) {
     return '/api';
@@ -11,13 +14,13 @@ function resolveApiBase() {
     return configuredBase;
   }
 
-  if (typeof window === 'undefined') {
+  if (!browserLocation?.origin) {
     return configuredBase;
   }
 
   try {
     const configuredUrl = new URL(configuredBase);
-    if (configuredUrl.origin === window.location.origin) {
+    if (configuredUrl.origin === browserLocation.origin) {
       return configuredUrl.pathname.replace(/\/+$/, '') || '/api';
     }
   } catch {
