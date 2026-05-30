@@ -3,6 +3,9 @@ import { Link, useNavigate, useSearchParams } from '@/src/lib/navigation';
 import toast from 'react-hot-toast';
 import {
   ArrowRight,
+  BadgeCheck,
+  Clock3,
+  Fingerprint,
   Loader2,
   Lock,
   Mail,
@@ -54,9 +57,9 @@ const roleConfig: Record<AccountRole, RoleConfig> = {
 };
 
 const loginHighlights = [
-  'Secure Supabase-based authentication',
-  'Role-aware dashboard routing after sign-in',
-  'Fast checkout, wishlist, and order tracking access',
+  'Secure email, Google, and Facebook sign-in',
+  'Smart routing to customer, seller, reseller, or admin tools',
+  'Quick access to orders, wishlist, wallet, and checkout',
 ];
 
 const registerHighlights = [
@@ -141,25 +144,38 @@ export const LoginPage = () => {
 
   return (
     <AuthShell
-      title="Welcome back to your commerce workspace"
-      subtitle="Sign in to manage orders, continue checkout, and access the dashboard built for your role."
+      title="Welcome back to LofiMart"
+      subtitle="Sign in once and continue shopping, selling, reselling, or managing the store from the right workspace."
       highlights={loginHighlights}
-      asideTitle="What you get after sign-in"
+      asideTitle="Your account stays ready for"
     >
-      <div className="space-y-8">
-        <div className="space-y-3 text-center lg:text-left">
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-            Secure sign-in
-          </span>
-          <div>
-            <h2 className="text-3xl font-bold text-slate-950 font-display">Sign in</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Use your verified email and password to continue where you left off.
+      <div className="space-y-7">
+        <div className="space-y-4 text-center sm:text-left">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-300/70 sm:mx-0">
+            <Fingerprint size={26} strokeWidth={2.2} />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                <BadgeCheck size={14} />
+                Secure login
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-100">
+                <Clock3 size={14} />
+                Fast access
+              </span>
+            </div>
+            <h2 className="text-3xl font-bold tracking-normal text-slate-950 font-display sm:text-4xl">Sign in</h2>
+            <p className="mx-auto max-w-md text-sm leading-6 text-slate-500 sm:mx-0">
+              Use your verified email, Google, or Facebook account to open your LofiMart workspace.
             </p>
           </div>
+
           {redirectTarget && (
-            <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-              After login you will continue to <span className="ml-1 font-semibold text-slate-900">{redirectTarget}</span>
+            <div className="inline-flex max-w-full rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              <span className="truncate">After login: </span>
+              <span className="ml-1 truncate font-semibold text-slate-900">{redirectTarget}</span>
             </div>
           )}
         </div>
@@ -202,8 +218,8 @@ export const LoginPage = () => {
             </InputField>
           </div>
 
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <p className="text-slate-500">Protected with verified email and secure session sync.</p>
+          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-slate-500">Protected session for every device.</p>
             <Link to="/forgot-password" className="font-semibold text-primary transition hover:text-primary/80">
               Forgot password?
             </Link>
@@ -212,7 +228,7 @@ export const LoginPage = () => {
           <button
             type="submit"
             disabled={loading || !supabaseReady}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-300/70 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
           >
             {loading ? (
               <>
@@ -238,7 +254,7 @@ export const LoginPage = () => {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
               onClick={async () => {
@@ -263,10 +279,10 @@ export const LoginPage = () => {
                 }
               }}
               disabled={!supabaseReady}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <img src="https://www.google.com/favicon.ico" className="h-4 w-4" alt="Google" />
-              <span>Continue with Google</span>
+              <span>Google</span>
             </button>
             <button
               type="button"
@@ -292,20 +308,20 @@ export const LoginPage = () => {
                 }
               }}
               disabled={!supabaseReady}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#1877F2] text-[10px] font-bold text-white">f</span>
-              <span>Continue with Facebook</span>
+              <span>Facebook</span>
             </button>
           </div>
         </div>
 
-        <p className="text-center text-sm text-slate-600 lg:text-left">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600 sm:text-left">
           Don&apos;t have an account?{' '}
           <Link to={redirectTarget ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : '/register'} className="font-bold text-primary hover:underline">
             Create one now
           </Link>
-        </p>
+        </div>
       </div>
     </AuthShell>
   );
