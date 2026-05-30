@@ -2,6 +2,8 @@ import React from 'react';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 type AuthAlertTone = 'error' | 'warning' | 'success';
+const AUTH_PANEL_IMAGE =
+  'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80';
 
 export function AuthShell({
   title,
@@ -34,7 +36,15 @@ export function AuthShell({
             </div>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-5 pt-8">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl shadow-black/20">
+              <img
+                src={AUTH_PANEL_IMAGE}
+                alt="Customer completing a secure LofiMart checkout"
+                className="h-52 w-full object-cover"
+              />
+            </div>
+
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
               <p className="text-sm font-semibold text-white">{asideTitle}</p>
               <div className="mt-4 space-y-3">
