@@ -17,19 +17,25 @@ function getColor(count: number, maxCount: number) {
 }
 
 const ActivityHeatmap: React.FC<{ data?: HeatmapDay[] }> = ({ data = [] }) => {
-  const maxCount = Math.max(0, ...data.flatMap((day) => day.hours.map((hour) => hour.count)));
+  const safeData = Array.isArray(data)
+    ? data.map((day) => ({
+        ...day,
+        hours: Array.isArray(day?.hours) ? day.hours : [],
+      }))
+    : [];
+  const maxCount = Math.max(0, ...safeData.flatMap((day) => day.hours.map((hour) => Number(hour.count || 0))));
 
   return (
-    <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
+    <div className="min-h-64 min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
       <h3 className="font-bold mb-2">Order Activity Heatmap</h3>
-      {data.length === 0 ? (
+      {safeData.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-sm text-gray-500">
           No recent order activity data is available yet.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-7 gap-1">
-            {data.map((day) => (
+            {safeData.map((day) => (
               <div key={day.day} className="flex flex-col space-y-0.5">
                 {day.hours.map((hour) => (
                   <div

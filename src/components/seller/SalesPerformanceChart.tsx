@@ -18,8 +18,8 @@ export default function SalesPerformanceChart({ data = [] }: { data?: SalesPoint
   }
 
   return (
-    <div className="h-[300px] min-w-0 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[300px] min-h-[300px] min-w-[1px] w-full">
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={300}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
