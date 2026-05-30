@@ -1,6 +1,33 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+function resolveApiBase() {
+  const configuredBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').trim();
+
+  if (!configuredBase) {
+    return '/api';
+  }
+
+  if (configuredBase.startsWith('/')) {
+    return configuredBase;
+  }
+
+  if (typeof window === 'undefined') {
+    return configuredBase;
+  }
+
+  try {
+    const configuredUrl = new URL(configuredBase);
+    if (configuredUrl.origin === window.location.origin) {
+      return configuredUrl.pathname.replace(/\/+$/, '') || '/api';
+    }
+  } catch {
+    return '/api';
+  }
+
+  return '/api';
+}
+
+const API_BASE = resolveApiBase();
 const browserWindow = typeof globalThis === 'object' && 'window' in globalThis
   ? (globalThis as typeof globalThis & { window?: Window & { dispatchEvent?: (event: Event) => boolean } }).window
   : undefined;

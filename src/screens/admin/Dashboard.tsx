@@ -117,31 +117,35 @@ const emptyStats: AdminStats = {
   recentOrders: [],
 };
 
+const emptyReadinessSummary: NonNullable<AdminDashboardInsights['readinessSummary']> = {
+  sellers: {
+    identity_incomplete: 0,
+    verification_incomplete: 0,
+    pickup_incomplete: 0,
+    courier_unlinked: 0,
+    payout_missing: 0,
+  },
+  resellers: {
+    verification_incomplete: 0,
+    catalog_empty: 0,
+    payout_missing: 0,
+    no_clicks_yet: 0,
+  },
+};
+
+const emptyInsights: AdminDashboardInsights = {
+  salesSeries: [],
+  activityHeatmap: [],
+  lowStockProducts: [],
+  activeShipments: 0,
+  activeRiskFlags: 0,
+  readinessSummary: emptyReadinessSummary,
+};
+
 export const AdminDashboard = () => {
   const { token } = useUser();
   const [stats, setStats] = useState<AdminStats>(emptyStats);
-  const [insights, setInsights] = useState<AdminDashboardInsights>({
-    salesSeries: [],
-    activityHeatmap: [],
-    lowStockProducts: [],
-    activeShipments: 0,
-    activeRiskFlags: 0,
-    readinessSummary: {
-      sellers: {
-        identity_incomplete: 0,
-        verification_incomplete: 0,
-        pickup_incomplete: 0,
-        courier_unlinked: 0,
-        payout_missing: 0,
-      },
-      resellers: {
-        verification_incomplete: 0,
-        catalog_empty: 0,
-        payout_missing: 0,
-        no_clicks_yet: 0,
-      },
-    },
-  });
+  const [insights, setInsights] = useState<AdminDashboardInsights>(emptyInsights);
   const [performanceSummary, setPerformanceSummary] = useState<PerformanceSummaryResponse | null>(null);
   const [operationsSummary, setOperationsSummary] = useState<AdminOperationsSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,39 +162,48 @@ export const AdminDashboard = () => {
       try {
         setLoading(true);
         setError('');
+        const headers = { Authorization: `Bearer ${token}` };
         const [statsResponse, performanceResponse, insightsResponse, operationsResponse] = await Promise.all([
           fetch('/api/admin/stats', {
-            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            headers,
           }),
           fetch('/api/admin/performance/web-vitals', {
-            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            headers,
           }),
           fetch('/api/admin/dashboard-insights', {
-            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            headers,
           }),
           fetch('/api/admin/operations-summary', {
-            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            headers,
           }),
         ]);
 
-        if (!statsResponse.ok) {
-          const payload = await statsResponse.json().catch(() => null);
-          throw new Error(payload?.error || 'Failed to load admin statistics');
-        }
+        const endpointWarnings: string[] = [];
 
-        const payload = (await statsResponse.json()) as AdminStats;
-        setStats({
-          totalUsers: Number(payload.totalUsers || 0),
-          totalSellers: Number(payload.totalSellers || 0),
-          totalOrders: Number(payload.totalOrders || 0),
-          totalRevenue: Number(payload.totalRevenue || 0),
-          recentOrders: Array.isArray(payload.recentOrders) ? payload.recentOrders : [],
-        });
+        if (statsResponse.ok) {
+          const payload = (await statsResponse.json()) as AdminStats;
+          setStats({
+            totalUsers: Number(payload.totalUsers || 0),
+            totalSellers: Number(payload.totalSellers || 0),
+            totalOrders: Number(payload.totalOrders || 0),
+            totalRevenue: Number(payload.totalRevenue || 0),
+            recentOrders: Array.isArray(payload.recentOrders) ? payload.recentOrders : [],
+          });
+        } else {
+          const payload = await statsResponse.json().catch(() => null);
+          endpointWarnings.push(payload?.error || 'Admin statistics could not be loaded.');
+          setStats(emptyStats);
+        }
 
         if (performanceResponse.ok) {
           const performancePayload = (await performanceResponse.json()) as PerformanceSummaryResponse;
           setPerformanceSummary(performancePayload);
         } else {
+          endpointWarnings.push('Performance telemetry could not be loaded.');
           setPerformanceSummary(null);
         }
 
@@ -202,45 +215,11 @@ export const AdminDashboard = () => {
             lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
             activeShipments: Number(insightsPayload.activeShipments || 0),
             activeRiskFlags: Number(insightsPayload.activeRiskFlags || 0),
-            readinessSummary: insightsPayload.readinessSummary || {
-              sellers: {
-                identity_incomplete: 0,
-                verification_incomplete: 0,
-                pickup_incomplete: 0,
-                courier_unlinked: 0,
-                payout_missing: 0,
-              },
-              resellers: {
-                verification_incomplete: 0,
-                catalog_empty: 0,
-                payout_missing: 0,
-                no_clicks_yet: 0,
-              },
-            },
+            readinessSummary: insightsPayload.readinessSummary || emptyReadinessSummary,
           });
         } else {
-          setInsights({
-            salesSeries: [],
-            activityHeatmap: [],
-            lowStockProducts: [],
-            activeShipments: 0,
-            activeRiskFlags: 0,
-            readinessSummary: {
-              sellers: {
-                identity_incomplete: 0,
-                verification_incomplete: 0,
-                pickup_incomplete: 0,
-                courier_unlinked: 0,
-                payout_missing: 0,
-              },
-              resellers: {
-                verification_incomplete: 0,
-                catalog_empty: 0,
-                payout_missing: 0,
-                no_clicks_yet: 0,
-              },
-            },
-          });
+          endpointWarnings.push('Marketplace insights could not be loaded.');
+          setInsights(emptyInsights);
         }
 
         if (operationsResponse.ok) {
@@ -250,8 +229,11 @@ export const AdminDashboard = () => {
             items: Array.isArray(operationsPayload.items) ? operationsPayload.items : [],
           });
         } else {
+          endpointWarnings.push('Operations summary could not be loaded.');
           setOperationsSummary(null);
         }
+
+        setError(endpointWarnings.join(' '));
       } catch (fetchError) {
         setError(
           fetchError instanceof Error
@@ -259,28 +241,7 @@ export const AdminDashboard = () => {
             : 'Live platform analytics could not be loaded right now. Please try again shortly.',
         );
         setStats(emptyStats);
-        setInsights({
-          salesSeries: [],
-          activityHeatmap: [],
-          lowStockProducts: [],
-          activeShipments: 0,
-          activeRiskFlags: 0,
-          readinessSummary: {
-            sellers: {
-              identity_incomplete: 0,
-              verification_incomplete: 0,
-              pickup_incomplete: 0,
-              courier_unlinked: 0,
-              payout_missing: 0,
-            },
-            resellers: {
-              verification_incomplete: 0,
-              catalog_empty: 0,
-              payout_missing: 0,
-              no_clicks_yet: 0,
-            },
-          },
-        });
+        setInsights(emptyInsights);
         setOperationsSummary(null);
       } finally {
         setLoading(false);
@@ -366,7 +327,12 @@ export const AdminDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {(operationsSummary?.items ?? []).map((item) => (
+          {(operationsSummary?.items ?? []).length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600 sm:col-span-2 xl:col-span-3">
+              No live operations backlog is available yet. Once orders, payouts, support messages, or review queues exist, they will appear here.
+            </div>
+          ) : (
+            (operationsSummary?.items ?? []).map((item) => (
             <a
               key={item.key}
               href={item.href}
@@ -398,7 +364,8 @@ export const AdminDashboard = () => {
               <p className="mt-3 text-sm leading-6 text-slate-700">{item.description}</p>
               <p className="mt-4 text-sm font-semibold text-primary">{item.actionLabel}</p>
             </a>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

@@ -25,6 +25,15 @@ export async function GET(request: NextRequest) {
   const roleError = requireAdminRole(user);
   if (roleError) return roleError;
 
+  const safeCount = async (label: string, query: Promise<number>) => {
+    try {
+      return await query;
+    } catch (error) {
+      console.error(`GET /api/admin/operations-summary ${label} error:`, error);
+      return 0;
+    }
+  };
+
   const [
     pendingKycReviews,
     pendingPayoutReviews,
@@ -35,14 +44,14 @@ export async function GET(request: NextRequest) {
     pendingReturnRequests,
     pendingAccountRequests,
   ] = await Promise.all([
-    prisma.verificationSubmission.count({ where: { status: 'pending' } }),
-    prisma.payoutTransaction.count({ where: { status: 'pending' } }),
-    prisma.contactMessage.count({ where: { status: 'unread' } }),
-    prisma.orderShipment.count({ where: { status: { in: ['delivery_failed', 'returned', 'cancelled'] } } }),
-    prisma.product.count({ where: { stock: { lte: LOW_STOCK_THRESHOLD } } }),
-    prisma.flashSaleEntry.count({ where: { status: 'pending' } }),
-    prisma.accountActionRequest.count({ where: { type: 'return_request', status: 'pending' } }),
-    prisma.accountActionRequest.count({ where: { status: 'pending', type: { not: 'return_request' } } }),
+    safeCount('verificationSubmission', prisma.verificationSubmission.count({ where: { status: 'pending' } })),
+    safeCount('payoutTransaction', prisma.payoutTransaction.count({ where: { status: 'pending' } })),
+    safeCount('contactMessage', prisma.contactMessage.count({ where: { status: 'unread' } })),
+    safeCount('orderShipment', prisma.orderShipment.count({ where: { status: { in: ['delivery_failed', 'returned', 'cancelled'] } } })),
+    safeCount('product', prisma.product.count({ where: { stock: { lte: LOW_STOCK_THRESHOLD } } })),
+    safeCount('flashSaleEntry', prisma.flashSaleEntry.count({ where: { status: 'pending' } })),
+    safeCount('returnRequest', prisma.accountActionRequest.count({ where: { type: 'return_request', status: 'pending' } })),
+    safeCount('accountActionRequest', prisma.accountActionRequest.count({ where: { status: 'pending', type: { not: 'return_request' } } })),
   ]);
 
   return NextResponse.json({
