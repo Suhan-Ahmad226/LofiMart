@@ -1,8 +1,2 @@
-'use client';
-
-import React from 'react';
-import ManualOrderWorkspace from '../orders/ManualOrderWorkspace';
-
-export const SellerManualOrdersPage = () => <ManualOrderWorkspace mode="seller" />;
-
-export default SellerManualOrdersPage;
+export * from '@/src/features/seller/screens/ManualOrders';
+export { default } from '@/src/features/seller/screens/ManualOrders';

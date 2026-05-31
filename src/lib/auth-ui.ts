@@ -1,6 +1,7 @@
 export type AccountRole = 'customer' | 'seller' | 'reseller';
 
 const AUTH_EXCHANGE_TIMEOUT_MS = 15_000;
+const PENDING_OAUTH_STORAGE_KEY = 'lofimart_pending_oauth';
 
 function extractAuthMessage(input: unknown): string {
   if (typeof input === 'string') {
@@ -123,6 +124,57 @@ export function buildAuthCallbackUrl(options?: {
 
   const query = params.toString();
   return `${window.location.origin}/auth/callback${query ? `?${query}` : ''}`;
+}
+
+export function rememberPendingOAuthRedirect(options?: {
+  redirectTarget?: string | null;
+  role?: AccountRole;
+  referralCode?: string;
+  mode?: 'login' | 'register';
+}) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(
+      PENDING_OAUTH_STORAGE_KEY,
+      JSON.stringify({
+        redirectTarget: options?.redirectTarget || null,
+        role: options?.role || null,
+        referralCode: options?.referralCode || null,
+        mode: options?.mode || 'login',
+      }),
+    );
+  } catch {
+    // Storage can be unavailable in privacy modes; OAuth still works without this hint.
+  }
+}
+
+export function getPendingOAuthRedirect() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_OAUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      redirectTarget?: string | null;
+      role?: AccountRole | null;
+      referralCode?: string | null;
+      mode?: 'login' | 'register';
+    };
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingOAuthRedirect() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.removeItem(PENDING_OAUTH_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export function getPasswordStrength(password: string) {

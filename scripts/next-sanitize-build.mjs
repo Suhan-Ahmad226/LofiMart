@@ -5,6 +5,7 @@ const projectRoot = process.cwd();
 const appDir = path.join(projectRoot, 'src', 'app');
 const nextDir = path.join(projectRoot, '.next');
 const stalePaths = [
+  path.join(nextDir, 'types'),
   path.join(nextDir, 'server', 'pages'),
   path.join(nextDir, 'static', 'chunks', 'pages'),
   path.join(nextDir, 'server', 'pages-manifest.json'),

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
+import { requireUser } from '@/src/server/next/requireUser';
 
 async function getAuthUser(request: NextRequest) {
-  // TODO: Implement your auth logic
-  return null;
+  const user = await requireUser(request);
+  return user instanceof NextResponse ? null : user;
 }
 
 export async function DELETE(
@@ -25,7 +26,7 @@ export async function DELETE(
       where: { id },
     });
 
-    if (!item || item.userId !== user.id) {
+    if (!item || item.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Item not found' },
         { status: 404 }

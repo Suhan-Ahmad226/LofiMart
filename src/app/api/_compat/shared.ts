@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { ensureRedis } from '@/src/services/messaging/redis';
+import { getServerEnv } from '@/src/lib/env';
 import { requireApiUser, toPlainNumber } from '../products/shared';
 
 export { requireApiUser, toPlainNumber };
@@ -23,8 +24,9 @@ export async function readUserCart(userId: string | number) {
 export async function writeUserCart(userId: string | number, items: unknown[]) {
   try {
     const redis = await ensureRedis();
+    const { SESSION_TTL_SECONDS } = getServerEnv();
     if (items.length > 0) {
-      await redis.set(userCartKey(userId), JSON.stringify(items), 'EX', Number(process.env.SESSION_TTL_SECONDS || 604800));
+      await redis.set(userCartKey(userId), JSON.stringify(items), 'EX', SESSION_TTL_SECONDS);
     } else {
       await redis.del(userCartKey(userId));
     }

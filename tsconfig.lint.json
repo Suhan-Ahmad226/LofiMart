@@ -1,5 +1,8 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
@@ -8,6 +11,20 @@
   "exclude": [
     "node_modules",
     "dist",
-    ".next"
+    ".next",
+    "app",
+    "components",
+    "context",
+    "data",
+    "events",
+    "hooks",
+    "lib",
+    "modules",
+    "screens",
+    "server",
+    "services",
+    "types",
+    "utils",
+    "workers"
   ]
 }

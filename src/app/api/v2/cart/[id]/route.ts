@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { z } from 'zod';
+import { requireUser } from '@/src/server/next/requireUser';
 
 const UpdateCartItemSchema = z.object({
   quantity: z.number().positive().int(),
 });
 
 async function getAuthUser(request: NextRequest) {
-  // TODO: Implement your auth logic
-  return null;
+  const user = await requireUser(request);
+  return user instanceof NextResponse ? null : user;
 }
 
 export async function PATCH(

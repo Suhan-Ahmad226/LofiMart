@@ -38,10 +38,24 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const redirectTarget = normalizeRedirectTarget(searchParams.get('redirect'));
-    const role = searchParams.get('role') || undefined;
-    const referralCode = searchParams.get('ref') || undefined;
-    const currentMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
+    const pending = (() => {
+      try {
+        const raw = window.sessionStorage.getItem('lofimart_pending_oauth');
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    })() as {
+      redirectTarget?: string | null;
+      role?: string | null;
+      referralCode?: string | null;
+      mode?: 'login' | 'register';
+    } | null;
+
+    const redirectTarget = normalizeRedirectTarget(searchParams.get('redirect')) || normalizeRedirectTarget(pending?.redirectTarget || null);
+    const role = searchParams.get('role') || pending?.role || undefined;
+    const referralCode = searchParams.get('ref') || pending?.referralCode || undefined;
+    const currentMode = searchParams.get('mode') === 'register' || pending?.mode === 'register' ? 'register' : 'login';
     setMode(currentMode);
 
     const run = async () => {
@@ -119,6 +133,11 @@ export default function AuthCallbackPage() {
         }
 
         login(payload.user, payload.token, payload.refreshToken);
+        try {
+          window.sessionStorage.removeItem('lofimart_pending_oauth');
+        } catch {
+          // ignore
+        }
         toast.success(
           currentMode === 'register'
             ? `Welcome${payload.user?.name ? `, ${payload.user.name}` : ''}. Your account is ready.`

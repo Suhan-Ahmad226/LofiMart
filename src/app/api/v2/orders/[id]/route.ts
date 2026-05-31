@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
+import { requireUser } from '@/src/server/next/requireUser';
 
 async function getAuthUser(request: NextRequest) {
-  // TODO: Implement your auth logic
-  return null;
+  const user = await requireUser(request);
+  return user instanceof NextResponse ? null : user;
 }
 
 export async function GET(
@@ -46,7 +47,7 @@ export async function GET(
       );
     }
 
-    if (order.userId !== user.id) {
+    if (order.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
@@ -80,7 +81,7 @@ export async function PATCH(
 
     const order = await prisma.order.findUnique({ where: { id } });
 
-    if (!order || order.userId !== user.id) {
+    if (!order || order.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
         { status: 404 }

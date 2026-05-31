@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/src/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -486,7 +487,7 @@ async function handle(request: NextRequest, params: Params) {
   const path = compat.join('/');
   const method = request.method.toUpperCase();
 
-  console.warn(`[api-compat-fallback] ${method} /api/${path}`);
+  logger.warn('api-compat-fallback', { method, path: `/api/${path}` });
 
   if (method === 'GET' || method === 'HEAD') {
     const payload = legacyGetPayload(path, request);

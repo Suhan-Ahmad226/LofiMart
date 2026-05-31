@@ -24,10 +24,14 @@ const poppins = Poppins({
 });
 
 export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
   themeColor: '#1f2937',
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lofimart.vercel.app'),
   title: {
     default: 'LofiMart | Smart Shopping for Bangladesh',
     template: '%s | LofiMart',
@@ -52,6 +56,10 @@ export const metadata: Metadata = {
     description: 'Discover trusted products, fast delivery, AI-powered recommendations, and a polished buying experience built for Bangladesh.',
     siteName: 'LofiMart',
     type: 'website',
+    url: '/',
+  },
+  alternates: {
+    canonical: '/',
   },
   twitter: {
     card: 'summary_large_image',
@@ -127,7 +135,7 @@ export default function RootLayout({
                     }).catch(function () {});
                   }
                 } catch (error) {
-                  console.warn('Failed to clear dev service workers or caches before hydration:', error);
+                  // Development-only best effort cleanup.
                 }
               })();
             `}

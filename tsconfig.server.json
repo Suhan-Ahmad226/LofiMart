@@ -12,7 +12,9 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/types": ["./src/types.ts"],
+      "@/types/*": ["./src/types/*"],
+      "@/*": ["./src/*", "./*"]
     },
     "allowJs": false,
     "noEmitOnError": true,

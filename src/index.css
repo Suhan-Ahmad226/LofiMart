@@ -31,6 +31,18 @@
     overflow-x: clip;
     line-height: 1.5;
   }
+
+  :root {
+    --space-page-x: clamp(0.875rem, 4vw, 2rem);
+    --space-section-y: clamp(2rem, 6vw, 4.5rem);
+    --radius-card: clamp(1rem, 2vw, 1.75rem);
+    --shadow-card: 0 18px 48px -32px rgba(15, 23, 42, 0.28);
+    --text-display: clamp(2.25rem, 7vw, 5rem);
+    --text-h1: clamp(2rem, 5vw, 4rem);
+    --text-h2: clamp(1.5rem, 3vw, 2.5rem);
+    --text-h3: clamp(1.125rem, 2vw, 1.5rem);
+    --text-body: clamp(0.9375rem, 1vw, 1rem);
+  }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
     line-height: 1.1;
@@ -72,31 +84,61 @@
       border-color 180ms ease,
       box-shadow 220ms ease;
   }
+
+  :focus-visible {
+    outline: 3px solid rgba(40, 167, 69, 0.4);
+    outline-offset: 3px;
+  }
 }
 
 @layer components {
   .page-shell {
-    @apply mx-auto w-full max-w-7xl px-4;
+    width: min(100% - clamp(1.5rem, 4vw, 4rem), 80rem);
+    margin-inline: auto;
   }
 
   .page-shell-tight {
-    @apply mx-auto w-full max-w-6xl px-4;
+    width: min(100% - clamp(1.5rem, 4vw, 4rem), 72rem);
+    margin-inline: auto;
   }
 
   .surface-card {
-    @apply rounded-[1.75rem] border border-black/5 bg-white shadow-sm;
+    @apply border border-black/5 bg-white shadow-sm;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
   }
 
   .surface-card-soft {
-    @apply rounded-[1.75rem] border border-slate-200 bg-slate-50 shadow-sm;
+    @apply border border-slate-200 bg-slate-50 shadow-sm;
+    border-radius: var(--radius-card);
   }
 
   .section-heading {
-    @apply text-[1.55rem] font-bold tracking-tight text-slate-950 sm:text-3xl;
+    @apply font-bold tracking-tight text-slate-950;
+    font-size: var(--text-h2);
   }
 
   .section-subtle {
-    @apply text-sm leading-6 text-slate-500 sm:text-[15px];
+    @apply leading-6 text-slate-500;
+    font-size: var(--text-body);
+  }
+
+  .skip-link {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 9999;
+    transform: translateY(-150%);
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+    box-shadow: 0 18px 40px -22px rgba(15, 23, 42, 0.55);
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
   }
 
   .section-kicker {
@@ -820,7 +862,67 @@
 
   .product-card {
     @apply bg-white rounded-xl border border-black/5 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1;
+    container-type: inline-size;
     will-change: transform, box-shadow;
+  }
+
+  .responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+    gap: clamp(0.875rem, 2vw, 1.5rem);
+  }
+
+  .responsive-grid-tight {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.75rem), 1fr));
+    gap: clamp(0.75rem, 1.5vw, 1rem);
+  }
+
+  .responsive-hero {
+    min-height: clamp(23rem, 42vw, 30rem);
+  }
+
+  .responsive-hero-title {
+    font-size: clamp(2.25rem, 8vw, 4.5rem);
+    line-height: 0.98;
+  }
+
+  .chart-shell {
+    min-width: 0;
+    min-height: clamp(16rem, 38vw, 22rem);
+    container-type: inline-size;
+  }
+
+  .table-responsive,
+  .site-main :has(> table) {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .site-main table {
+    min-width: min(48rem, 100%);
+  }
+
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  @container (max-width: 220px) {
+    .product-card .product-card__body {
+      padding: 0.75rem;
+    }
+
+    .product-card .product-card__title {
+      min-height: 2.3rem;
+      font-size: 0.8125rem;
+      line-height: 1.15;
+    }
+
+    .product-card .product-card__price {
+      font-size: 0.95rem;
+    }
   }
 
   .page-shell {
@@ -918,6 +1020,15 @@
 
     .section-heading {
       @apply text-[1.45rem] leading-tight;
+    }
+
+    .responsive-grid,
+    .responsive-grid-tight {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .responsive-hero {
+      min-height: clamp(22rem, 94vw, 28rem);
     }
   }
 }

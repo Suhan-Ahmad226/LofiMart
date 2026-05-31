@@ -47,6 +47,20 @@ function ensureRootAppDir() {
 
   removeIfBrokenLink(rootAppDir);
 
+  if (process.env.LOFIMART_MIRROR_ROOT_APP !== '1') {
+    if (process.env.LOFIMART_CREATE_ROOT_APP_LINK !== '1') {
+      return;
+    }
+
+    if (!existsSync(rootAppDir)) {
+      const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+      symlinkSync(srcAppDir, rootAppDir, linkType);
+      console.log('[ensure-root-app-dir] Linked app -> src/app for Next route type validation.');
+    }
+
+    return;
+  }
+
   if (existsSync(rootAppDir)) {
     const stats = lstatSync(rootAppDir);
     if (stats.isSymbolicLink()) {
@@ -58,10 +72,14 @@ function ensureRootAppDir() {
 
   mkdirSync(path.dirname(rootAppDir), { recursive: true });
   cpSync(srcAppDir, rootAppDir, { recursive: true, force: true });
-  console.log('[ensure-root-app-dir] Mirrored app <- src/app for Next route compatibility.');
+  console.log('[ensure-root-app-dir] Mirrored app <- src/app because LOFIMART_MIRROR_ROOT_APP=1.');
 }
 
 function ensureCompatibilityLinks() {
+  if (process.env.LOFIMART_CREATE_ROOT_COMPAT_LINKS !== '1') {
+    return;
+  }
+
   const linkType = process.platform === 'win32' ? 'junction' : 'dir';
 
   for (const [rootName, sourcePath] of compatibilityLinks) {
@@ -78,6 +96,10 @@ function ensureCompatibilityLinks() {
 }
 
 function ensureRootIndexCss() {
+  if (process.env.LOFIMART_CREATE_ROOT_SHIMS !== '1') {
+    return;
+  }
+
   if (existsSync(rootIndexCssPath)) {
     return;
   }
@@ -87,6 +109,10 @@ function ensureRootIndexCss() {
 }
 
 function ensureRootTypesFile() {
+  if (process.env.LOFIMART_CREATE_ROOT_SHIMS !== '1') {
+    return;
+  }
+
   if (existsSync(rootTypesPath)) {
     return;
   }
@@ -96,6 +122,10 @@ function ensureRootTypesFile() {
 }
 
 function ensureLibCompatibilityFiles() {
+  if (process.env.LOFIMART_CREATE_ROOT_SHIMS !== '1') {
+    return;
+  }
+
   if (!existsSync(srcLibDir)) {
     return;
   }

@@ -25,7 +25,14 @@
       }
     ],
     "paths": {
+      "@/types": [
+        "./src/types.ts"
+      ],
+      "@/types/*": [
+        "./src/types/*"
+      ],
       "@/*": [
+        "./src/*",
         "./*"
       ]
     },
@@ -42,6 +49,21 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    ".next",
+    "app",
+    "components",
+    "context",
+    "data",
+    "events",
+    "hooks",
+    "lib",
+    "modules",
+    "screens",
+    "server",
+    "services",
+    "types",
+    "utils",
+    "workers"
   ]
 }

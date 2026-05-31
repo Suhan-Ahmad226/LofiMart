@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lofimart-v20260530';
+const CACHE_VERSION = 'lofimart-v20260531';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const API_CACHE = `${CACHE_VERSION}-api`;
@@ -8,7 +8,6 @@ const ESSENTIAL_URLS = [
   '/shop',
   '/categories',
   '/flash-sale',
-  '/manifest.json',
   '/icon.svg',
   OFFLINE_FALLBACK_URL,
 ];
@@ -120,6 +119,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   const { pathname } = url;
+
+  if (pathname === '/manifest.json') {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(async () => {
+        const cachedResponse = await caches.match(request);
+        return (
+          cachedResponse ||
+          new Response('{}', {
+            status: 503,
+            headers: { 'Content-Type': 'application/manifest+json; charset=utf-8' },
+          })
+        );
+      }),
+    );
+    return;
+  }
 
   if (request.mode === 'navigate') {
     if (isProtectedPath(pathname)) {

@@ -53,6 +53,7 @@ const commaSeparatedOrigins = () =>
   }, z.array(z.string().url()));
 
 const PublicEnvSchema = z.object({
+  NEXT_PUBLIC_SITE_URL: optionalString(),
   NEXT_PUBLIC_INVENTORY_WS: optionalString(),
   NEXT_PUBLIC_API_BASE_URL: optionalString(),
   NEXT_PUBLIC_SUPABASE_URL: optionalString(),
@@ -70,6 +71,9 @@ const ServerEnvSchema = z.object({
   DATABASE_URL: requiredString('DATABASE_URL'),
   DIRECT_URL: requiredString('DIRECT_URL'),
   REDIS_URL: requiredString('REDIS_URL'),
+  REDIS_CONNECT_TIMEOUT_MS: intFromString('REDIS_CONNECT_TIMEOUT_MS', 3000),
+  REDIS_COMMAND_TIMEOUT_MS: intFromString('REDIS_COMMAND_TIMEOUT_MS', 3000),
+  REDIS_MAX_RETRIES_PER_REQUEST: intFromString('REDIS_MAX_RETRIES_PER_REQUEST', 1),
   JWT_SECRET: requiredString('JWT_SECRET', 32),
   STRIPE_SECRET_KEY: requiredString('STRIPE_SECRET_KEY'),
   STRIPE_WEBHOOK_SECRET: optionalString(),

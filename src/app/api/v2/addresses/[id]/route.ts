@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { z } from 'zod';
+import { requireUser } from '@/src/server/next/requireUser';
 
 const UpdateAddressSchema = z.object({
   label: z.string().optional(),
@@ -15,8 +16,8 @@ const UpdateAddressSchema = z.object({
 });
 
 async function getAuthUser(request: NextRequest) {
-  // TODO: Implement your auth logic
-  return null;
+  const user = await requireUser(request);
+  return user instanceof NextResponse ? null : user;
 }
 
 export async function GET(
@@ -38,7 +39,7 @@ export async function GET(
       where: { id },
     });
 
-    if (!address || address.userId !== user.id) {
+    if (!address || address.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Address not found' },
         { status: 404 }
@@ -75,7 +76,7 @@ export async function PATCH(
 
     const address = await prisma.address.findUnique({ where: { id } });
 
-    if (!address || address.userId !== user.id) {
+    if (!address || address.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Address not found' },
         { status: 404 }
@@ -84,7 +85,7 @@ export async function PATCH(
 
     if (data.isDefault) {
       await prisma.address.updateMany({
-        where: { userId: user.id, NOT: { id } },
+        where: { userId: String(user.id), NOT: { id } },
         data: { isDefault: false },
       });
     }
@@ -127,7 +128,7 @@ export async function DELETE(
 
     const address = await prisma.address.findUnique({ where: { id } });
 
-    if (!address || address.userId !== user.id) {
+    if (!address || address.userId !== String(user.id)) {
       return NextResponse.json(
         { success: false, error: 'Address not found' },
         { status: 404 }

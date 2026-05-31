@@ -22,6 +22,7 @@ type LinkProps = Omit<React.ComponentProps<typeof NextLink>, 'href'> & {
 };
 
 const NAVIGATION_STATE_PREFIX = '__amarshop_nav_state__:';
+const isDev = process.env.NODE_ENV !== 'production';
 
 function normalizeTarget(target: To) {
   return target || '/';
@@ -37,7 +38,9 @@ function persistNavigationState(target: To, state: unknown) {
   try {
     window.sessionStorage.setItem(storageKey(target), JSON.stringify(state));
   } catch (error) {
-    console.warn('Failed to persist navigation state', error);
+    if (isDev) {
+      console.warn('Failed to persist navigation state', error);
+    }
   }
 }
 
@@ -48,7 +51,9 @@ function readNavigationState(target: To) {
     const value = window.sessionStorage.getItem(storageKey(target));
     return value ? JSON.parse(value) : null;
   } catch (error) {
-    console.warn('Failed to read navigation state', error);
+    if (isDev) {
+      console.warn('Failed to read navigation state', error);
+    }
     return null;
   }
 }

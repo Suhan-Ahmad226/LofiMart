@@ -1,6 +1,26 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+const priorities: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+};
+
+function getMinimumLevel(): LogLevel {
+  const configured = process.env.LOG_LEVEL;
+  if (configured === 'debug' || configured === 'info' || configured === 'warn' || configured === 'error') {
+    return configured;
+  }
+
+  return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+}
+
 function write(level: LogLevel, message: string, context?: Record<string, unknown>) {
+  if (priorities[level] < priorities[getMinimumLevel()]) {
+    return;
+  }
+
   const entry = {
     level,
     message,
