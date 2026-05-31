@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const [products, categories] = await Promise.all([
+    const [products, categories, banners] = await Promise.all([
       prisma.product.findMany({
         where: getPublicPublishedProductWhere(),
         include: productSellerInclude,
@@ -21,6 +21,18 @@ export async function GET() {
           icon: true,
         },
         orderBy: { name: 'asc' },
+      }).catch(() => []),
+      prisma.banner.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          image: true,
+          link: true,
+          buttonText: true,
+        },
       }).catch(() => []),
     ]);
 
@@ -37,6 +49,15 @@ export async function GET() {
     return NextResponse.json({
       products: productPayload,
       categories: categoryPayload,
+      banners: banners.map((banner) => ({
+        id: banner.id,
+        title: banner.title,
+        subtitle: banner.subtitle ?? '',
+        image: banner.image,
+        link: banner.link,
+        button_text: banner.buttonText,
+        buttonText: banner.buttonText,
+      })),
     });
   } catch (error) {
     console.error('GET /api/shop-page error:', error);

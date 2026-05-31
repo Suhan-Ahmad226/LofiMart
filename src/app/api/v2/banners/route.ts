@@ -18,7 +18,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: banners });
+    return NextResponse.json({
+      success: true,
+      data: banners.map((banner) => ({
+        ...banner,
+        button_text: banner.buttonText,
+        is_active: true,
+      })),
+    });
   } catch (error) {
     console.error('GET /api/v2/banners error:', error);
     return NextResponse.json(
