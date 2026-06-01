@@ -59,10 +59,37 @@ const categoryGradients = [
 
 const sectionKickerClass = 'text-[11px] font-bold uppercase tracking-[0.34em] text-primary/80';
 
-function getSellerShowcases(products: Product[]): SellerShowcase[] {
-  const grouped = new Map<string, SellerShowcase>();
+function getProductList(payload: unknown): Product[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
 
-  products.forEach((product) => {
+  const record = payload as Record<string, any>;
+  if (Array.isArray(record.products)) return record.products;
+  if (Array.isArray(record.items)) return record.items;
+  if (Array.isArray(record.data)) return record.data;
+  if (Array.isArray(record.data?.products)) return record.data.products;
+  if (Array.isArray(record.data?.items)) return record.data.items;
+
+  return [];
+}
+
+function getCategoryList(payload: unknown): Category[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  const record = payload as Record<string, any>;
+  if (Array.isArray(record.categories)) return record.categories;
+  if (Array.isArray(record.data)) return record.data;
+  if (Array.isArray(record.data?.categories)) return record.data.categories;
+
+  return [];
+}
+
+function getSellerShowcases(products: Product[] = []): SellerShowcase[] {
+  const grouped = new Map<string, SellerShowcase>();
+  const productList = Array.isArray(products) ? products : [];
+
+  productList.forEach((product) => {
     const id = String(product.seller_id || product.store_name || product.seller_name || product.category || 'featured');
     const existing = grouped.get(id);
 
@@ -193,8 +220,9 @@ export const HomePage = () => {
       .then(([productPayload, categoryPayload]) => {
         if (controller.signal.aborted) return;
 
-        setProducts(Array.isArray(productPayload) ? productPayload : []);
-        const nextCategories = Array.isArray(categoryPayload?.data) ? categoryPayload.data : [];
+        const nextProducts = getProductList(productPayload);
+        const nextCategories = getCategoryList(categoryPayload);
+        setProducts(nextProducts);
         setCategories(nextCategories.length > 0 ? nextCategories : fallbackCategories);
       })
       .catch((fetchError) => {

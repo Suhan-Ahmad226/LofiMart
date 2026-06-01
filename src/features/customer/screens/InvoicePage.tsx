@@ -304,7 +304,7 @@ export const CustomerInvoicePage = () => {
                   {order.shipments.slice(0, 3).map((shipment: any) => (
                     <div key={shipment.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
                       <p className="font-semibold text-slate-900">
-                        {shipment.warehouse_name || 'Shipment'} â€¢ {String(shipment.status).replaceAll('_', ' ')}
+                        {shipment.warehouse_name || 'Shipment'} - {String(shipment.status).replaceAll('_', ' ')}
                       </p>
                       {shipment.tracking_id ? <p className="mt-1">Tracking: {shipment.tracking_id}</p> : null}
                     </div>
