@@ -1337,3 +1337,58 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+@layer base {
+  html,
+  body {
+    min-width: 320px;
+    overflow-x: clip;
+  }
+
+  *,
+  *::before,
+  *::after {
+    min-width: 0;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .safe-viewport-panel {
+    max-height: min(92dvh, 720px);
+    max-width: calc(100vw - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px) {
+  [role='dialog'],
+  [aria-modal='true'],
+  .modal,
+  .popup,
+  .popover,
+  .dashboard-shell,
+  .dashboard-topbar {
+    max-width: calc(100vw - 1rem);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+  }
+}

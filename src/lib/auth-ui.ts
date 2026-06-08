@@ -123,7 +123,13 @@ export function buildAuthCallbackUrl(options?: {
   }
 
   const query = params.toString();
-  return `${window.location.origin}/auth/callback${query ? `?${query}` : ''}`;
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const origin =
+    configuredSiteUrl && typeof window !== 'undefined' && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+      ? configuredSiteUrl.replace(/\/+$/, '')
+      : window.location.origin;
+
+  return `${origin}/auth/callback${query ? `?${query}` : ''}`;
 }
 
 export function rememberPendingOAuthRedirect(options?: {

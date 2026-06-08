@@ -124,7 +124,8 @@ export const productSellerInclude = {
 
 export async function requireApiUser(request: NextRequest): Promise<SessionUser | NextResponse> {
   const header = request.headers.get('authorization') || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const headerToken = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const token = headerToken || request.cookies.get('access_token')?.value || '';
 
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

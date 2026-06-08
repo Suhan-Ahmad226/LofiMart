@@ -4,6 +4,7 @@ import { securityHeaders } from '@/src/lib/security';
 import { isAllowedRequestOrigin } from '@/src/server/security/origin';
 
 const protectedPrefixes = ['/account', '/seller', '/reseller-dashboard', '/admin'];
+const legacyHosts = new Set(['lofimart-suhan-ahmad.vercel.app']);
 
 function applyHeaders(response: NextResponse) {
   Object.entries(securityHeaders).forEach(([key, value]) => {
@@ -15,6 +16,20 @@ function applyHeaders(response: NextResponse) {
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const host = request.headers.get('host')?.toLowerCase().split(':')[0] || '';
+  const canonicalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.FRONTEND_URL || '';
+
+  if (!pathname.startsWith('/api') && legacyHosts.has(host) && canonicalSiteUrl) {
+    try {
+      const canonical = new URL(canonicalSiteUrl);
+      if (canonical.hostname.toLowerCase() !== host) {
+        const target = new URL(request.nextUrl.pathname + request.nextUrl.search, canonical.origin);
+        return applyHeaders(NextResponse.redirect(target, 308));
+      }
+    } catch {
+      // Ignore malformed deployment config and continue serving the request.
+    }
+  }
 
   if (protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
     const hasAccessToken = Boolean(request.cookies.get('access_token')?.value);
