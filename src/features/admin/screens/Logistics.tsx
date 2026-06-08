@@ -127,6 +127,52 @@ type PathaoStoreRow = {
   is_default_store?: boolean | number;
 };
 
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeDiagnosticsPayload(payload: Partial<DiagnosticsPayload> | null): DiagnosticsPayload {
+  const pathaoReadiness = payload?.pathaoReadiness;
+
+  return {
+    updatedAt: typeof payload?.updatedAt === 'string' ? payload.updatedAt : new Date().toISOString(),
+    steadfastHealth: payload?.steadfastHealth,
+    pathaoHealth: payload?.pathaoHealth,
+    pathaoReadiness: pathaoReadiness
+      ? {
+          envChecks: asArray(pathaoReadiness.envChecks),
+          envReady: Boolean(pathaoReadiness.envReady),
+          warehouseBlockers: asArray(pathaoReadiness.warehouseBlockers),
+          bookingCandidates: asArray(pathaoReadiness.bookingCandidates),
+        }
+      : {
+          envChecks: [],
+          envReady: false,
+          warehouseBlockers: [],
+          bookingCandidates: [],
+        },
+    providers: asArray(payload?.providers),
+    warehouseSummary: {
+      total: Number(payload?.warehouseSummary?.total || 0),
+      areaMapped: Number(payload?.warehouseSummary?.areaMapped || 0),
+      storeLinked: Number(payload?.warehouseSummary?.storeLinked || 0),
+      shippingRulesReady: Number(payload?.warehouseSummary?.shippingRulesReady || 0),
+      needsAttention: Number(payload?.warehouseSummary?.needsAttention || 0),
+    },
+    shipmentSummary: {
+      active: Number(payload?.shipmentSummary?.active || 0),
+      exceptions: Number(payload?.shipmentSummary?.exceptions || 0),
+      pathaoSyncAttention: Number(payload?.shipmentSummary?.pathaoSyncAttention || 0),
+      redxSyncAttention: Number(payload?.shipmentSummary?.redxSyncAttention || 0),
+      steadfastSyncAttention: Number(payload?.shipmentSummary?.steadfastSyncAttention || 0),
+    },
+    warehouseHealth: asArray(payload?.warehouseHealth),
+    recentExceptions: asArray(payload?.recentExceptions),
+    pathaoWatchlist: asArray(payload?.pathaoWatchlist),
+    redxWatchlist: asArray(payload?.redxWatchlist),
+  };
+}
+
 export const AdminLogisticsPage = () => {
   const { token } = useUser();
   const [data, setData] = useState<DiagnosticsPayload | null>(null);
@@ -206,7 +252,7 @@ export const AdminLogisticsPage = () => {
       if (!response.ok) {
         throw new Error(payload?.error || 'Failed to load logistics diagnostics');
       }
-      setData(payload);
+      setData(normalizeDiagnosticsPayload(payload));
     } catch (requestError) {
       setData(null);
       setError(requestError instanceof Error ? requestError.message : 'Failed to load logistics diagnostics');
@@ -246,13 +292,13 @@ export const AdminLogisticsPage = () => {
   const providerOptions = useMemo(() => {
     const values = new Set<string>();
 
-    data?.recentExceptions.forEach((shipment) => {
+    asArray(data?.recentExceptions).forEach((shipment) => {
       if (shipment.courier_provider) {
         values.add(shipment.courier_provider);
       }
     });
-    data?.pathaoWatchlist.forEach(() => values.add('Pathao'));
-    data?.redxWatchlist.forEach(() => values.add('RedX'));
+    asArray(data?.pathaoWatchlist).forEach(() => values.add('Pathao'));
+    asArray(data?.redxWatchlist).forEach(() => values.add('RedX'));
 
     return Array.from(values).sort((left, right) => left.localeCompare(right));
   }, [data]);
@@ -276,7 +322,7 @@ export const AdminLogisticsPage = () => {
 
   const filteredExceptions = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
-    return (data?.recentExceptions || []).filter((shipment) => {
+    return asArray(data?.recentExceptions).filter((shipment) => {
       const providerName = shipment.courier_provider || 'Unassigned';
       const matchesProvider =
         providerFilter === 'all' || providerName.toLowerCase() === providerFilter.toLowerCase();
@@ -303,7 +349,7 @@ export const AdminLogisticsPage = () => {
     if (providerFilter !== 'all' && providerFilter.toLowerCase() !== 'pathao') {
       return [];
     }
-    return (data?.pathaoWatchlist || []).filter((shipment) => {
+    return asArray(data?.pathaoWatchlist).filter((shipment) => {
       return (
         matchesDateRange(shipment.pathao_last_sync_at) &&
         (
@@ -324,7 +370,7 @@ export const AdminLogisticsPage = () => {
     if (providerFilter !== 'all' && providerFilter.toLowerCase() !== 'redx') {
       return [];
     }
-    return (data?.redxWatchlist || []).filter((shipment) => {
+    return asArray(data?.redxWatchlist).filter((shipment) => {
       return (
         matchesDateRange(shipment.redx_last_sync_at) &&
         (
@@ -365,7 +411,7 @@ export const AdminLogisticsPage = () => {
 
   const steadfastExceptionCount = useMemo(
     () =>
-      (data?.recentExceptions || []).filter((shipment) =>
+      asArray(data?.recentExceptions).filter((shipment) =>
         String(shipment.courier_provider || '').toLowerCase().includes('steadfast'),
       ).length,
     [data],
@@ -655,7 +701,7 @@ export const AdminLogisticsPage = () => {
         <div className="mt-5 grid gap-6 xl:grid-cols-[0.8fr_1.1fr_1.1fr]">
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900">Environment</h3>
-            {data?.pathaoReadiness?.envChecks.map((check) => (
+            {asArray(data?.pathaoReadiness?.envChecks).map((check) => (
               <div key={check.key} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
                 <span className="font-medium text-slate-700">{check.label}</span>
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
@@ -668,7 +714,7 @@ export const AdminLogisticsPage = () => {
           </div>
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900">Warehouse blockers</h3>
-            {data?.pathaoReadiness?.warehouseBlockers.length ? data.pathaoReadiness.warehouseBlockers.map((warehouse) => (
+            {asArray(data?.pathaoReadiness?.warehouseBlockers).length ? asArray(data?.pathaoReadiness?.warehouseBlockers).map((warehouse) => (
               <div key={warehouse.id} className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-slate-900">{warehouse.name}</p>
@@ -695,7 +741,7 @@ export const AdminLogisticsPage = () => {
           </div>
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900">Shipment dry-run blockers</h3>
-            {data?.pathaoReadiness?.bookingCandidates.length ? data.pathaoReadiness.bookingCandidates.map((shipment) => (
+            {asArray(data?.pathaoReadiness?.bookingCandidates).length ? asArray(data?.pathaoReadiness?.bookingCandidates).map((shipment) => (
               <div key={shipment.id} className={`rounded-2xl border p-4 ${
                 shipment.blockers.length ? 'border-amber-100 bg-amber-50' : 'border-emerald-100 bg-emerald-50'
               }`}>
