@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/server';
 import { logger } from '@/src/lib/logger';
+import { sendPaymentReceivedNotificationsForOrder } from '@/src/features/telegram_bot';
 import type { BkashExecutePaymentResponse, BkashQueryPaymentResponse, BkashVerificationResult } from './types';
 
 type BkashTransactionMetadata = Record<string, string>;
@@ -238,6 +239,14 @@ export async function finalizeBkashPaidPayment(input: {
     orderId: transaction.orderId,
     paymentId: input.paymentId,
     trxId: input.trxId,
+  });
+
+  sendPaymentReceivedNotificationsForOrder(transaction.orderId).catch((error) => {
+    logger.warn('payments.bkash.telegram_notification_failed', {
+      orderId: transaction.orderId,
+      paymentId: input.paymentId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
 
   return {

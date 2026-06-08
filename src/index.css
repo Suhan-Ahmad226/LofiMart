@@ -50,7 +50,15 @@
   }
   * {
     @apply border-border outline-ring/50;
+    min-width: 0;
   }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   img,
   picture,
   video,
@@ -59,12 +67,42 @@
   iframe {
     max-width: 100%;
   }
+
+  img,
+  video,
+  canvas,
+  svg {
+    height: auto;
+  }
+
+  iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+
   table {
     width: 100%;
   }
+
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+
   p,
   li,
-  span {
+  span,
+  a,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: anywhere;
     text-wrap: pretty;
   }
   ::selection {
@@ -100,6 +138,11 @@
   .page-shell-tight {
     width: min(100% - clamp(1.5rem, 4vw, 4rem), 72rem);
     margin-inline: auto;
+  }
+
+  .responsive-surface {
+    max-width: 100%;
+    overflow: clip;
   }
 
   .surface-card {
@@ -879,12 +922,13 @@
   }
 
   .responsive-hero {
-    min-height: clamp(23rem, 42vw, 30rem);
+    aspect-ratio: 48 / 19;
+    min-height: 0;
   }
 
   .responsive-hero-title {
-    font-size: clamp(2.25rem, 8vw, 4.5rem);
-    line-height: 0.98;
+    font-size: clamp(1.75rem, 6vw, 4.5rem);
+    line-height: 1.02;
   }
 
   .chart-shell {
@@ -893,11 +937,19 @@
     container-type: inline-size;
   }
 
+  @media (min-width: 768px) {
+    .responsive-hero {
+      aspect-ratio: auto;
+      min-height: clamp(18rem, 42vw, 30rem);
+    }
+  }
+
   .table-responsive,
   .site-main :has(> table) {
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
   }
 
   .site-main table {
@@ -1028,7 +1080,54 @@
     }
 
     .responsive-hero {
-      min-height: clamp(22rem, 94vw, 28rem);
+      aspect-ratio: 48 / 19;
+      min-height: 0;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .page-shell,
+    .page-shell-tight {
+      width: min(100% - 1rem, 80rem);
+    }
+
+    .responsive-grid,
+    .responsive-grid-tight {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.625rem;
+    }
+
+    .section-heading {
+      font-size: clamp(1.25rem, 8vw, 1.6rem);
+    }
+
+    .toolbar-button,
+    .toolbar-input,
+    .toolbar-select {
+      border-radius: 0.875rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .page-shell,
+    .page-shell-tight {
+      width: min(100% - 0.75rem, 80rem);
+    }
+
+    .responsive-grid,
+    .responsive-grid-tight {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-height: 520px) and (orientation: landscape) {
+    .responsive-hero {
+      max-height: calc(100vh - 5rem);
+    }
+
+    .site-main {
+      min-height: auto;
     }
   }
 }

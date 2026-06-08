@@ -4,6 +4,7 @@ import Script from 'next/script';
 import '../index.css';
 import { AppProviders } from '../components/AppProviders';
 import { AppChrome } from '../components/AppChrome';
+import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics';
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: 'cover',
   themeColor: '#1f2937',
 };
 
@@ -94,16 +96,61 @@ function getPreconnectOrigins() {
   return Array.from(origins);
 }
 
+function getStructuredData() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://lofimart.vercel.app';
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}/#organization`,
+        name: 'LofiMart',
+        url: siteUrl,
+        logo: `${siteUrl}/icon.svg`,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          contactType: 'customer support',
+          email: 'support@lofimart.com',
+          areaServed: 'BD',
+          availableLanguage: ['en', 'bn'],
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        name: 'LofiMart',
+        url: siteUrl,
+        publisher: {
+          '@id': `${siteUrl}/#organization`,
+        },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${siteUrl}/search?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
+  };
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const preconnectOrigins = getPreconnectOrigins();
+  const structuredData = getStructuredData();
 
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={cn(inter.variable, poppins.variable, "font-sans")}>
+    <html lang="en-BD" data-scroll-behavior="smooth" className={cn(inter.variable, poppins.variable, "font-sans")}>
       <head>
+        <Script
+          id="lofimart-structured-data"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-preconnect`} rel="preconnect" href={origin} crossOrigin="" />
         ))}
@@ -143,6 +190,7 @@ export default function RootLayout({
         ) : null}
       </head>
       <body>
+        <MarketingAnalytics />
         <AppProviders>
           <AppChrome>{children}</AppChrome>
         </AppProviders>

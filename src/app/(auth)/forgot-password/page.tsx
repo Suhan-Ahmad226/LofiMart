@@ -1,3 +1,3 @@
 'use client';
 
-export { ForgotPasswordPage as default } from '@/src/screens/ForgotPasswordPage';
+export { ForgotPasswordPage as default } from '@/src/features/auth/screens/ForgotPasswordPage';

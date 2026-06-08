@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerSettingsPage as default } from '@/src/screens/seller/Settings';
+export { SellerSettingsPage as default } from '@/src/features/seller/screens/Settings';

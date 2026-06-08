@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerEarningsPage as default } from '@/src/screens/seller/Earnings';
+export { SellerEarningsPage as default } from '@/src/features/seller/screens/Earnings';

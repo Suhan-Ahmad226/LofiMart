@@ -1,6 +1,6 @@
 'use client';
 
-import AIGiftFinder from '@/src/screens/bazaar/AIGiftFinder';
+import AIGiftFinder from '@/src/features/bazaar/screens/AIGiftFinder';
 import { useCart } from '@/src/context/CartContext';
 import { useNavigate } from '@/src/lib/navigation';
 import { Product } from '@/src/types';

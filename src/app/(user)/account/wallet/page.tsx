@@ -1,3 +1,3 @@
 'use client';
 
-export { CustomerWalletPage as default } from '@/src/screens/customer/Wallet';
+export { CustomerWalletPage as default } from '@/src/features/customer/screens/Wallet';

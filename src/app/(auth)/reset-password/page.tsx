@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/screens/ResetPasswordPage';
+export { default } from '@/src/features/auth/screens/ResetPasswordPage';

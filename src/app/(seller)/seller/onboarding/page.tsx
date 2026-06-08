@@ -1,1 +1,1 @@
-export { SellerOnboardingPage as default } from '@/src/screens/seller/Onboarding';
+export { SellerOnboardingPage as default } from '@/src/features/seller/screens/Onboarding';

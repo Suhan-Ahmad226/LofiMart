@@ -1,6 +1,6 @@
 'use client';
 
-import AdminPerformancePage from '@/src/screens/admin/Performance';
+import AdminPerformancePage from '@/src/features/admin/screens/Performance';
 
 export default function AdminPerformanceRoute() {
   return <AdminPerformancePage />;

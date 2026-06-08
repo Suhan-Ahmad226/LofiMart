@@ -1,3 +1,3 @@
 'use client';
 
-export { TermsPage as default } from '@/src/screens/TermsPage';
+export { TermsPage as default } from '@/src/features/public/screens/TermsPage';

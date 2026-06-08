@@ -1,5 +1,7 @@
 import { paymentCompletedEvent } from '../../events/commerce';
 import type { EventPublisher } from '../../events/contracts';
+import { sendPaymentReceivedNotificationsForOrder } from '../../features/telegram_bot/lib/notificationService';
+import { prisma } from '../../services/database/prisma';
 import { enqueueEmail, enqueueNotification, enqueuePaymentProcessing } from '../../workers/queue';
 import type {
   CreatePaymentRequest,
@@ -53,6 +55,30 @@ export function createPaymentsModule(dependencies: {
       await repository.updateTransactionStatus(event.paymentId, event.status, event.metadata);
 
       if (event.status === 'succeeded') {
+        if (event.orderId) {
+          await prisma.order.updateMany({
+            where: {
+              id: event.orderId,
+              paymentStatus: { not: 'paid' },
+            },
+            data: {
+              paymentProvider: payload.provider,
+              paymentIntentId: event.paymentId,
+              paymentStatus: 'paid',
+              paidAt: new Date(),
+            },
+          });
+
+          await prisma.invoice.updateMany({
+            where: { orderId: event.orderId },
+            data: {
+              status: 'paid',
+            },
+          });
+
+          await sendPaymentReceivedNotificationsForOrder(event.orderId).catch(() => undefined);
+        }
+
         await enqueuePaymentProcessing({
           paymentId: event.paymentId,
           provider: payload.provider,

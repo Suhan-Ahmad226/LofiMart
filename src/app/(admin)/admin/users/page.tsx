@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminUsersPage } from '@/src/screens/admin/Users';
+import { AdminUsersPage } from '@/src/features/admin/screens/Users';
 
 export default function AdminUsersRoute() {
   return <AdminUsersPage />;

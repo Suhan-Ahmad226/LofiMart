@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerShop as default } from '@/src/screens/reseller/Shop';
+export { ResellerShop as default } from '@/src/features/reseller/screens/Shop';

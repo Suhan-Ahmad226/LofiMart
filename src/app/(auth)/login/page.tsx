@@ -1,5 +1,5 @@
 'use client';
 
-import { LoginPage } from '@/src/screens/AuthPages';
+import { LoginPage } from '@/src/features/auth/screens/AuthPages';
 
 export default LoginPage;

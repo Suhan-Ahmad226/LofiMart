@@ -6,6 +6,32 @@ import { Product } from '@/src/types';
 import { useCompare } from '@/src/context/CompareContext';
 import { getCachedClientValue } from '@/src/lib/client-cache';
 
+function getProductList(payload: unknown): Product[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  const record = payload as Record<string, any>;
+  if (Array.isArray(record.products)) return record.products;
+  if (Array.isArray(record.items)) return record.items;
+  if (Array.isArray(record.data)) return record.data;
+  if (Array.isArray(record.data?.products)) return record.data.products;
+  if (Array.isArray(record.data?.items)) return record.data.items;
+
+  return [];
+}
+
+function getCategoryList(payload: unknown): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  const record = payload as Record<string, any>;
+  if (Array.isArray(record.categories)) return record.categories;
+  if (Array.isArray(record.data)) return record.data;
+  if (Array.isArray(record.data?.categories)) return record.data.categories;
+
+  return [];
+}
+
 export const ShopPage = () => {
   const { items: compareItems, clearCompare } = useCompare();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,8 +64,8 @@ export const ShopPage = () => {
     })
       .then((data) => {
         if (controller.signal.aborted) return;
-        setCategories(Array.isArray(data?.categories) ? data.categories : []);
-        setProducts(Array.isArray(data?.products) ? data.products : []);
+        setCategories(getCategoryList(data));
+        setProducts(getProductList(data));
       })
       .catch((fetchError) => {
         if ((fetchError as Error).name !== 'AbortError') {
@@ -61,7 +87,11 @@ export const ShopPage = () => {
     setSearchDraft(queryParam || '');
   }, [queryParam]);
 
-  const filteredProducts = products
+  const safeProducts = getProductList(products);
+  const safeCategories = getCategoryList(categories);
+  const safeCompareItems = Array.isArray(compareItems) ? compareItems : [];
+
+  const filteredProducts = safeProducts
     .filter((product) => {
       if (categoryParam && product.category !== categoryParam) {
         return false;
@@ -104,7 +134,7 @@ export const ShopPage = () => {
       }
     });
 
-  const featuredCategories = categories.slice(0, 5);
+  const featuredCategories = safeCategories.slice(0, 5);
   const priceProgress = Math.max(0, Math.min(100, (maxPrice / 50000) * 100));
   const activeFiltersCount =
     Number(Boolean(categoryParam)) +
@@ -196,7 +226,7 @@ export const ShopPage = () => {
           <ChevronDown size={16} />
         </h3>
         <div className="space-y-2">
-          {categories.map((cat) => (
+          {safeCategories.map((cat) => (
             <label key={cat.id} className="group flex cursor-pointer items-center space-x-2">
               <input
                 type="checkbox"
@@ -330,14 +360,14 @@ export const ShopPage = () => {
         </aside>
 
         <main className="flex-1">
-          {compareItems.length > 0 ? (
+          {safeCompareItems.length > 0 ? (
           <div className="mb-6 rounded-[1.75rem] border border-primary/10 bg-primary/5 p-4 sm:flex sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-white p-3 text-primary shadow-sm">
                   <Scale size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{compareItems.length} product{compareItems.length === 1 ? '' : 's'} ready to compare</p>
+                  <p className="text-sm font-semibold text-slate-900">{safeCompareItems.length} product{safeCompareItems.length === 1 ? '' : 's'} ready to compare</p>
                   <p className="text-xs text-slate-500">Open side-by-side comparison before making the final call.</p>
                 </div>
               </div>

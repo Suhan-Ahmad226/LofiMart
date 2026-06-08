@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import PageSkeleton from '@/src/components/ui/PageSkeleton';
 
-const AIFeaturesPage = dynamic(() => import('@/src/screens/AIFeaturesPage'), {
+const AIFeaturesPage = dynamic(() => import('@/src/features/ai/screens/AIFeaturesPage'), {
   ssr: false,
   loading: () => <PageSkeleton variant="content" />,
 });

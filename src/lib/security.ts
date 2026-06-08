@@ -13,7 +13,9 @@ export function buildContentSecurityPolicy() {
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
     "connect-src 'self' https: ws: wss:",
+    "frame-src 'self' https://widget.cloudinary.com https://*.stripe.com https://*.bka.sh",
     "media-src 'self' data: blob: https:",
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -23,6 +25,11 @@ export function buildContentSecurityPolicy() {
 
 export const securityHeaders = {
   'Content-Security-Policy': buildContentSecurityPolicy(),
+  ...(isDev
+    ? {}
+    : {
+        'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+      }),
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',

@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerCourierManagement as default } from '@/src/screens/seller/CourierManagement';
+export { SellerCourierManagement as default } from '@/src/features/seller/screens/CourierManagement';

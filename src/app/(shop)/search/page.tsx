@@ -1,3 +1,3 @@
 'use client';
 
-export { SearchPage as default } from '@/src/screens/SearchPage';
+export { SearchPage as default } from '@/src/features/shop/screens/SearchPage';

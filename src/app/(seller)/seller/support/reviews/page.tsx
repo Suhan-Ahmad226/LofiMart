@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerReviewsPage as default } from '@/src/screens/seller/Reviews';
+export { SellerReviewsPage as default } from '@/src/features/seller/screens/Reviews';

@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/screens/bazaar/LoyaltyRewards';
+export { default } from '@/src/features/bazaar/screens/LoyaltyRewards';

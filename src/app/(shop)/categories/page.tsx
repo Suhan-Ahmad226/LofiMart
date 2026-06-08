@@ -1,3 +1,3 @@
 'use client';
 
-export { CategoriesPage as default } from '@/src/screens/CategoriesPage';
+export { CategoriesPage as default } from '@/src/features/shop/screens/CategoriesPage';

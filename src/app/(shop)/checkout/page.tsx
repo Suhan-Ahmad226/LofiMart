@@ -1,3 +1,3 @@
 'use client';
 
-export { CheckoutPage as default } from '@/src/screens/CheckoutPage';
+export { CheckoutPage as default } from '@/src/features/shop/screens/CheckoutPage';

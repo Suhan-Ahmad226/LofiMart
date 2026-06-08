@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronDown, Settings, Store } from 'lucide-react';
 import ProfileManager from '@/src/components/profile/ProfileManager';
 import StorefrontSettingsPanel from '@/src/components/seller/StorefrontSettingsPanel';
+import TelegramConnectPanel from '@/src/features/seller/components/TelegramConnectPanel';
 
 export const SellerSettingsPage = () => {
   const [openSection, setOpenSection] = useState<'storefront' | 'account'>('storefront');
@@ -82,7 +83,8 @@ export const SellerSettingsPage = () => {
           </span>
         </button>
         {openSection === 'account' ? (
-          <div className="border-t border-black/5 p-6 pt-2">
+          <div className="space-y-5 border-t border-black/5 p-6 pt-2">
+            <TelegramConnectPanel />
             <ProfileManager
               role="seller"
               title="Seller Profile Management"

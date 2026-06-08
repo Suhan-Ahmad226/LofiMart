@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/screens/PWAPage';
+export { default } from '@/src/features/public/screens/PWAPage';

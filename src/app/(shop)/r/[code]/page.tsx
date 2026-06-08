@@ -1,3 +1,3 @@
 'use client';
 
-export { PublicResellerStorefront as default } from '@/src/screens/PublicResellerStorefront';
+export { PublicResellerStorefront as default } from '@/src/features/shop/screens/PublicResellerStorefront';

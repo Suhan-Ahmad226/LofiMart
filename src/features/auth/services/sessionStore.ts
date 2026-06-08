@@ -60,6 +60,10 @@ function sessionExpiresInSeconds(user?: SessionUser) {
   return user ? getSessionTtlSecondsForRole(user.role) : getServerEnv().SESSION_TTL_SECONDS;
 }
 
+function allowStatelessSessionFallback() {
+  return process.env.NODE_ENV !== 'production';
+}
+
 export function getAccessCookieOptions(user?: SessionUser) {
   return getSecureCookieOptions(accessTokenExpiresInSeconds(user));
 }
@@ -90,7 +94,6 @@ type CreateSessionMetadata = {
 };
 
 export async function createSession(user: SessionUser, metadata: CreateSessionMetadata = {}) {
-  const redis = await ensureRedis();
   const sid = crypto.randomUUID();
   const refreshToken = crypto.randomUUID();
   const sessionTtlSeconds = sessionExpiresInSeconds(user);
@@ -107,12 +110,21 @@ export async function createSession(user: SessionUser, metadata: CreateSessionMe
     location: metadata.location ?? null,
   };
 
-  await redis.multi()
-    .set(sessionKey(sid), JSON.stringify(session), 'EX', sessionTtlSeconds)
-    .set(refreshKey(refreshToken), sid, 'EX', sessionTtlSeconds)
-    .sadd(userSessionsKey(user.id), sid)
-    .expire(userSessionsKey(user.id), sessionTtlSeconds)
-    .exec();
+  try {
+    const redis = await ensureRedis();
+    await redis.multi()
+      .set(sessionKey(sid), JSON.stringify(session), 'EX', sessionTtlSeconds)
+      .set(refreshKey(refreshToken), sid, 'EX', sessionTtlSeconds)
+      .sadd(userSessionsKey(user.id), sid)
+      .expire(userSessionsKey(user.id), sessionTtlSeconds)
+      .exec();
+  } catch (error) {
+    if (!allowStatelessSessionFallback()) {
+      throw error;
+    }
+
+    console.warn('[auth] Redis session store unavailable; using development stateless session fallback.');
+  }
 
   return {
     session,
@@ -212,8 +224,20 @@ export async function validateAccessToken(token: string) {
     throw new Error('Missing session id');
   }
 
-  const session = await getSessionById(payload.sid);
+  let session: PersistedSession | null = null;
+  try {
+    session = await getSessionById(payload.sid);
+  } catch (error) {
+    if (!allowStatelessSessionFallback()) {
+      throw error;
+    }
+  }
+
   if (!session) {
+    if (allowStatelessSessionFallback()) {
+      return payload;
+    }
+
     throw new Error('Session expired');
   }
 

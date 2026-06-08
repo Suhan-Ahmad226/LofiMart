@@ -7,7 +7,6 @@ import {
   Leaf,
   Search,
   ShieldCheck,
-  Sparkles,
   Star,
   Store,
 } from 'lucide-react';
@@ -81,6 +80,18 @@ function getCategoryList(payload: unknown): Category[] {
   if (Array.isArray(record.categories)) return record.categories;
   if (Array.isArray(record.data)) return record.data;
   if (Array.isArray(record.data?.categories)) return record.data.categories;
+
+  return [];
+}
+
+function getBannerList(payload: unknown): HomeBanner[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+
+  const record = payload as Record<string, any>;
+  if (Array.isArray(record.banners)) return record.banners;
+  if (Array.isArray(record.data)) return record.data;
+  if (Array.isArray(record.data?.banners)) return record.data.banners;
 
   return [];
 }
@@ -159,6 +170,7 @@ export const HomePage = () => {
   const [categories, setCategories] = useState<Category[]>(fallbackCategories);
   const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -179,7 +191,7 @@ export const HomePage = () => {
           throw new Error(payload?.error || 'Unable to load banners right now.');
         }
 
-        const nextBanners = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+        const nextBanners = getBannerList(payload);
         if (!controller.signal.aborted) {
           setBanners(nextBanners.filter((banner: HomeBanner) => banner?.image && banner?.title));
           setActiveBannerIndex(0);
@@ -240,61 +252,117 @@ export const HomePage = () => {
     return () => controller.abort();
   }, []);
 
-  const heroProducts = products.slice(0, 6);
-  const activeBanner = banners[activeBannerIndex] || null;
-  const activeBannerButtonText = activeBanner?.button_text || activeBanner?.buttonText || 'Shop now';
-  const activeBannerLink = activeBanner?.link || '/shop';
-  const sellerShowcases = useMemo(() => getSellerShowcases(products), [products]);
-  const categoryShowcases = categories.slice(0, 4).map((category) => ({
+  const safeProducts = getProductList(products);
+  const safeCategories = getCategoryList(categories);
+  const safeBanners = getBannerList(banners);
+
+  useEffect(() => {
+    if (activeBannerIndex < safeBanners.length) return;
+    setActiveBannerIndex(0);
+  }, [activeBannerIndex, safeBanners.length]);
+
+  useEffect(() => {
+    if (isBannerPaused || safeBanners.length < 2) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setActiveBannerIndex((current) => (current + 1) % safeBanners.length);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isBannerPaused, safeBanners.length]);
+
+  const activeBanner = safeBanners[activeBannerIndex] || null;
+  const sellerShowcases = useMemo(() => getSellerShowcases(safeProducts), [safeProducts]);
+  const categoryShowcases = safeCategories.slice(0, 4).map((category) => ({
     ...category,
-    image: products.find((product) => product.category?.toLowerCase() === category.name.toLowerCase())?.image || products[0]?.image,
+    image:
+      safeProducts.find((product) => product.category?.toLowerCase() === category.name.toLowerCase())?.image ||
+      safeProducts[0]?.image,
   }));
-  const topSellingProducts = products.slice(0, 6);
-  const featuredGridProducts = products.slice(0, 18);
-  const newArrivalProducts = products.slice(18, 24).length > 0 ? products.slice(18, 24) : products.slice(6, 12);
+  const topSellingProducts = safeProducts.slice(0, 6);
+  const featuredGridProducts = safeProducts.slice(0, 18);
+  const newArrivalProducts = safeProducts.slice(18, 24).length > 0 ? safeProducts.slice(18, 24) : safeProducts.slice(6, 12);
 
   return (
     <div className="bg-[#f7fbf8] pb-8">
-      <section className="page-shell pt-5">
-        <div className="responsive-hero relative overflow-hidden rounded-2xl bg-[linear-gradient(120deg,#052b1b_0%,#0b4729_48%,#f4f6ef_48%,#f4f6ef_100%)] shadow-sm">
-          {activeBanner ? (
-            <>
-              <div className="absolute inset-0">
-                <OptimizedImage
-                  src={activeBanner.image}
-                  alt={activeBanner.title}
-                  widthHint={1800}
-                  heightHint={720}
-                  fit="fill"
-                  eager
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/78 via-slate-950/44 to-slate-950/10" />
-            </>
-          ) : null}
-          <div className="absolute inset-y-0 left-0 z-10 flex w-full flex-col justify-center px-[clamp(1.5rem,5vw,3.5rem)] py-8 md:w-[56%]">
-            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-300 sm:text-[11px] sm:tracking-[0.34em]">Promotional</p>
-            <h1 className="responsive-hero-title max-w-xl font-bold text-white">
-              {activeBanner?.title || 'Summer Sale: Up to 60% Off'}
-            </h1>
-            <p className="mt-4 max-w-md text-sm leading-6 text-white/72">
-              {activeBanner?.subtitle || 'Get new favorites from trusted sellers, smooth delivery, and fresh marketplace picks in one place.'}
-            </p>
-            <Link
-              to={activeBannerLink}
-              className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/25 transition hover:bg-primary-dark"
-            >
-              {activeBannerButtonText}
-              <ArrowRight size={16} />
-            </Link>
-          </div>
+      {activeBanner ? (
+        <section className="page-shell pt-5">
+          <div
+            className="responsive-hero relative overflow-hidden rounded-2xl bg-emerald-50 shadow-sm"
+            onMouseEnter={() => setIsBannerPaused(true)}
+            onMouseLeave={() => setIsBannerPaused(false)}
+            onFocusCapture={() => setIsBannerPaused(true)}
+            onBlurCapture={() => setIsBannerPaused(false)}
+          >
+            <div className="absolute inset-0 bg-emerald-50">
+              {safeBanners.map((banner, index) => (
+                <div
+                  key={banner.id}
+                  className={`absolute inset-0 transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none ${
+                    index === activeBannerIndex ? 'scale-100 opacity-100' : 'scale-[1.025] opacity-0'
+                  }`}
+                  aria-hidden={index !== activeBannerIndex}
+                >
+                  <div className="absolute inset-0 z-10">
+                    <OptimizedImage
+                      src={banner.image}
+                      alt={banner.title}
+                      widthHint={1920}
+                      heightHint={760}
+                      quality="auto:best"
+                      fit="fill"
+                      eager={index === 0 || index === activeBannerIndex}
+                      showPlaceholder={false}
+                      className="h-full w-full object-contain object-center"
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 via-slate-950/18 to-white/6 md:bg-gradient-to-r md:from-slate-950/74 md:via-slate-950/34 md:to-white/8" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(16,185,129,0.12),transparent_32%)]" />
+            </div>
+
+            {safeBanners.map((banner, index) => {
+              const buttonText = banner.button_text || banner.buttonText || 'Shop now';
+              const link = banner.link || '/shop';
+              const isActive = index === activeBannerIndex;
+
+              return (
+                <div
+                  key={`${banner.id}-content`}
+                  className={`absolute inset-y-0 left-0 z-10 hidden w-[56%] flex-col justify-center px-[clamp(1.5rem,5vw,3.5rem)] py-8 transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none md:flex ${
+                    isActive ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
+                  }`}
+                  aria-hidden={!isActive}
+                >
+                  <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-300 sm:text-[11px] sm:tracking-[0.34em]">
+                    Promotional
+                  </p>
+                  <h1 className="responsive-hero-title max-w-xl font-bold text-white">{banner.title}</h1>
+                  {banner.subtitle ? (
+                    <p className="mt-4 max-w-md text-sm leading-6 text-white/72">{banner.subtitle}</p>
+                  ) : null}
+                  <Link
+                    to={link}
+                    className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/25 transition hover:bg-primary-dark"
+                    tabIndex={isActive ? 0 : -1}
+                  >
+                    {buttonText}
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              );
+            })}
 
           <button
             type="button"
             aria-label="Previous promotion"
-            onClick={() => setActiveBannerIndex((current) => (banners.length > 0 ? (current - 1 + banners.length) % banners.length : 0))}
-            disabled={banners.length < 2}
+            onClick={() =>
+              setActiveBannerIndex((current) =>
+                safeBanners.length > 0 ? (current - 1 + safeBanners.length) % safeBanners.length : 0,
+              )
+            }
+            disabled={safeBanners.length < 2}
             className="absolute left-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur transition hover:bg-white/20 md:flex"
           >
             <ChevronLeft size={18} />
@@ -302,15 +370,17 @@ export const HomePage = () => {
           <button
             type="button"
             aria-label="Next promotion"
-            onClick={() => setActiveBannerIndex((current) => (banners.length > 0 ? (current + 1) % banners.length : 0))}
-            disabled={banners.length < 2}
+            onClick={() =>
+              setActiveBannerIndex((current) => (safeBanners.length > 0 ? (current + 1) % safeBanners.length : 0))
+            }
+            disabled={safeBanners.length < 2}
             className="absolute right-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-950/10 bg-white/35 text-emerald-950 backdrop-blur transition hover:bg-white/60 md:flex"
           >
             <ChevronRight size={18} />
           </button>
 
           <div className="absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-2 md:flex">
-            {(banners.length > 0 ? banners : Array.from({ length: 5 })).map((_, dot) => (
+            {safeBanners.map((_, dot) => (
               <button
                 key={dot}
                 type="button"
@@ -320,41 +390,9 @@ export const HomePage = () => {
               />
             ))}
           </div>
-
-          <div className={`absolute inset-y-0 right-0 hidden w-[53%] grid-cols-3 gap-5 p-7 md:grid ${activeBanner ? 'opacity-0 pointer-events-none' : ''}`}>
-            {heroProducts.length > 0
-              ? heroProducts.map((product, index) => (
-                  <Link
-                    key={product.id}
-                    to={`/product/${product.slug}`}
-                    className={`overflow-hidden rounded-2xl bg-white shadow-sm ${
-                      index % 2 === 0 ? 'translate-y-0' : 'translate-y-8'
-                    }`}
-                  >
-                    <OptimizedImage
-                      src={product.image}
-                      alt={product.name}
-                      widthHint={360}
-                      heightHint={360}
-                      fit="fill"
-                      eager={index < 3}
-                      className="h-full w-full object-cover"
-                    />
-                  </Link>
-                ))
-              : Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className={`rounded-2xl bg-white/88 shadow-sm ${index % 2 === 0 ? 'translate-y-0' : 'translate-y-8'}`}
-                  >
-                    <div className="flex h-full min-h-28 items-center justify-center text-primary/45">
-                      <Sparkles size={28} />
-                    </div>
-                  </div>
-                ))}
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="page-shell py-8">
         <div className="mb-5 flex items-end justify-between gap-4">

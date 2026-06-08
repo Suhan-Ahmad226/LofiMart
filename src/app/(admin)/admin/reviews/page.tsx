@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminReviewsPage } from '@/src/screens/admin/Reviews';
+import { AdminReviewsPage } from '@/src/features/admin/screens/Reviews';
 
 export default function AdminReviewsRoute() {
   return <AdminReviewsPage />;

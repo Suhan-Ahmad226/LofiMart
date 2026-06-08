@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { requireApiUser } from '../products/shared';
 import { serializeOrder } from '../_compat/shared';
+import { createMarketplaceOrder } from '@/src/features/telegram_bot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function buildOrderCode() {
-  return `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
 
 export async function GET(request: NextRequest) {
   const user = await requireApiUser(request);
@@ -40,7 +37,7 @@ export async function POST(request: NextRequest) {
   const items = rawItems
     .map((item: any) => ({
       productId: String(item.id || item.productId || ''),
-      qty: Math.max(1, Number(item.quantity || item.qty || 1)),
+      quantity: Math.max(1, Number(item.quantity || item.qty || 1)),
       price: Number(item.price || 0),
     }))
     .filter((item) => item.productId && Number.isFinite(item.price) && item.price >= 0);
@@ -49,47 +46,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
   }
 
-  const calculatedTotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const total = Number.isFinite(Number(body.total)) && Number(body.total) >= 0 ? Number(body.total) : calculatedTotal;
-  const orderCode = buildOrderCode();
-
-  const order = await prisma.order.create({
-    data: {
+  try {
+    const order = await createMarketplaceOrder({
       userId: String(user.id),
       tenantId: typeof user.tenantId === 'string' ? user.tenantId : undefined,
-      total,
-      status: 'processing',
-      orderCode,
       paymentMethod: body.paymentMethod ? String(body.paymentMethod) : 'cod',
-      paymentStatus: String(body.paymentMethod || '').includes('bkash') ? 'pending' : 'unpaid',
-      refCode: body.refCode ? String(body.refCode) : null,
+      refCode: body.refCode ? String(body.refCode) : undefined,
       shippingAddress: body.shippingAddress || body.fullAddressSummary || null,
-      items: {
-        create: items.map((item) => ({
-          productId: item.productId,
-          qty: item.qty,
-          price: item.price,
-        })),
-      },
-    },
-    include: {
-      items: {
-        include: {
-          product: { select: { id: true, name: true, image: true, slug: true } },
-        },
-      },
-      shipments: true,
-    },
-  });
+      items,
+    });
 
-  return NextResponse.json(
-    {
-      success: true,
-      id: order.id,
-      orderId: order.orderCode || order.id,
-      order_code: order.orderCode,
-      order: serializeOrder(order),
-    },
-    { status: 201 },
-  );
+    return NextResponse.json(
+      {
+        success: true,
+        id: order?.id,
+        orderId: order?.orderCode || order?.id,
+        order_code: order?.orderCode,
+        order: serializeOrder(order),
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create order',
+      },
+      { status: 400 },
+    );
+  }
 }

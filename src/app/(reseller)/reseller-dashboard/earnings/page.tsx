@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerEarnings as default } from '@/src/screens/reseller/Earnings';
+export { ResellerEarnings as default } from '@/src/features/reseller/screens/Earnings';

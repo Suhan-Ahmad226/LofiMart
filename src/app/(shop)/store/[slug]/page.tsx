@@ -1,1 +1,1 @@
-export { PublicSellerStorefront as default } from '@/src/screens/PublicSellerStorefront';
+export { PublicSellerStorefront as default } from '@/src/features/shop/screens/PublicSellerStorefront';

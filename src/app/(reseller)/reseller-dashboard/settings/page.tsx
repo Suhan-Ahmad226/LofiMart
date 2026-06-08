@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerSettings as default } from '@/src/screens/reseller/Settings';
+export { ResellerSettings as default } from '@/src/features/reseller/screens/Settings';

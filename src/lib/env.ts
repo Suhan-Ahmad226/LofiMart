@@ -60,6 +60,8 @@ const PublicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalString(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: optionalString(),
   NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY: optionalString(),
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: optionalString(),
+  NEXT_PUBLIC_META_PIXEL_ID: optionalString(),
 });
 
 const ServerEnvSchema = z.object({
@@ -88,6 +90,9 @@ const ServerEnvSchema = z.object({
   CORS_ALLOWED_ORIGINS: commaSeparatedOrigins(),
   GOOGLE_CLIENT_ID: optionalString(),
   GOOGLE_CLIENT_SECRET: optionalString(),
+  TELEGRAM_BOT_TOKEN: optionalString(),
+  TELEGRAM_BOT_USERNAME: optionalString(),
+  TELEGRAM_WEBHOOK_SECRET: optionalString(),
   GEMINI_API_KEY: optionalString(),
   CLOUDINARY_CLOUD_NAME: optionalString(),
   CLOUDINARY_API_KEY: optionalString(),

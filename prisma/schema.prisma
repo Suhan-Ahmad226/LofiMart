@@ -41,6 +41,8 @@ model User {
   storefrontDomainVerifiedAt DateTime?
   profileVisibility String @default("private")
   responseTimeHours Int?
+  telegramChatId String? @unique
+  telegramLinkedAt DateTime?
   twoFactorEnabled Boolean @default(false)
   phoneVerified Boolean @default(false)
   phoneVerifiedAt DateTime?
@@ -1439,6 +1441,8 @@ model Invoice {
   orderId      String   @unique
   userId       String
   status       String   @default("draft")
+  invoiceUrl   String?
+  documentUrl  String?
   subtotal     Decimal
   tax          Decimal  @default(0)
   total        Decimal

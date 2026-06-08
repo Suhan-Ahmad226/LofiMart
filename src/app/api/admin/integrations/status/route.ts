@@ -14,6 +14,10 @@ function hasAll(keys: string[]) {
   return keys.every((key) => Boolean(process.env[key]));
 }
 
+function isLiveBkashBaseUrl() {
+  return String(process.env.BKASH_BASE_URL || '').includes('tokenized.pay.bka.sh');
+}
+
 async function requireAdmin(request: NextRequest) {
   const user = await requireApiUser(request);
   if (user instanceof NextResponse) return user;
@@ -60,11 +64,11 @@ export async function GET(request: NextRequest) {
       'bkash',
       'bKash payment',
       hasAll(['BKASH_APP_KEY', 'BKASH_APP_SECRET', 'BKASH_USERNAME', 'BKASH_PASSWORD'])
-        ? process.env.BKASH_SANDBOX === 'false'
+        ? isLiveBkashBaseUrl()
           ? 'ready'
           : 'sandbox'
         : 'missing',
-      process.env.BKASH_SANDBOX === 'false' ? 'Live mode' : 'Sandbox or missing',
+      isLiveBkashBaseUrl() ? 'Live mode' : 'Sandbox or missing',
       'Supports mobile payment checkout when enabled.',
     ),
     item(
@@ -77,8 +81,8 @@ export async function GET(request: NextRequest) {
     item(
       'redx',
       'RedX courier',
-      process.env.REDX_API_TOKEN ? 'ready' : 'partial',
-      process.env.REDX_API_TOKEN ? 'API configured' : 'Manual mode',
+      hasAll(['REDX_API_KEY', 'REDX_SECRET_KEY', 'REDX_BASE_URL']) ? 'ready' : 'partial',
+      hasAll(['REDX_API_KEY', 'REDX_SECRET_KEY', 'REDX_BASE_URL']) ? 'API configured' : 'Manual mode',
       'Optional courier integration for shipping operations.',
     ),
     item(
@@ -87,6 +91,27 @@ export async function GET(request: NextRequest) {
       hasAll(['STEADFAST_API_KEY', 'STEADFAST_SECRET_KEY']) ? 'ready' : 'partial',
       hasAll(['STEADFAST_API_KEY', 'STEADFAST_SECRET_KEY']) ? 'API configured' : 'Manual mode',
       'Optional courier integration for delivery operations.',
+    ),
+    item(
+      'google-analytics',
+      'Google Analytics 4',
+      process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? 'ready' : 'missing',
+      process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? 'Configured' : 'Missing measurement ID',
+      'Tracks storefront traffic, page views, and conversion funnels through GA4.',
+    ),
+    item(
+      'meta-pixel',
+      'Meta/Facebook Pixel',
+      process.env.NEXT_PUBLIC_META_PIXEL_ID ? 'ready' : 'missing',
+      process.env.NEXT_PUBLIC_META_PIXEL_ID ? 'Configured' : 'Missing pixel ID',
+      'Tracks ad attribution and retargeting events for Meta campaigns.',
+    ),
+    item(
+      'telegram',
+      'Telegram bot',
+      hasAll(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_USERNAME', 'TELEGRAM_WEBHOOK_SECRET']) ? 'ready' : 'missing',
+      hasAll(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_USERNAME']) ? 'Bot configured' : 'Missing bot credentials',
+      'Sends seller order controls, inventory alerts, payment updates, and invoice documents to Telegram.',
     ),
   ];
 

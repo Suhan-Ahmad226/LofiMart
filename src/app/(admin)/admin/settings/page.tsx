@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminSettingsPage } from '@/src/screens/admin/Settings';
+import { AdminSettingsPage } from '@/src/features/admin/screens/Settings';
 
 export default function AdminSettingsRoute() {
   return <AdminSettingsPage />;

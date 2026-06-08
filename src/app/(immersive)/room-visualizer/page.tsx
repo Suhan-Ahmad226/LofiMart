@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import PageSkeleton from '@/src/components/ui/PageSkeleton';
 
 const RoomVisualizerPage = dynamic(
-  () => import('@/src/screens/RoomVisualizerPage').then((module) => module.RoomVisualizerPage),
+  () => import('@/src/features/shared/immersive/RoomVisualizerPage').then((module) => module.RoomVisualizerPage),
   {
     ssr: false,
     loading: () => <PageSkeleton variant="immersive" />,

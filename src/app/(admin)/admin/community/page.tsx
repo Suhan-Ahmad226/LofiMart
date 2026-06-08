@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminCommunityPage } from '@/src/screens/admin/Community';
+import { AdminCommunityPage } from '@/src/features/admin/screens/Community';
 
 export default function AdminCommunityRoute() {
   return <AdminCommunityPage />;

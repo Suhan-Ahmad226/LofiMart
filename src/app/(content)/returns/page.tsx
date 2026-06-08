@@ -1,3 +1,3 @@
 'use client';
 
-export { ReturnsPage as default } from '@/src/screens/ReturnsPage';
+export { ReturnsPage as default } from '@/src/features/public/screens/ReturnsPage';

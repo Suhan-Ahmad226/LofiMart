@@ -1,3 +1,3 @@
 'use client';
 
-export { CustomerDashboard as default } from '@/src/screens/customer/Dashboard';
+export { CustomerDashboard as default } from '@/src/features/customer/screens/Dashboard';

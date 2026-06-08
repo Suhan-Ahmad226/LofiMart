@@ -17,6 +17,8 @@
     "clean": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue }; if (Test-Path .next-prod) { Remove-Item -Recurse -Force .next-prod -ErrorAction SilentlyContinue }; if (Test-Path dist) { Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue }\"",
     "setup:prod": "npm run clean && npm install && npm run build",
     "start:prod": "npm run setup:prod && npm run start",
+    "preflight:prod": "node scripts/preflight-production.mjs",
+    "telegram:webhook:set": "node scripts/telegram-set-webhook.mjs",
     "lint": "node scripts/ensure-root-app-dir.mjs && tsc --noEmit -p tsconfig.lint.json",
     "test": "vitest run",
     "test:watch": "vitest",

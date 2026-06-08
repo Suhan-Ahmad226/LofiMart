@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminReturnsPage } from '@/src/screens/admin/Returns';
+import { AdminReturnsPage } from '@/src/features/admin/screens/Returns';
 
 export default function AdminReturnsRoute() {
   return <AdminReturnsPage />;

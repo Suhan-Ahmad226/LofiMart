@@ -1,1 +1,1 @@
-export { ResellerOnboardingPage as default } from '@/src/screens/reseller/Onboarding';
+export { ResellerOnboardingPage as default } from '@/src/features/reseller/screens/Onboarding';
