@@ -12,8 +12,6 @@ if (fs.existsSync(envPath)) {
 
 const required = [
   'FRONTEND_URL',
-  'NEXT_PUBLIC_SITE_URL',
-  'CORS_ALLOWED_ORIGINS',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'DATABASE_URL',
@@ -28,6 +26,8 @@ const required = [
 ];
 
 const recommended = [
+  'NEXT_PUBLIC_SITE_URL',
+  'CORS_ALLOWED_ORIGINS',
   'SUPABASE_SERVICE_ROLE_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'RESEND_API_KEY',
@@ -112,7 +112,9 @@ for (const key of ['FRONTEND_URL', 'NEXT_PUBLIC_SITE_URL']) {
 
 const frontendUrl = valueOf('FRONTEND_URL');
 const siteUrl = valueOf('NEXT_PUBLIC_SITE_URL');
-if (frontendUrl && siteUrl && frontendUrl !== siteUrl) {
+if (frontendUrl && !siteUrl) {
+  addIssue(issues, 'warn', 'NEXT_PUBLIC_SITE_URL is not configured; app metadata will fall back to FRONTEND_URL/default site URL');
+} else if (frontendUrl && siteUrl && frontendUrl !== siteUrl) {
   addIssue(issues, 'warn', 'FRONTEND_URL and NEXT_PUBLIC_SITE_URL are different');
 }
 
@@ -121,8 +123,8 @@ const allowedOrigins = valueOf('CORS_ALLOWED_ORIGINS')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-if (frontendUrl && !allowedOrigins.includes(frontendUrl)) {
-  addIssue(issues, 'error', 'CORS_ALLOWED_ORIGINS must include FRONTEND_URL');
+if (frontendUrl && allowedOrigins.length > 0 && !allowedOrigins.includes(frontendUrl)) {
+  addIssue(issues, 'warn', 'CORS_ALLOWED_ORIGINS does not include FRONTEND_URL; runtime still allows FRONTEND_URL by default');
 }
 
 for (const origin of allowedOrigins) {
