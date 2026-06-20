@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Poppins } from 'next/font/google';
 import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
 import '../index.css';
 import { AppProviders } from '../components/AppProviders';
 import { AppChrome } from '../components/AppChrome';
@@ -194,6 +195,7 @@ export default function RootLayout({
         <AppProviders>
           <AppChrome>{children}</AppChrome>
         </AppProviders>
+        <Analytics />
       </body>
     </html>
   );
