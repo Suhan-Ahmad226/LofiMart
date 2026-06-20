@@ -6,6 +6,7 @@ import { AppProviders } from '../components/AppProviders';
 import { AppChrome } from '../components/AppChrome';
 import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics';
 import { cn } from "@/lib/utils";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -194,6 +195,7 @@ export default function RootLayout({
         <AppProviders>
           <AppChrome>{children}</AppChrome>
         </AppProviders>
+        <SpeedInsights />
       </body>
     </html>
   );
