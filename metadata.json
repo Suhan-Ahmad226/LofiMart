@@ -1,0 +1,7 @@
+{
+  "name": "LofiMart",
+  "description": "A comprehensive multi-vendor e-commerce platform for Bangladesh featuring local courier integrations, secure payments, and dedicated dashboards for customers, sellers, and admins.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

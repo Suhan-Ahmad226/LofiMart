@@ -1,0 +1,12 @@
+export { HomePage } from './HomePage';
+export { ShopPage } from './ShopPage';
+export { CategoriesPage } from './CategoriesPage';
+export { CartPage } from './CartPage';
+export { CheckoutPage } from './CheckoutPage';
+export { ComparePage } from './ComparePage';
+export { FlashSalePage } from './FlashSalePage';
+export { ProductDetailsPage } from './ProductDetailsPage';
+export { PublicResellerStorefront } from './PublicResellerStorefront';
+export { PublicSellerStorefront } from './PublicSellerStorefront';
+export { SearchPage } from './SearchPage';
+export { WishlistPage } from './WishlistPage';
