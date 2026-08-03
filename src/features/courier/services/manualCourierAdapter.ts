@@ -3,7 +3,7 @@ import type {
   CourierProviderView,
   ShipmentBookingInput,
   ShipmentBookingResult,
-} from '@/src/modules/logistics/contracts';
+} from '../../../modules/logistics/contracts';
 
 export class ManualCourierAdapter implements CourierAdapter {
   constructor(private readonly provider: CourierProviderView) {}

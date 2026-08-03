@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Archive, ExternalLink, Loader2, PackagePlus } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Product } from '@/src/types';
+import { Link } from '../../../lib/navigation';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { Product } from '../../../types';
 
 const getInventoryState = (stock: number) => {
   if (stock <= 0) return 'out';

@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Heart, Loader2, Palette, Share2, ShoppingBag, Sparkles, Wand2 } from 'lucide-react';
-import { useNavigate } from '@/src/lib/navigation';
-import { useAIStylist, type OutfitRecommendation, type StyleProfile } from '@/src/hooks/useAIStylist';
-import NotificationContainer, { useNotification } from '@/src/components/animations/NotificationContainer';
-import { ProductCard } from '@/src/components/ProductCard';
-import type { Product } from '@/src/types';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { copyText } from '@/src/lib/browser-actions';
+import { useNavigate } from '../../../lib/navigation';
+import { useAIStylist, type OutfitRecommendation, type StyleProfile } from '../../../hooks/useAIStylist';
+import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import { ProductCard } from '../../../components/ProductCard';
+import type { Product } from '../../../types';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { copyText } from '../../../lib/browser-actions';
 
 interface AIStylistProps {
   onAddToCart?: (item: OutfitRecommendation) => void;

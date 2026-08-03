@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Clock3, Loader2, Zap } from 'lucide-react';
-import { ProductCard } from '@/src/components/ProductCard';
+import { ProductCard } from '../../../components/ProductCard';
 
 type FlashSaleProduct = {
   id: string;

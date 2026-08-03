@@ -1,5 +1,5 @@
-import { prisma } from '@/src/services/database/prisma';
-import type { PaymentRepository } from '@/src/modules/payments/contracts';
+import { prisma } from '../../../../features/shared/services/database/prisma';
+import type { PaymentRepository } from '../../../../modules/payments/contracts';
 
 export class PrismaPaymentRepository implements PaymentRepository {
   async findByIdempotencyKey(key: string) {

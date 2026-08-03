@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from '@/src/lib/navigation';
+import { Link, useLocation, useNavigate } from '../../../lib/navigation';
 import {
   ArrowRight,
   ArrowUp,
@@ -20,6 +20,7 @@ import {
   Mail,
   MapPin,
   Menu,
+  Music,
   Package2,
   PackageCheck,
   Phone,
@@ -27,6 +28,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
   Smartphone,
   Truck,
@@ -36,13 +38,13 @@ import {
   Youtube,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useCart } from '@/src/context/CartContext';
-import { useUser } from '@/src/context/UserContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { AnimatedBadge, AnimatedIcon } from '@/src/components/ui/AnimatedIcon';
-import { filterRoleAwareLinks, type NavigationRole, type RoleAwareLink } from '@/src/lib/role-navigation';
-import { getCachedClientValue } from '@/src/lib/client-cache';
-import { usePWAInstall } from '@/src/hooks/usePWAInstall';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { AnimatedBadge, AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { filterRoleAwareLinks, type NavigationRole, type RoleAwareLink } from '../../../lib/role-navigation';
+import { getCachedClientValue } from '../../../lib/client-cache';
+import { usePWAInstall } from '../../../hooks/usePWAInstall';
 
 type HeaderSubcategory = {
   id: string | number;
@@ -1073,194 +1075,137 @@ export const Footer = () => {
     }
   };
 
+  const footerSocialLinksNew = [
+    { href: 'https://facebook.com/lofimart', label: 'Facebook', icon: <Facebook size={20} /> },
+    { href: 'https://youtube.com/@lofimart', label: 'YouTube', icon: <Youtube size={20} /> },
+    { href: 'https://instagram.com/lofimart', label: 'Instagram', icon: <Instagram size={20} /> },
+    { href: 'https://tiktok.com/@lofimart', label: 'TikTok', icon: <Music size={20} /> },
+  ];
+
   return (
-    <footer className="overflow-x-clip bg-[linear-gradient(135deg,#102418_0%,#163322_55%,#1a1a1a_100%)] pb-8 pt-12 text-white/85 md:pt-16">
-      <div className="page-shell sm:px-6 lg:px-8">
-        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-12 md:gap-8">
-          <div className="space-y-4 md:col-span-2">
-            <h3 className="font-display text-xl font-bold text-white">Lofi<span className="text-accent">Mart</span></h3>
-            <p className="text-sm leading-relaxed">
-              Your trusted destination for quality products in Bangladesh. Fast delivery, easy returns, and 100% genuine products.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">Mobile-first shopping</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">Trusted sellers</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">Fast delivery</span>
+    <footer className="w-full border-t border-[#c4c6ce]/30 bg-white mt-auto relative z-10">
+      <div className="w-full px-6 md:px-16 py-16 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 max-w-[1280px] mx-auto">
+        {/* Brand */}
+        <div className="flex flex-col gap-4 lg:col-span-1">
+          <div className="text-2xl font-bold text-primary mb-2 flex items-center gap-2">
+            <ShoppingBag size={24} className="text-secondary" />
+            LofiMart
+          </div>
+          <p className="text-sm text-[#43474d]">Elevating commerce through design and technology. The premium destination for modern retail.</p>
+          <div className="flex items-center gap-2 mt-auto pt-4">
+            {footerSocialLinksNew.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={item.label}
+                className="w-10 h-10 rounded-full bg-[#e0e3e6] flex items-center justify-center text-[#43474d] hover:bg-primary hover:text-white hover:-translate-y-1 transition-all duration-300"
+              >
+                {item.icon}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Shop */}
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Shop</h3>
+          <nav className="flex flex-col gap-2">
+            <Link to="/shop?category=Electronics" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Electronics</Link>
+            <Link to="/shop?category=Fashion" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Fashion</Link>
+            <Link to="/shop?category=Home+%26+Living" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Home &amp; Living</Link>
+            <Link to="/shop" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max flex items-center gap-2">
+              Top Brands
+              <span className="bg-[#80E9FF]/20 text-[#314865] text-[10px] px-2 py-0.5 rounded-full font-bold">HOT</span>
+            </Link>
+            <Link to="/shop?sort=newest" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">New Arrivals</Link>
+          </nav>
+        </div>
+
+        {/* Company */}
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Company</h3>
+          <nav className="flex flex-col gap-2">
+            <Link to="/about" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">About</Link>
+            <Link to="/blog" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Blog</Link>
+            <Link to="/bazaar/loyalty-rewards" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Investors</Link>
+            <Link to="/reseller" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Affiliate Program</Link>
+          </nav>
+        </div>
+
+        {/* Support */}
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Support</h3>
+          <nav className="flex flex-col gap-2">
+            <Link to="/help" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Help Center</Link>
+            <Link to="/track" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Track Order</Link>
+            <Link to="/returns" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Shipping</Link>
+            <Link to="/returns" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Returns</Link>
+            <Link to="/contact" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Contact</Link>
+          </nav>
+        </div>
+
+        {/* Seller Center */}
+        <div className="flex flex-col gap-2 lg:col-span-1">
+          <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Seller Center</h3>
+          <nav className="flex flex-col gap-4">
+            <Link
+              to="/register?role=seller"
+              className="bg-primary text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center justify-between hover:bg-primary-dark transition-colors shadow-sm group"
+            >
+              Become a Seller
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <div className="flex flex-col gap-2 mt-2">
+              <Link to="/seller/dashboard" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Seller Dashboard</Link>
+              <Link to="/help" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max">Seller Policy</Link>
             </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {footerSocialLinks.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={item.label}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:border-accent/60 hover:bg-accent/20"
-                >
-                  {item.icon}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <FooterSection
-              id="service"
-              title="Customer Service"
-              isOpen={Boolean(openMobileSections.service)}
-              onToggle={() => toggleFooterSection('service')}
-            >
-            <ul className="space-y-2.5 text-sm">
-              {customerServiceLinks.map((item) => (
-                <li key={item.href}>
-                  <Link to={item.href} className="transition-colors hover:text-primary">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            </FooterSection>
-          </div>
-          <div className="md:col-span-2">
-            <FooterSection
-              id="quick"
-              title="Quick Links"
-              isOpen={Boolean(openMobileSections.quick)}
-              onToggle={() => toggleFooterSection('quick')}
-            >
-            <ul className="space-y-2.5 text-sm">
-              {quickFooterLinks.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    to={item.href}
-                    className={item.emphasis ? 'font-bold text-accent transition-colors hover:text-primary' : 'transition-colors hover:text-primary'}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            </FooterSection>
-          </div>
-          <div className="md:col-span-2">
-            <FooterSection
-              id="discover"
-              title="Discover"
-              isOpen={Boolean(openMobileSections.discover)}
-              onToggle={() => toggleFooterSection('discover')}
-            >
-            <ul className="space-y-2.5 text-sm">
-              {visibleDiscoverLinks.map((item) => (
-                <li key={item.href}>
-                  <Link to={item.href} className="transition-colors hover:text-primary">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            </FooterSection>
-          </div>
-          <div className="space-y-5 md:col-span-4">
-            <FooterSection
-              id="newsletter"
-              title="Newsletter"
-              isOpen={Boolean(openMobileSections.newsletter)}
-              onToggle={() => toggleFooterSection('newsletter')}
-            >
-            <p className="mb-4 text-sm">Get exclusive deals, restock alerts, and campaign updates.</p>
-            <form onSubmit={submitNewsletter} className="flex flex-col gap-2 sm:flex-row sm:gap-0">
+          </nav>
+        </div>
+
+        {/* Newsletter */}
+        <div className="flex flex-col gap-2 lg:col-span-1">
+          <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Stay Updated</h3>
+          <p className="text-xs text-[#43474d] mb-2">Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.</p>
+          <form onSubmit={submitNewsletter} className="flex flex-col gap-2">
+            <div className="relative">
+              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c4c6ce]" />
               <input
                 type="email"
                 value={newsletterEmail}
                 onChange={(event) => setNewsletterEmail(event.target.value)}
-                placeholder="Your email"
+                placeholder="Enter your email"
                 autoComplete="email"
-                className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/45 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:rounded-r-none"
+                className="w-full bg-[#e0e3e6] border border-[#c4c6ce]/50 rounded-lg py-2 pl-10 pr-4 text-[#181c1e] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
               />
-              <button
-                type="submit"
-                disabled={newsletterSubmitting}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70 sm:rounded-l-none"
-              >
-                {newsletterSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                <span>Join</span>
-              </button>
-            </form>
-            </FooterSection>
-
-            <FooterSection
-              id="trust"
-              title="Payments & Delivery"
-              isOpen={Boolean(openMobileSections.trust)}
-              onToggle={() => toggleFooterSection('trust')}
+            </div>
+            <button
+              type="submit"
+              disabled={newsletterSubmitting}
+              className="w-full bg-primary text-white text-sm font-semibold py-2 px-4 rounded-lg hover:opacity-90 transition-opacity shadow-sm flex items-center justify-center gap-2"
             >
-              <div className="space-y-4">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/55">Secure payment options</p>
-                  <div className="flex flex-wrap gap-2">
-                    {paymentBadges.map((item) => (
-                      <span key={item.label} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
-                        {item.icon || <CreditCard size={14} />}
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/55">Delivery partners</p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {deliveryPartners.map((item) => (
-                      <div key={item.label} className="rounded-xl border border-white/10 bg-white/10 p-3">
-                        <div className="flex items-center gap-2 text-sm font-bold text-white">
-                          <PackageCheck size={15} />
-                          {item.label}
-                        </div>
-                        <p className="mt-1 text-[11px] text-white/60">{item.detail}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </FooterSection>
-
-            <FooterSection
-              id="contact"
-              title="Contact & App"
-              isOpen={Boolean(openMobileSections.contact)}
-              onToggle={() => toggleFooterSection('contact')}
-            >
-              <div className="space-y-3 text-sm">
-                {contactItems.map((item) => (
-                  item.href.startsWith('mailto:') || item.href.startsWith('tel:') ? (
-                    <a key={item.label} href={item.href} className="flex items-center gap-2 transition-colors hover:text-primary">
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </a>
-                  ) : (
-                    <Link key={item.label} to={item.href} className="flex items-center gap-2 transition-colors hover:text-primary">
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                ))}
-                <button
-                  type="button"
-                  onClick={isInstallable ? install : undefined}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15 disabled:cursor-default disabled:opacity-70 sm:w-auto"
-                  disabled={!isInstallable}
-                >
-                  <Smartphone size={16} />
-                  <span>{isInstalled ? 'App installed' : isInstallable ? 'Install app' : 'PWA ready'}</span>
-                </button>
-              </div>
-            </FooterSection>
+              {newsletterSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+              Subscribe
+            </button>
+          </form>
+          <div className="flex items-center gap-1 text-[10px] text-[#74777e] mt-2">
+            <ShieldCheck size={12} />
+            Secure &amp; Spam-free
           </div>
         </div>
-        <div className="flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/60 md:flex-row md:items-center md:justify-between">
-          <p>&copy; {new Date().getFullYear()} LofiMart. All rights reserved.</p>
-          <p className="inline-flex items-center gap-2">
-            <ShieldCheck size={14} />
-            SSL secured checkout, COD support, and verified seller marketplace.
-          </p>
+      </div>
+
+      {/* Bottom bar */}
+      <div className="border-t border-[#c4c6ce]/20 bg-[#f7fafd]">
+        <div className="max-w-[1280px] mx-auto px-6 md:px-16 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-4 text-xs text-[#43474d]">
+            <span>&copy; {new Date().getFullYear()} LofiMart. All rights reserved. Your trust is our currency.</span>
+            <div className="flex gap-4">
+              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

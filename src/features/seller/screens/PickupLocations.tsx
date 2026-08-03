@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, MapPin, Phone, Plus, RefreshCw, Save, Store, Trash2, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { inventoryApi } from '@/src/services/inventoryApi';
-import { Warehouse } from '@/src/types/inventory';
+import { inventoryApi } from '../../../services/inventoryApi';
+import { Warehouse } from '../../../types/inventory';
 
 type PathaoOption = {
   id: number;

@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/features/bazaar/screens/LiveConcierge';
+export { default } from '../../../../features/bazaar/screens/LiveConcierge';

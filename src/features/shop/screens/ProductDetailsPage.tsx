@@ -1,37 +1,38 @@
 import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
 import dynamic from 'next/dynamic';
-import { useParams, useNavigate, Link, useSearchParams } from '@/src/lib/navigation';
+import { useParams, useNavigate, Link, useSearchParams } from '../../../lib/navigation';
 import { Star, ShieldCheck, Truck, RefreshCw, ShoppingCart, Heart, Share2, Loader2, Box, Maximize2, View, X, CreditCard, BadgeCheck, Clock3, Scale, ChevronRight, Sparkles, ScanSearch, Store } from 'lucide-react';
-import { Product, ProductVariantValue } from '@/src/types';
-import { formatPrice } from '@/src/lib/utils';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { useCart } from '@/src/context/CartContext';
-import { useCompare } from '@/src/context/CompareContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { useUser } from '@/src/context/UserContext';
-import { AnimatedIcon } from '@/src/components/ui/AnimatedIcon';
-import { getCachedClientValue } from '@/src/lib/client-cache';
+import { Product, ProductVariantValue } from '../../../types';
+import { formatPrice } from '../../../lib/utils';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useCompare } from '../../../features/shop/state/CompareContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { getCachedClientValue } from '../../../lib/client-cache';
 import toast from 'react-hot-toast';
-import { ProductCard } from '@/src/components/ProductCard';
-import { renderProductDescription } from '@/src/lib/product-description';
+import { ProductCard } from '../../../components/ProductCard';
+import { renderProductDescription } from '../../../lib/product-description';
+import { ProductLightbox } from '../../../features/shop/components/ProductLightbox';
 
-const ProductViewer3D = lazy(() => import('@/src/components/3d/ProductViewer3D'));
-const ARTryOn = lazy(() => import('@/src/components/ar/ARTryOn'));
+const ProductViewer3D = lazy(() => import('@/components/3d/ProductViewer3D'));
+const ARTryOn = lazy(() => import('@/components/ar/ARTryOn'));
 const AIRecommendation = dynamic(
-  () => import('@/src/components/AIRecommendation').then((module) => module.AIRecommendation),
+  () => import('@/components/AIRecommendation').then((module) => module.AIRecommendation),
   {
     loading: () => <div className="mt-12 h-80 animate-pulse rounded-[2rem] bg-slate-100" />,
   },
 );
 const SocialShare = dynamic(
-  () => import('@/src/components/SocialShare').then((module) => module.SocialShare),
+  () => import('@/components/SocialShare').then((module) => module.SocialShare),
   {
     ssr: false,
     loading: () => <div className="h-10 w-full animate-pulse rounded-2xl bg-slate-100" />,
   },
 );
 const FrequentlyBoughtTogether = dynamic(
-  () => import('@/src/components/FrequentlyBoughtTogether').then((module) => module.FrequentlyBoughtTogether),
+  () => import('@/components/FrequentlyBoughtTogether').then((module) => module.FrequentlyBoughtTogether),
   {
     loading: () => <div className="h-72 animate-pulse rounded-[2rem] bg-slate-100" />,
   },
@@ -629,6 +630,34 @@ export const ProductDetailsPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 pb-28 md:py-12 md:pb-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.description || undefined,
+            image: activeImageSrc || undefined,
+            sku: product.sku || undefined,
+            brand: product.store_name ? { '@type': 'Brand', name: product.store_name } : undefined,
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'BDT',
+              price: String(product.price),
+              availability: (product.stock ?? 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            },
+            aggregateRating: product.reviews_count
+              ? {
+                  '@type': 'AggregateRating',
+                  ratingValue: String(product.rating || 0),
+                  reviewCount: String(product.reviews_count),
+                }
+              : undefined,
+          }),
+        }}
+      />
       <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500">
         <Link to="/" className="font-medium transition hover:text-primary">
           Home
@@ -1526,31 +1555,13 @@ export const ProductDetailsPage = () => {
         ) : null}
       </div>
 
-      {showImageLightbox && hasProductImage && (
-        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-black/85 p-3 sm:items-center sm:p-4">
-          <button
-            type="button"
-            onClick={() => setShowImageLightbox(false)}
-            className="fixed right-3 top-3 z-[71] rounded-full bg-white/10 p-3 text-white backdrop-blur transition hover:bg-white/20 sm:right-4 sm:top-4"
-            aria-label="Close image preview"
-          >
-            <X size={20} />
-          </button>
-          <div className="my-14 w-full max-w-6xl overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950 shadow-2xl sm:my-6 sm:rounded-[2rem]">
-            <OptimizedImage
-              src={activeImageSrc}
-              alt={product.name}
-              widthHint={1800}
-              heightHint={1800}
-              quality="auto:best"
-              fit="limit"
-              eager
-              showPlaceholder={false}
-              className="max-h-[calc(100vh-7rem)] min-h-[16rem] w-full object-contain bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_58%),linear-gradient(180deg,#0f172a_0%,#020617_100%)] sm:max-h-[90vh]"
-            />
-          </div>
-        </div>
-      )}
+      <ProductLightbox
+        images={productMediaImages}
+        initialIndex={selectedMediaIndex}
+        productName={product.name}
+        isOpen={showImageLightbox && hasProductImage}
+        onClose={() => setShowImageLightbox(false)}
+      />
 
       {showAR && (
         <Suspense fallback={<div className="fixed inset-0 grid place-items-center bg-black/70 text-white z-50">Loading AR Try-On...</div>}>

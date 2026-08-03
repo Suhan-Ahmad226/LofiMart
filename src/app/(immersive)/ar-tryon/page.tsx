@@ -1,9 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import PageSkeleton from '@/src/components/ui/PageSkeleton';
+import PageSkeleton from '../../../features/shared/ui/PageSkeleton';
 
-const ARTryOnPage = dynamic(() => import('@/src/features/shared/immersive/ARTryOnPage'), {
+const ARTryOnPage = dynamic(() => import('@/features/shared/immersive/ARTryOnPage'), {
   ssr: false,
   loading: () => <PageSkeleton variant="immersive" />,
 });

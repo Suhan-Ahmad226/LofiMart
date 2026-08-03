@@ -1,16 +1,16 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Heart, Info, Share2, ShoppingCart } from 'lucide-react';
-import { Link, useNavigate, useParams } from '@/src/lib/navigation';
-import { useCart } from '@/src/context/CartContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { copyText } from '@/src/lib/browser-actions';
-import { formatPrice } from '@/src/lib/utils';
-import type { Product } from '@/src/types';
+import { Link, useNavigate, useParams } from '../../../lib/navigation';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { copyText } from '../../../lib/browser-actions';
+import { formatPrice } from '../../../lib/utils';
+import type { Product } from '../../../types';
 import toast from 'react-hot-toast';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-const ProductViewer3D = lazy(() => import('@/src/components/3d/ProductViewer3D'));
-const DemoPageLinks = dynamic(() => import('@/src/components/DemoPageLinks'), {
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+const ProductViewer3D = lazy(() => import('@/components/3d/ProductViewer3D'));
+const DemoPageLinks = dynamic(() => import('@/components/DemoPageLinks'), {
   loading: () => <div className="h-64 animate-pulse rounded-[2rem] bg-slate-100" />,
 });
 

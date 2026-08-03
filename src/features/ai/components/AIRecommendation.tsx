@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import { motion } from 'motion/react';
 import { Star, ShoppingCart, Sparkles } from 'lucide-react';
-import { Product } from '@/src/types';
-import { useCart } from '@/src/context/CartContext';
-import { formatPrice } from '@/src/lib/utils';
-import { AnimatedIcon } from '@/src/components/ui/AnimatedIcon';
-import { getCachedClientValue } from '@/src/lib/client-cache';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
+import { Product } from '../../../types';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { formatPrice } from '../../../lib/utils';
+import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { getCachedClientValue } from '../../../lib/client-cache';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
 
 interface AIRecommendationProps {
   productId?: number;

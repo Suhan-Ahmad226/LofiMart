@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, Package, ArrowRight } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 
 export default function OrderSuccessPage() {
   return (

@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import { apiError, apiSuccess } from '@/src/lib/api-response';
-import { logger } from '@/src/lib/logger';
+import { apiError, apiSuccess } from '../../../../../lib/api-response';
+import { logger } from '../../../../../lib/logger';
 import { prisma } from '@/lib/server';
 import {
   getBkashTransactionByPaymentId,
   queryBkashPayment,
   syncBkashOrderPaymentState,
-} from '@/src/services/payments/bkash';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
+} from '../../../../../features/pos/services/payments/bkash';
+import { secureApiRoute } from '../../../../../server/next/apiSecurity';
 
 export const runtime = 'nodejs';
 

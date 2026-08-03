@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Calendar, Copy, Loader2, Plus, Tag, Trash2 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
-import { copyText } from '@/src/lib/browser-actions';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
+import { copyText } from '../../../lib/browser-actions';
 
 type SellerCoupon = {
   id: string;

@@ -1,4 +1,4 @@
-import type { CourierAdapter, CourierProviderRegistry, CourierProviderView } from '@/src/modules/logistics/contracts';
+import type { CourierAdapter, CourierProviderRegistry, CourierProviderView } from '../../../modules/logistics/contracts';
 import { ManualCourierAdapter } from './manualCourierAdapter';
 import { PathaoApiAdapter } from './pathaoApiAdapter';
 import { getCourierProviderSetupStatus } from './providerConfig';

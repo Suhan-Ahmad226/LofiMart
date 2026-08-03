@@ -63,14 +63,4 @@ export async function getCachedClientValue<T>(
   return inflight;
 }
 
-export function clearCachedClientValue(key: string) {
-  clientCache.delete(key);
-}
 
-export function clearCachedClientValuesByPrefix(prefix: string) {
-  for (const key of clientCache.keys()) {
-    if (key.startsWith(prefix)) {
-      clientCache.delete(key);
-    }
-  }
-}

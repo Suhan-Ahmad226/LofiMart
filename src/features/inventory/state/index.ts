@@ -1,1 +1,1 @@
-export * from '@/src/context/InventoryContext';
+export * from '../../../features/inventory/state/InventoryContext';

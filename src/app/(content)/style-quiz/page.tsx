@@ -1,3 +1,3 @@
 'use client';
 
-export { StyleQuizPage as default } from '@/src/features/public/screens/StyleQuizPage';
+export { StyleQuizPage as default } from '../../../features/public/screens/StyleQuizPage';

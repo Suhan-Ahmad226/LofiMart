@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn } from '../../../lib/utils';
 
 type EmptyStateProps = {
   icon?: React.ReactNode;

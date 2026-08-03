@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Loader2, Tag, Layers, ListTree } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 import toast from 'react-hot-toast';
 
 interface Category { id: string; name: string; icon?: string }

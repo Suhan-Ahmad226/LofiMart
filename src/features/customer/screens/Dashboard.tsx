@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ShoppingBag, Heart, MapPin, Package, Clock, AlertCircle, Bell, Coins, ArrowRight, Truck } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
-import { DashboardStatsSkeleton, ListCardSkeleton } from '@/src/components/ui/DataSkeletons';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
+import { DashboardStatsSkeleton, ListCardSkeleton } from '../../../components/ui/DataSkeletons';
 
 type NotificationItem = {
   id: string;

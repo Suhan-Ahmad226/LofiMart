@@ -1,10 +1,10 @@
 import React from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import { Heart, ShoppingCart, Trash2, ArrowRight } from 'lucide-react';
-import { useCart } from '@/src/context/CartContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { formatPrice } from '@/src/lib/utils';
-import { getOptimizedCloudinaryImage } from '@/src/lib/cloudinary';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { formatPrice } from '../../../lib/utils';
+import { getOptimizedCloudinaryImage } from '../../../lib/cloudinary';
 
 export const WishlistPage = () => {
   const { addToCart } = useCart();

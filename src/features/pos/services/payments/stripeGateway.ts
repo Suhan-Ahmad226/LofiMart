@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../../lib/env';
 import type {
   CreatePaymentRequest,
   PaymentGateway,
@@ -7,7 +7,7 @@ import type {
   PaymentWebhookPayload,
   RefundResult,
   RefundRequest,
-} from '@/src/modules/payments/contracts';
+} from '../../../../modules/payments/contracts';
 
 function getStripeClient() {
   const { STRIPE_SECRET_KEY } = getServerEnv();

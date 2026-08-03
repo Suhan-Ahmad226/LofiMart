@@ -9,11 +9,11 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 import toast from 'react-hot-toast';
-import CloudinaryUpload from '@/src/components/media/CloudinaryUpload';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { Link } from '@/src/lib/navigation';
+import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { Link } from '../../../lib/navigation';
 
 type AdminBlogPost = {
   id: string;

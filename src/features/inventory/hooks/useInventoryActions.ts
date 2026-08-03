@@ -1,6 +1,6 @@
-import { useInventoryDispatch } from '@/src/context/InventoryContext';
-import { inventoryApi } from '@/src/services/inventoryApi';
-import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '@/src/types/inventory';
+import { useInventoryDispatch } from '../../../features/inventory/state/InventoryContext';
+import { inventoryApi } from '../../../services/inventoryApi';
+import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '../../../types/inventory';
 
 export function useInventoryActions() {
   const dispatch = useInventoryDispatch();

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../../lib/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Gift, X } from 'lucide-react';
 

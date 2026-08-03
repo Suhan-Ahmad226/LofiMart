@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Star, Trash2, Loader2, MessageSquare } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 import toast from 'react-hot-toast';
 
 export const AdminReviewsPage = () => {

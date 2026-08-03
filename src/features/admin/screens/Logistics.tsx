@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, Loader2, MapPinned, RefreshCw, Search, Truck } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 type Provider = {
   code: string;

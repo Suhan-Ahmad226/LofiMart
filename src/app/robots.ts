@@ -8,7 +8,31 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin', '/seller', '/reseller-dashboard', '/account', '/api'],
+        disallow: [
+          '/admin/',
+          '/seller/',
+          '/reseller-dashboard/',
+          '/account/',
+          '/api/',
+          '/payment/',
+          '/auth/',
+          '/checkout/',
+          '/cart/',
+          '/order-success/',
+          '/search?*',
+        ],
+      },
+      {
+        userAgent: 'GPTBot',
+        disallow: '/',
+      },
+      {
+        userAgent: 'ChatGPT-User',
+        disallow: '/',
+      },
+      {
+        userAgent: 'CCBot',
+        disallow: '/',
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

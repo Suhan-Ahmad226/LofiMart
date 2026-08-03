@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { CartItem, Product } from '@/src/types';
-import { useUser } from '@/src/context/UserContext';
-import api from '@/src/lib/api';
+import { CartItem, Product } from '../../../types';
+import { useUser } from '../../../features/shared/state/UserContext';
+import api from '../../../lib/api';
 
 interface Coupon {
   code: string;

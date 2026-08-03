@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatPrice } from '@/src/lib/utils';
+import { formatPrice } from '../../../lib/utils';
 
 interface SalesPoint {
   label: string;

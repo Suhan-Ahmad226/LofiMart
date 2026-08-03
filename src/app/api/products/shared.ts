@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/server';
-import { validateAccessToken, type SessionUser } from '@/src/services/auth/sessionStore';
+import { validateAccessToken, type SessionUser } from '../../../features/auth/services/sessionStore';
 
 export const PRODUCT_STATUSES = {
   draft: 'draft',

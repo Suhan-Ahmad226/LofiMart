@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, RotateCcw, Save, Share2, Upload } from 'lucide-react';
-import { Link, useNavigate } from '@/src/lib/navigation';
-import { RoomVisualizer } from '@/src/components/3d/RoomVisualizer';
-import DemoPageLinks from '@/src/components/DemoPageLinks';
-import { copyText } from '@/src/lib/browser-actions';
+import { Link, useNavigate } from '../../../lib/navigation';
+import { RoomVisualizer } from '../../../components/3d/RoomVisualizer';
+import DemoPageLinks from '../../../components/DemoPageLinks';
+import { copyText } from '../../../lib/browser-actions';
 
 interface FurnitureItem {
   id: string;

@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Info, Loader2, Plus, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { formatPrice } from '@/src/lib/utils';
-import { useUser } from '@/src/context/UserContext';
-import type { Product } from '@/src/types';
+import { formatPrice } from '../../../lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import type { Product } from '../../../types';
 
 interface ResellerMarkupRow {
   product_id: string;

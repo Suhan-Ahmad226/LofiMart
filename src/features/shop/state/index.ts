@@ -1,3 +1,3 @@
-export * from '@/src/context/CartContext';
-export * from '@/src/context/CompareContext';
-export * from '@/src/context/WishlistContext';
+export * from '../../../features/shop/state/CartContext';
+export * from '../../../features/shop/state/CompareContext';
+export * from '../../../features/shop/state/WishlistContext';

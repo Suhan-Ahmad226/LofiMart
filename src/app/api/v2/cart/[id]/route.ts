@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { z } from 'zod';
-import { requireUser } from '@/src/server/next/requireUser';
+import { requireUser } from '../../../../../server/next/requireUser';
 
 const UpdateCartItemSchema = z.object({
   quantity: z.number().positive().int(),

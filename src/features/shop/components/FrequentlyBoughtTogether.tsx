@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import { Loader2, Plus } from 'lucide-react';
-import { Product } from '@/src/types';
-import { formatPrice } from '@/src/lib/utils';
-import { useCart } from '@/src/context/CartContext';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { getCachedClientValue } from '@/src/lib/client-cache';
+import { Product } from '../../../types';
+import { formatPrice } from '../../../lib/utils';
+import { useCart } from '../../../features/shop/state/CartContext';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { getCachedClientValue } from '../../../lib/client-cache';
 
 interface FrequentlyBoughtTogetherProps {
   productId: number;

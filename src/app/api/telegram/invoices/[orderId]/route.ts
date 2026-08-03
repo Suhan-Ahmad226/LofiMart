@@ -5,8 +5,8 @@ import {
   getInvoiceOrderById,
   invoiceFilename,
   serializeOrderDetail,
-} from '@/src/app/api/orders/[id]/_invoice';
-import { verifyTelegramInvoiceToken } from '@/src/features/telegram_bot';
+} from '../../../../../app/api/orders/[id]/_invoice';
+import { verifyTelegramInvoiceToken } from '../../../../../features/telegram_bot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

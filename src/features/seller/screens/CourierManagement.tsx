@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Download, Filter, Loader2, MapPin, Search, Truck, Undo2, XCircle } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import NotificationContainer, { useNotification } from '@/src/components/animations/NotificationContainer';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
 
 interface SellerShipment {
   id: string;

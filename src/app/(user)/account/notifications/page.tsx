@@ -1,3 +1,3 @@
 'use client';
 
-export { CustomerNotificationsPage as default } from '@/src/features/customer/screens/Notifications';
+export { CustomerNotificationsPage as default } from '../../../../features/customer/screens/Notifications';

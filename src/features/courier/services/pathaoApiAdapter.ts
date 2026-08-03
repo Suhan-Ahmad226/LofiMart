@@ -1,10 +1,10 @@
-import { prisma } from '@/src/services/database/prisma';
+import { prisma } from '../../../features/shared/services/database/prisma';
 import type {
   CourierAdapter,
   CourierProviderView,
   ShipmentBookingInput,
   ShipmentBookingResult,
-} from '@/src/modules/logistics/contracts';
+} from '../../../modules/logistics/contracts';
 import {
   createPathaoOrder,
   createPathaoStore,

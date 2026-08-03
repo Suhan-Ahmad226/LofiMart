@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, Settings, Store } from 'lucide-react';
-import ProfileManager from '@/src/components/profile/ProfileManager';
-import StorefrontSettingsPanel from '@/src/components/seller/StorefrontSettingsPanel';
-import TelegramConnectPanel from '@/src/features/seller/components/TelegramConnectPanel';
+import ProfileManager from '../../../components/profile/ProfileManager';
+import StorefrontSettingsPanel from '../../../components/seller/StorefrontSettingsPanel';
+import TelegramConnectPanel from '../../../features/seller/components/TelegramConnectPanel';
 
 export const SellerSettingsPage = () => {
   const [openSection, setOpenSection] = useState<'storefront' | 'account'>('storefront');

@@ -3,7 +3,7 @@ import { createClient as createSupabaseBrowserClient } from '@supabase/supabase-
 type BrowserSupabaseClient = ReturnType<typeof createSupabaseBrowserClient>;
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __lofimartSupabaseBrowserClient__: BrowserSupabaseClient | undefined;
 }
 

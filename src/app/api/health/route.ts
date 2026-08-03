@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { checkDatabaseHealth } from '@/src/services/database/prisma';
-import { checkRedisHealth } from '@/src/services/messaging/redis';
-import { getQueueHealth } from '@/src/workers/queue';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
-import { apiSuccess } from '@/src/lib/api-response';
+import { checkDatabaseHealth } from '../../../features/shared/services/database/prisma';
+import { checkRedisHealth } from '../../../features/shared/services/messaging/redis';
+import { getQueueHealth } from '../../../workers/queue';
+import { secureApiRoute } from '../../../server/next/apiSecurity';
+import { apiSuccess } from '../../../lib/api-response';
 
 export const runtime = 'nodejs';
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { z } from 'zod';
-import { requireUser } from '@/src/server/next/requireUser';
+import { requireUser } from '../../../../server/next/requireUser';
 
 const AddToCartSchema = z.object({
   productId: z.string(),

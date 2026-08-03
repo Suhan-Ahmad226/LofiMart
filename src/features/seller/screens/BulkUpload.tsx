@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, Download, FileSpreadsheet, Loader2, UploadCloud, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Link } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
+import { Link } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 type UploadRow = {
   name: string;

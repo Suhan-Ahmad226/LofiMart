@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCcw, ShieldCheck, Clock, AlertCircle } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 
 export const ReturnsPage = () => {
   return (

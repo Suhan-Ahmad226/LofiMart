@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Ban, Search, Shield, ShieldCheck, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useUser } from '@/src/context/UserContext';
-import { CenteredLoader, EmptyState } from '@/src/components/ui/FeedbackState';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { CenteredLoader, EmptyState } from '../../../components/ui/FeedbackState';
 
 interface AdminUserRecord {
   id: string;

@@ -12,12 +12,12 @@ import {
   Wand2,
   Zap,
 } from 'lucide-react';
-import { Link, useNavigate } from '@/src/lib/navigation';
-import AIStylist from '@/src/components/ai/AIStylist';
-import SizePredictor from '@/src/components/ai/SizePredictor';
-import VoiceSearch from '@/src/components/ai/VoiceSearch';
-import VoiceCommerce from '@/src/components/ai/VoiceCommerce';
-import DemoPageLinks from '@/src/components/DemoPageLinks';
+import { Link, useNavigate } from '../../../lib/navigation';
+import AIStylist from '../../../components/ai/AIStylist';
+import SizePredictor from '../../../components/ai/SizePredictor';
+import VoiceSearch from '../../../components/ai/VoiceSearch';
+import VoiceCommerce from '../../../components/ai/VoiceCommerce';
+import DemoPageLinks from '../../../components/DemoPageLinks';
 
 type FeatureTab = 'overview' | 'stylist' | 'size' | 'voice-search' | 'voice-commerce';
 

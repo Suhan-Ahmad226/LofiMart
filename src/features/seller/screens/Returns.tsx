@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, RotateCcw, ShieldAlert } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { Link } from '../../../lib/navigation';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 
 const RETURN_STATUSES = ['returned', 'cancelled', 'delivery_failed', 'return_in_transit'];
 

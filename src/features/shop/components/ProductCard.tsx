@@ -1,15 +1,15 @@
 import React from 'react';
-import { Link } from '@/src/lib/navigation';
-import { Star, ShoppingCart, Heart, Scale } from 'lucide-react';
-import { Product } from '@/src/types';
-import { formatPrice } from '@/src/lib/utils';
-import { useCart } from '@/src/context/CartContext';
-import { useWishlist } from '@/src/context/WishlistContext';
-import { useCompare } from '@/src/context/CompareContext';
+import { Link } from '../../../lib/navigation';
+import { Star, ShoppingCart, Heart, Scale, Eye } from 'lucide-react';
+import { Product } from '../../../types';
+import { formatPrice } from '../../../lib/utils';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useWishlist } from '../../../features/shop/state/WishlistContext';
+import { useCompare } from '../../../features/shop/state/CompareContext';
 import toast from 'react-hot-toast';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
 
-export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: Product) => void }> = ({ product, onQuickView }) => {
   const { items, addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toggleCompare, isInCompare } = useCompare();
@@ -47,6 +47,17 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <div className="absolute top-3 left-3 bg-accent text-white text-xs font-bold px-2 py-1 rounded">
             -{discount}%
           </div>
+        )}
+        {onQuickView && (
+          <button
+            type="button"
+            onClick={() => onQuickView(product)}
+            className="absolute left-3 top-3 inline-flex items-center justify-center rounded-full bg-white/85 p-2 text-sm shadow-sm backdrop-blur-sm transition-colors text-muted-foreground hover:text-primary"
+            aria-label="Quick view"
+            title="Quick view"
+          >
+            <Eye size={18} />
+          </button>
         )}
         <button 
           onClick={() => toggleWishlist(product)}

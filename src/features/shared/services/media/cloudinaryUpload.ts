@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../../lib/env';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([

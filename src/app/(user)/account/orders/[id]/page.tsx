@@ -1,3 +1,3 @@
 'use client';
 
-export { CustomerOrderDetails as default } from '@/src/features/customer/screens/OrderDetails';
+export { CustomerOrderDetails as default } from '../../../../../features/customer/screens/OrderDetails';

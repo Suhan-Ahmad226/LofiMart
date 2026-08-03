@@ -1,1 +1,1 @@
-export * from '@/src/features/shared/services/database/prisma';
+export * from '../../features/shared/services/database/prisma';

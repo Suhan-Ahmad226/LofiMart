@@ -19,16 +19,16 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
-import { useUser } from '@/src/context/UserContext';
-import { copyText } from '@/src/lib/browser-actions';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
-import { Product } from '@/src/types';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { ProductCard } from '@/src/components/ProductCard';
-import { buildSellerDashboardIntelligence } from '@/src/features/seller/lib/dashboard-intelligence';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { copyText } from '../../../lib/browser-actions';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
+import { Product } from '../../../types';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { ProductCard } from '../../../components/ProductCard';
+import { buildSellerDashboardIntelligence } from '../../../features/seller/lib/dashboard-intelligence';
 
-const SalesPerformanceChart = dynamic(() => import('@/src/components/seller/SalesPerformanceChart'), {
+const SalesPerformanceChart = dynamic(() => import('@/components/seller/SalesPerformanceChart'), {
   ssr: false,
   loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-secondary" />,
 });

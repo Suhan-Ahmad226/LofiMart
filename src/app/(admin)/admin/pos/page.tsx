@@ -1,4 +1,4 @@
-import { AdminPosPage } from '@/src/features/admin/screens/POS';
+import { AdminPosPage } from '../../../../features/admin/screens/POS';
 
 export default function Page() {
   return <AdminPosPage />;

@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerReturnsPage as default } from '@/src/features/seller/screens/Returns';
+export { SellerReturnsPage as default } from '../../../../../features/seller/screens/Returns';

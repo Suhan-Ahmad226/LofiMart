@@ -1,3 +1,3 @@
 'use client';
 
-export { FlashSalePage as default } from '@/src/features/shop/screens/FlashSalePage';
+export { FlashSalePage as default } from '../../../features/shop/screens/FlashSalePage';

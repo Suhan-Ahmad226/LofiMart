@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, CreditCard, Loader2, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 
 type PayoutMethod = {
   id: string;

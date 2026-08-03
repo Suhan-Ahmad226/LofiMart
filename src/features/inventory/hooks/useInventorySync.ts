@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useInventoryDispatch } from '@/src/context/InventoryContext';
+import { useInventoryDispatch } from '../../../features/inventory/state/InventoryContext';
 
 type SyncStatus = 'idle' | 'connecting' | 'live' | 'local' | 'error';
 

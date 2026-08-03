@@ -1,1 +1,1 @@
-export * from '@/src/context/UserContext';
+export * from '../../../features/shared/state/UserContext';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { getBlurPlaceholderImage, getOptimizedCloudinaryImage } from '@/src/lib/cloudinary';
+import { getBlurPlaceholderImage, getOptimizedCloudinaryImage } from '../../../lib/cloudinary';
 
 type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   src: string | null | undefined;

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, ExternalLink, Eye, Loader2, Search, ShieldAlert, Store, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useNavigate } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 
 type SellerRow = {
   id: string;

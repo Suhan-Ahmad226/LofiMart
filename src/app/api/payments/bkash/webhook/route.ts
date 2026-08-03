@@ -1,12 +1,12 @@
-import { apiError, apiSuccess } from '@/src/lib/api-response';
-import { getServerEnv } from '@/src/lib/env';
-import { logger } from '@/src/lib/logger';
+import { apiError, apiSuccess } from '../../../../../lib/api-response';
+import { getServerEnv } from '../../../../../lib/env';
+import { logger } from '../../../../../lib/logger';
 import {
   getBkashTransactionByPaymentId,
   queryBkashPayment,
   syncBkashOrderPaymentState,
-} from '@/src/services/payments/bkash';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
+} from '../../../../../features/pos/services/payments/bkash';
+import { secureApiRoute } from '../../../../../server/next/apiSecurity';
 
 export const runtime = 'nodejs';
 

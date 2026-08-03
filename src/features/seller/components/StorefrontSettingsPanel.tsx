@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { CheckCircle2, ExternalLink, Globe, Loader2, RefreshCw, Sparkles } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import CloudinaryUpload from '@/src/components/media/CloudinaryUpload';
-import { Link } from '@/src/lib/navigation';
-import { CenteredLoader, FormNotice } from '@/src/components/ui/FeedbackState';
+import { useUser } from '../../../features/shared/state/UserContext';
+import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
+import { Link } from '../../../lib/navigation';
+import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
 
 type StorefrontSettings = {
   store_name: string;

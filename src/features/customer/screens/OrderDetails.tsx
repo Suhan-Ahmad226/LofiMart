@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from '@/src/lib/navigation';
+import { Link, useNavigate, useParams } from '../../../lib/navigation';
 import { AlertTriangle, CheckCircle, ChevronLeft, Clock, CreditCard, Download, ExternalLink, Loader2, MapPin, Package, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatPrice } from '@/src/lib/utils';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { useCart } from '@/src/context/CartContext';
-import { useUser } from '@/src/context/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 export const CustomerOrderDetails = () => {
   const { id } = useParams();

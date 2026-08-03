@@ -9,11 +9,11 @@ import {
   ScrollText,
   Sparkles,
 } from 'lucide-react';
-import MicroInteraction from '@/src/components/animations/MicroInteraction';
-import ScrollAnimation from '@/src/components/animations/ScrollAnimation';
-import LoadingAnimation from '@/src/components/animations/LoadingAnimation';
-import NotificationContainer, { useNotification } from '@/src/components/animations/NotificationContainer';
-import DemoPageLinks from '@/src/components/DemoPageLinks';
+import MicroInteraction from '../../../components/animations/MicroInteraction';
+import ScrollAnimation from '../../../components/animations/ScrollAnimation';
+import LoadingAnimation from '../../../components/animations/LoadingAnimation';
+import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import DemoPageLinks from '../../../components/DemoPageLinks';
 
 const microInteractionItems = [
   { label: 'Bounce', helper: 'Hover to see attention-grabbing movement.', type: 'bounce' as const, trigger: 'hover' as const, color: 'bg-blue-600' },

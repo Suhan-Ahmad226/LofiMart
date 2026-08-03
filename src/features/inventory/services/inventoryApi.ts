@@ -1,5 +1,5 @@
-import api from '@/src/lib/api';
-import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '@/src/types/inventory';
+import api from '../../../lib/api';
+import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '../../../types/inventory';
 
 const CACHE_TTL = 5 * 60 * 1000; // 5min
 

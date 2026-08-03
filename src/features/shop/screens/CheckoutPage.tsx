@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from '@/src/lib/navigation';
+import { Link, useNavigate } from '../../../lib/navigation';
 import {
   AlertCircle,
   ArrowRight,
@@ -16,16 +16,16 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { useCart } from '@/src/context/CartContext';
-import { useUser } from '@/src/context/UserContext';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 import {
   DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS,
   isKnownCheckoutPaymentMethod,
-} from '@/src/lib/commerce-channels';
-import { formatPrice, cn } from '@/src/lib/utils';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { FormNotice } from '@/src/components/ui/FeedbackState';
-import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '@/src/lib/bangladesh-address';
+} from '../../../lib/commerce-channels';
+import { formatPrice, cn } from '../../../lib/utils';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { FormNotice } from '../../../components/ui/FeedbackState';
+import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '../../../lib/bangladesh-address';
 
 type PaymentMethod = 'cod' | 'bkash' | 'bank' | 'gateway';
 type PaymentStep = 'number' | 'otp' | 'pin' | 'success';

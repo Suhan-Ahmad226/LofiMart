@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Coins, Package, ShieldCheck, Tag, Wallet, BadgeCheck, Users, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { useUser } from '@/src/context/UserContext';
-import { Link, useNavigate } from '@/src/lib/navigation';
-import { CenteredLoader, EmptyState } from '@/src/components/ui/FeedbackState';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { Link, useNavigate } from '../../../lib/navigation';
+import { CenteredLoader, EmptyState } from '../../../components/ui/FeedbackState';
 
 type NotificationItem = {
   id: string;

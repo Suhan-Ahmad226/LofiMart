@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link, useNavigate } from '@/src/lib/navigation';
+import { useSearchParams, Link, useNavigate } from '../../../lib/navigation';
 import { Search, Loader2 } from 'lucide-react';
-import { Product } from '@/src/types';
-import { ProductCard } from '@/src/components/ProductCard';
-import { ProductGridSkeleton } from '@/src/components/ui/DataSkeletons';
-import { EmptyState } from '@/src/components/ui/FeedbackState';
-import { getCachedClientValue } from '@/src/lib/client-cache';
+import { Product } from '../../../types';
+import { ProductCard } from '../../../components/ProductCard';
+import { ProductGridSkeleton } from '../../../components/ui/DataSkeletons';
+import { EmptyState } from '../../../components/ui/FeedbackState';
+import { getCachedClientValue } from '../../../lib/client-cache';
 
 export const SearchPage = () => {
   const RECENT_SEARCHES_KEY = 'amarshop_recent_searches';

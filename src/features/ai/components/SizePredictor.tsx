@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle, Loader2, Ruler, ShieldCheck } from 'lucide-react';
-import { useNavigate } from '@/src/lib/navigation';
-import { useSizePredictor } from '@/src/hooks/useSizePredictor';
-import { ProductCard } from '@/src/components/ProductCard';
-import type { Product } from '@/src/types';
+import { useNavigate } from '../../../lib/navigation';
+import { useSizePredictor } from '../../../hooks/useSizePredictor';
+import { ProductCard } from '../../../components/ProductCard';
+import type { Product } from '../../../types';
 
 const measurementFields = [
   { name: 'height', label: 'Height', unit: 'cm', min: 130, max: 230 },

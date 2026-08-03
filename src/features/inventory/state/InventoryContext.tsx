@@ -6,10 +6,10 @@ import {
   Supplier,
   InventoryItem,
   PurchaseOrder,
-} from '@/src/types/inventory';
-import { inventoryApi } from '@/src/services/inventoryApi';
+} from '../../../types/inventory';
+import { inventoryApi } from '../../../services/inventoryApi';
 import { useEffect } from 'react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 // initial state
 const initialState: InventoryContextState = {

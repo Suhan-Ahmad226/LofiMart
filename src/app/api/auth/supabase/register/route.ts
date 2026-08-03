@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 const ALLOWED_REDIRECT_ORIGINS = [
   process.env.FRONTEND_URL,
-  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NEXT_PUBLIC_SITE_URL,
 ].filter(Boolean) as string[];
 
 function isRedirectUrlAllowed(url: string): boolean {

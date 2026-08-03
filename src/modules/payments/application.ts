@@ -1,7 +1,7 @@
 import { paymentCompletedEvent } from '../../events/commerce';
 import type { EventPublisher } from '../../events/contracts';
 import { sendPaymentReceivedNotificationsForOrder } from '../../features/telegram_bot/lib/notificationService';
-import { prisma } from '../../services/database/prisma';
+import { prisma } from '../../features/shared/services/database/prisma';
 import { enqueueEmail, enqueueNotification, enqueuePaymentProcessing } from '../../workers/queue';
 import type {
   CreatePaymentRequest,

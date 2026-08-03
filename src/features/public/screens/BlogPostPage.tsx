@@ -2,9 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Loader2, Tag, User } from 'lucide-react';
-import { Link, useParams } from '@/src/lib/navigation';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { decorateBlogPost, formatBlogDate, type BlogPost, type DecoratedBlogPost } from '@/src/lib/blog';
+import { Link, useParams } from '../../../lib/navigation';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { decorateBlogPost, formatBlogDate, type BlogPost, type DecoratedBlogPost } from '../../../lib/blog';
 
 function BlogPostSkeleton() {
   return (

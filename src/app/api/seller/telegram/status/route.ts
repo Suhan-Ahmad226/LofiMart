@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { getSellerDeepLink } from '@/src/features/telegram_bot';
+import { getSellerDeepLink } from '../../../../../features/telegram_bot';
 import { requireApiUser, requireSellerRole } from '../../../_compat/shared';
 
 export const runtime = 'nodejs';

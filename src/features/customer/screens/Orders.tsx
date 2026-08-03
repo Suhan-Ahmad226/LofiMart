@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Package, Clock, ChevronRight, AlertCircle, Truck, Loader2 } from 'lucide-react';
-import { formatPrice } from '@/src/lib/utils';
-import { Link, useNavigate } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { useCart } from '@/src/context/CartContext';
-import { ListCardSkeleton } from '@/src/components/ui/DataSkeletons';
-import { EmptyState } from '@/src/components/ui/FeedbackState';
+import { formatPrice } from '../../../lib/utils';
+import { Link, useNavigate } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { ListCardSkeleton } from '../../../components/ui/DataSkeletons';
+import { EmptyState } from '../../../components/ui/FeedbackState';
 import toast from 'react-hot-toast';
 
 export const CustomerOrdersPage = () => {

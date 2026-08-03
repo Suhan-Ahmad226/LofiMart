@@ -1,4 +1,4 @@
-import bdAddressData from '../data/bangladesh-addresses.json';
+import bdAddressData from '../data/bangladesh-addresses.json' with { type: 'json' };
 
 type RawUpazila =
   | string
@@ -51,8 +51,6 @@ const normalizedDivisions: NormalizedDivision[] = ((bdAddressData as { divisions
   }))
   .filter((division) => division.name)
   .sort((left, right) => left.name.localeCompare(right.name));
-
-export const bangladeshDivisions = normalizedDivisions;
 
 export function getDivisionOptions() {
   return normalizedDivisions.map((division) => division.name);

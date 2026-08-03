@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
+import { Link, useLocation, useNavigate } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -40,8 +40,8 @@ import {
   ChevronDown,
   ChevronsUpDown,
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
-import { SellerDashboardShell } from '@/src/components/seller/SellerDashboardShell';
+import { cn } from '../../../lib/utils';
+import { SellerDashboardShell } from '../../../components/seller/SellerDashboardShell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -1455,10 +1455,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, type
             className={cn(
               'hidden flex-shrink-0 self-start transition-all duration-300 lg:block',
               sidebarWidth,
-              isSeller ? 'seller-sidebar-wrap lg:sticky lg:top-0' : '',
+              isSeller ? 'seller-sidebar-wrap lg:sticky lg:top-0' : 'lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden',
             )}
           >
-            <div>{sidebarContent}</div>
+            <div className="dashboard-sidebar-scroll flex h-full flex-col overflow-y-auto overflow-x-hidden pb-5">{sidebarContent}</div>
           </aside>
         ) : null}
 

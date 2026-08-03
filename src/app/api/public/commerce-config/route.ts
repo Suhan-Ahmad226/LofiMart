@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prismaDirect } from '@/src/services/database/prisma';
+import { prismaDirect } from '../../../../features/shared/services/database/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

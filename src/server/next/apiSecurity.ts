@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isAllowedRequestOrigin } from '../security/origin';
 import { requirePermission, requireRole, requireUser, type ApiUser } from './requireUser';
 import { takeRateLimitToken } from '../rateLimit';
-import type { Permission } from '@/src/modules/rbac';
+import type { Permission } from '../../modules/rbac/index';
 
 type SecurityOptions = {
   keyPrefix: string;

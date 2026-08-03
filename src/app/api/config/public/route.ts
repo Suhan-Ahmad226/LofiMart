@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getPublicEnv, getServerEnv } from '@/src/lib/env';
-import { edgeCacheControl } from '@/src/server/httpCache';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
-import { apiSuccess } from '@/src/lib/api-response';
+import { getPublicEnv, getServerEnv } from '../../../../lib/env';
+import { edgeCacheControl } from '../../../../server/httpCache';
+import { secureApiRoute } from '../../../../server/next/apiSecurity';
+import { apiSuccess } from '../../../../lib/api-response';
 
 export const runtime = 'nodejs';
 

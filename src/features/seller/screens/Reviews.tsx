@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, MessageSquareText, Star } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
-import { useUser } from '@/src/context/UserContext';
-import { Product } from '@/src/types';
+import { Link } from '../../../lib/navigation';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { Product } from '../../../types';
 
 type ProductReview = {
   id: string;

@@ -23,19 +23,19 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { useUser } from '@/src/context/UserContext';
-import { getCachedClientValue } from '@/src/lib/client-cache';
+import { Link } from '../../../lib/navigation';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { getCachedClientValue } from '../../../lib/client-cache';
 import toast from 'react-hot-toast';
 const SocialShare = dynamic(
-  () => import('@/src/components/SocialShare').then((module) => module.SocialShare),
+  () => import('@/components/SocialShare').then((module) => module.SocialShare),
   {
     ssr: false,
     loading: () => <div className="h-10 w-full animate-pulse rounded-2xl bg-slate-100" />,
   },
 );
-const CloudinaryUpload = dynamic(() => import('@/src/components/media/CloudinaryUpload'), {
+const CloudinaryUpload = dynamic(() => import('@/components/media/CloudinaryUpload'), {
   ssr: false,
   loading: () => <div className="h-28 animate-pulse rounded-[1.5rem] bg-slate-100" />,
 });

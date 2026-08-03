@@ -18,8 +18,6 @@ export type DecoratedBlogPost = BlogPost & {
   minutes: number;
 };
 
-export const fallbackPosts: BlogPost[] = [];
-
 export function formatBlogDate(value?: string) {
   if (!value) {
     return 'Recently updated';

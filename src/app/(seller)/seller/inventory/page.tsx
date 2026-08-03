@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerInventoryPage as default } from '@/src/features/seller/screens/Inventory';
+export { SellerInventoryPage as default } from '../../../../features/seller/screens/Inventory';

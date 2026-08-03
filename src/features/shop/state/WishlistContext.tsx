@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product } from '@/src/types';
-import { useUser } from '@/src/context/UserContext';
+import { Product } from '../../../types';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 interface WishlistContextType {
   items: Product[];

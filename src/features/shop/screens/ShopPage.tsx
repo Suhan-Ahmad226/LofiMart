@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from '@/src/lib/navigation';
+import { useSearchParams, Link } from '../../../lib/navigation';
 import { ChevronDown, LayoutGrid, List, ChevronRight, Search, Star, Sparkles, Scale, SlidersHorizontal, X } from 'lucide-react';
-import { ProductCard } from '@/src/components/ProductCard';
-import { Product } from '@/src/types';
-import { useCompare } from '@/src/context/CompareContext';
-import { getCachedClientValue } from '@/src/lib/client-cache';
+import { ProductCard } from '../../../components/ProductCard';
+import { Product } from '../../../types';
+import { useCompare } from '../../../features/shop/state/CompareContext';
+import { getCachedClientValue } from '../../../lib/client-cache';
+import { ProductQuickView } from '../../../features/shop/components/ProductQuickView';
 
 function getProductList(payload: unknown): Product[] {
   if (Array.isArray(payload)) return payload;
@@ -47,6 +48,7 @@ export const ShopPage = () => {
   const [maxPrice, setMaxPrice] = useState(50000);
   const [searchDraft, setSearchDraft] = useState(queryParam || '');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -524,7 +526,11 @@ export const ShopPage = () => {
           ) : filteredProducts.length > 0 ? (
             <div className={viewMode === 'grid' ? 'responsive-grid' : 'grid grid-cols-1 gap-6'}>
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onQuickView={setQuickViewProduct}
+                />
               ))}
             </div>
           ) : (
@@ -552,6 +558,14 @@ export const ShopPage = () => {
           )}
         </main>
       </div>
+
+      {quickViewProduct && (
+        <ProductQuickView
+          product={quickViewProduct}
+          isOpen={!!quickViewProduct}
+          onClose={() => setQuickViewProduct(null)}
+        />
+      )}
     </div>
   );
 };

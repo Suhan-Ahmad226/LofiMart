@@ -2,21 +2,21 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { useLocation } from '@/src/lib/navigation';
+import { useLocation } from '../../../lib/navigation';
 import { MessageCircle } from 'lucide-react';
-import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '@/src/components/Layout';
-import PageTransition from '@/src/components/animations/PageTransition';
-import { NotificationContainer, useNotification } from '@/src/components/animations/NotificationContainer';
-import PWAInstallPrompt from '@/src/components/PWAInstallPrompt';
-import OfflineIndicator from '@/src/components/OfflineIndicator';
+import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '../../../components/Layout';
+import PageTransition from '../../../components/animations/PageTransition';
+import { NotificationContainer, useNotification } from '../../../components/animations/NotificationContainer';
+import PWAInstallPrompt from '../../../components/PWAInstallPrompt';
+import OfflineIndicator from '../../../components/OfflineIndicator';
 import { Toaster } from 'react-hot-toast';
-import { initOfflineStorage, offlineStorage } from '@/src/utils/offlineStorage';
-import { useUser } from '@/src/context/UserContext';
-import SiteMotionEnhancer from '@/src/components/animations/SiteMotionEnhancer';
-const ChatBot = dynamic(() => import('@/src/components/ai/ChatBot'), { ssr: false });
-const CartRecoveryTracker = dynamic(() => import('@/src/components/conversion/CartRecoveryTracker'), { ssr: false });
-const ExitIntentOffer = dynamic(() => import('@/src/components/conversion/ExitIntentOffer'), { ssr: false });
-const PerformanceMonitor = dynamic(() => import('@/src/components/analytics/PerformanceMonitor'), { ssr: false });
+import { initOfflineStorage, offlineStorage } from '../../../utils/offlineStorage';
+import { useUser } from '../../../features/shared/state/UserContext';
+import SiteMotionEnhancer from '../../../components/animations/SiteMotionEnhancer';
+const ChatBot = dynamic(() => import('@/components/ai/ChatBot'), { ssr: false });
+const CartRecoveryTracker = dynamic(() => import('@/components/conversion/CartRecoveryTracker'), { ssr: false });
+const ExitIntentOffer = dynamic(() => import('@/components/conversion/ExitIntentOffer'), { ssr: false });
+const PerformanceMonitor = dynamic(() => import('@/components/analytics/PerformanceMonitor'), { ssr: false });
 
 function ChatBotWrapper() {
   const { user } = useUser();
@@ -269,10 +269,14 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   const mainClassName = isOpsRoute
     ? 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-slate-50'
-    : 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-[radial-gradient(circle_at_top,rgba(40,167,69,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,248,248,0.98)_22%,rgba(234,247,238,0.68)_100%)] pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0';
+    : 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-[radial-gradient(circle_at_top,rgba(40,167,69,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,248,248,0.98)_22%,rgba(234,247,238,0.68)_100%)]';
+
+  const footerClassName = isOpsRoute
+    ? ''
+    : 'defer-visibility-auto md:pb-0 pb-[var(--bottom-nav-height)]';
 
   return (
-    <div className="mobile-app-shell min-h-screen flex flex-col bg-background text-foreground relative overflow-x-clip">
+    <div className="min-h-screen flex flex-col bg-background text-foreground relative overflow-x-clip">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
@@ -283,13 +287,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           {children}
         </PageTransition>
       </main>
-      {showPublicChrome ? <MobileBottomNav /> : null}
-      <ScrollToTopButton />
       {showPublicChrome ? (
-        <div className="defer-visibility-auto">
+        <div className={footerClassName}>
           <Footer />
         </div>
       ) : null}
+      {showPublicChrome ? <MobileBottomNav /> : null}
+      <ScrollToTopButton />
       <NotificationContainer notifications={notifications} onClose={removeNotification} />
       {idleReady ? (
         <>
@@ -304,7 +308,8 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setChatRequested(true)}
-                  className="fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl sm:bottom-6 sm:right-6"
+                  className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl sm:bottom-6 sm:right-6"
+                  style={{ bottom: 'calc(var(--bottom-nav-height, 5.5rem) + 0.5rem)' }}
                   aria-label="Open chat assistant"
                   title="Open chat assistant"
                 >

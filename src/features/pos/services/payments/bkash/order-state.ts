@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/server';
-import { logger } from '@/src/lib/logger';
-import { sendPaymentReceivedNotificationsForOrder } from '@/src/features/telegram_bot';
+import { logger } from '../../../../../lib/logger';
+import { sendPaymentReceivedNotificationsForOrder } from '../../../../telegram_bot/index';
 import type { BkashExecutePaymentResponse, BkashQueryPaymentResponse, BkashVerificationResult } from './types';
 
 type BkashTransactionMetadata = Record<string, string>;

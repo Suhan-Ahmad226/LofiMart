@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, MapPin, ShieldCheck, Store, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Link } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { CenteredLoader, FormNotice } from '@/src/components/ui/FeedbackState';
+import { Link } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
 
 type OnboardingStep = {
   id: string;

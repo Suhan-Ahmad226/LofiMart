@@ -1,10 +1,10 @@
-import { prisma } from '@/src/services/database/prisma';
+import { prisma } from '../../../features/shared/services/database/prisma';
 import type {
   CreateWarehouseInput,
   InventoryRepository,
   SellerInventoryItem,
   WarehouseView,
-} from '@/src/modules/inventory/contracts';
+} from '../../../modules/inventory/contracts';
 
 const DEFAULT_WAREHOUSES = [
   {

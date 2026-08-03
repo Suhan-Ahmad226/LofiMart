@@ -1,9 +1,9 @@
 import { Queue, Worker } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { getServerEnv } from '../lib/env';
-import { ensureRedis } from '../services/messaging/redis';
+import { ensureRedis } from '../features/shared/services/messaging/redis';
 import { inventoryModule } from '../modules/inventory/index';
-import { prisma } from '../services/database/prisma';
+import { prisma } from '../features/shared/services/database/prisma';
 
 export const QUEUE_NAMES = {
   inventoryAlerts: 'inventory-alerts',

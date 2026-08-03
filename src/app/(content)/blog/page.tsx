@@ -1,3 +1,3 @@
 'use client';
 
-export { BlogPage as default } from '@/src/features/public/screens/BlogPage';
+export { BlogPage as default } from '../../../features/public/screens/BlogPage';

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, Gauge, Loader2, RefreshCw, TimerReset, TriangleAlert } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 type PerformanceMetricSummary = {
   name: string;

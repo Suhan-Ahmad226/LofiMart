@@ -5,9 +5,9 @@ import {
   AVAILABLE_CHECKOUT_PAYMENT_METHODS,
   AVAILABLE_COURIER_PROVIDERS,
   AVAILABLE_MANUAL_ORDER_PAYMENT_METHODS,
-} from '@/src/lib/commerce-channels';
-import { useUser } from '@/src/context/UserContext';
-import { CenteredLoader, FormNotice } from '@/src/components/ui/FeedbackState';
+} from '../../../lib/commerce-channels';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
 
 type SettingsState = {
   platform_name: string;

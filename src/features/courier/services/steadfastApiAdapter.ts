@@ -1,10 +1,10 @@
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../lib/env';
 import type {
   CourierAdapter,
   CourierProviderView,
   ShipmentBookingInput,
   ShipmentBookingResult,
-} from '@/src/modules/logistics/contracts';
+} from '../../../modules/logistics/contracts';
 
 function normalizeUrl(baseUrl: string, endpoint: string) {
   if (/^https?:\/\//i.test(endpoint)) {

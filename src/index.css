@@ -11,12 +11,23 @@
   --color-primary-dark: #1e7e34;
   --color-accent: #FF4C4C;
   --color-bg-light: #F8F8F8;
+  --color-secondary: #4a3ee6;
+  --color-secondary-container: #645cff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #e0e3e6;
+  --color-surface: #f7fafd;
+  --color-on-surface-variant: #43474d;
+  --color-outline-variant: #c4c6ce;
+  --color-outline: #74777e;
+  --color-vibrant-cyan: #80E9FF;
+  --color-on-primary-fixed-variant: #314865;
 }
 
 @layer base {
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
     overflow-x: clip;
     text-size-adjust: 100%;
   }
@@ -42,6 +53,14 @@
     --text-h2: clamp(1.5rem, 3vw, 2.5rem);
     --text-h3: clamp(1.125rem, 2vw, 1.5rem);
     --text-body: clamp(0.9375rem, 1vw, 1rem);
+    --header-height: 4rem;
+    --bottom-nav-height: 5.5rem;
+  }
+
+  @media (max-width: 767px) {
+    html {
+      scroll-padding-top: 4.5rem;
+    }
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display;
@@ -229,6 +248,7 @@
     width: 100%;
     max-width: 100vw;
     box-shadow: 0 20px 40px -34px rgba(15, 23, 42, 0.35);
+    min-height: var(--header-height);
   }
 
   .glass-nav--scrolled {
@@ -249,7 +269,7 @@
   }
 
   .mobile-app-shell {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: 0;
   }
 
   .app-bottom-nav {
@@ -272,6 +292,7 @@
       transform 240ms ease,
       opacity 240ms ease,
       box-shadow 240ms ease;
+    --bottom-nav-height: 5.5rem;
   }
 
   .app-bottom-nav__item {
@@ -381,7 +402,7 @@
 
   .mobile-sticky-toolbar {
     position: sticky;
-    top: 4.5rem;
+    top: calc(var(--header-height) + 0.5rem);
     z-index: 20;
     margin-inline: -0.25rem;
     border: 1px solid rgba(15, 23, 42, 0.06);
@@ -400,11 +421,33 @@
     display: none;
   }
 
+  .dashboard-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.12) transparent;
+  }
+
+  .dashboard-sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .dashboard-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dashboard-sidebar-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.12);
+    border-radius: 9999px;
+  }
+
+  .dashboard-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(15, 23, 42, 0.25);
+  }
+
   .scroll-top-button {
     --scroll-progress: 0deg;
     position: fixed;
     right: 1rem;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    bottom: calc(var(--bottom-nav-height) + 0.25rem + env(safe-area-inset-bottom));
     z-index: 54;
     display: inline-flex;
     align-items: center;
@@ -715,7 +758,7 @@
 
     .scroll-top-button {
       right: 0.75rem;
-      bottom: calc(5.35rem + env(safe-area-inset-bottom));
+      bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
       padding: 0.5rem;
     }
 
@@ -875,6 +918,27 @@
     pointer-events: none;
     border-radius: inherit;
     opacity: 0;
+  }
+
+  .footer-link-hover {
+    position: relative;
+    display: inline-block;
+  }
+  .footer-link-hover::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    transform: scaleX(0);
+    height: 1px;
+    bottom: 0;
+    left: 0;
+    background-color: currentColor;
+    transform-origin: bottom right;
+    transition: transform 0.25s ease-out;
+  }
+  .footer-link-hover:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
   }
 
   .dashboard-stat-chip {

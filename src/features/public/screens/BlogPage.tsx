@@ -11,16 +11,15 @@ import {
   Tag,
   User,
 } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { Skeleton } from '@/src/components/ui/Skeleton';
+import { Link } from '../../../lib/navigation';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import {
   decorateBlogPost,
-  fallbackPosts,
   formatBlogDate,
   getBlogExcerpt,
   type BlogPost,
   type DecoratedBlogPost,
-} from '@/src/lib/blog';
+} from '../../../lib/blog';
 
 function BlogPageSkeleton() {
   return (

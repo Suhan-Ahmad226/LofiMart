@@ -5,7 +5,7 @@ import type {
   PaymentWebhookPayload,
   RefundResult,
   RefundRequest,
-} from '@/src/modules/payments/contracts';
+} from '../../../../modules/payments/contracts';
 
 export class SSLCommerzGateway implements PaymentGateway {
   provider = 'sslcommerz' as const;

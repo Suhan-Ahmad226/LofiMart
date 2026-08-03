@@ -1,3 +1,3 @@
 'use client';
 
-export { CustomerInvoicePage as default } from '@/src/features/customer/screens/InvoicePage';
+export { CustomerInvoicePage as default } from '../../../../../../features/customer/screens/InvoicePage';

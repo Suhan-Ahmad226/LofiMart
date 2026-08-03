@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerOverview as default } from '@/src/features/reseller/screens/Overview';
+export { ResellerOverview as default } from '../../../../features/reseller/screens/Overview';

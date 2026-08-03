@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { CartProvider } from '@/src/context/CartContext';
-import { UserProvider } from '@/src/context/UserContext';
-import { WishlistProvider } from '@/src/context/WishlistContext';
-import { InventoryProvider } from '@/src/context/InventoryContext';
-import { CompareProvider } from '@/src/context/CompareContext';
+import { CartProvider } from '../../../features/shop/state/CartContext';
+import { UserProvider } from '../../../features/shared/state/UserContext';
+import { WishlistProvider } from '../../../features/shop/state/WishlistContext';
+import { InventoryProvider } from '../../../features/inventory/state/InventoryContext';
+import { CompareProvider } from '../../../features/shop/state/CompareContext';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (

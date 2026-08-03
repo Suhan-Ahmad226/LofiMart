@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useNavigate } from '@/src/lib/navigation';
+import { useNavigate } from '../../../../lib/navigation';
 
 export default function Page() {
   const navigate = useNavigate();

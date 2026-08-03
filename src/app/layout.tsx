@@ -5,6 +5,7 @@ import '../index.css';
 import { AppProviders } from '../components/AppProviders';
 import { AppChrome } from '../components/AppChrome';
 import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -190,10 +191,12 @@ export default function RootLayout({
         ) : null}
       </head>
       <body>
-        <MarketingAnalytics />
-        <AppProviders>
-          <AppChrome>{children}</AppChrome>
-        </AppProviders>
+        <ErrorBoundary>
+          <MarketingAnalytics />
+          <AppProviders>
+            <AppChrome>{children}</AppChrome>
+          </AppProviders>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import { Link } from '@/src/lib/navigation';
-import { cn } from '@/src/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/src/components/ui/tooltip';
+import { Link } from '../../../lib/navigation';
+import { cn } from '../../../lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
 import {
   Bell,
   ChevronRight,

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Download, Loader2, Clock3, Truck, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { formatPrice } from '@/src/lib/utils';
-import { useUser } from '@/src/context/UserContext';
-import { Link } from '@/src/lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
+import { formatPrice } from '../../../lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { Link } from '../../../lib/navigation';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
 
 export const SellerOrdersPage = () => {
   const { token } = useUser();

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { inventoryModule } from '@/src/modules/inventory';
-import { deleteCache, getOrSetCache } from '@/src/services/cache/store';
-import { privateNoStore } from '@/src/server/httpCache';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
-import { apiError, apiSuccess } from '@/src/lib/api-response';
-import { invalidateInventoryCache } from '@/src/services/cache/invalidation';
-import { withTenantContext } from '@/src/services/database/tenantContext';
+import { inventoryModule } from '../../../../../../modules/inventory';
+import { deleteCache, getOrSetCache } from '../../../../../../features/shared/services/cache/store';
+import { privateNoStore } from '../../../../../../server/httpCache';
+import { secureApiRoute } from '../../../../../../server/next/apiSecurity';
+import { apiError, apiSuccess } from '../../../../../../lib/api-response';
+import { invalidateInventoryCache } from '../../../../../../features/shared/services/cache/invalidation';
+import { withTenantContext } from '../../../../../../features/shared/services/database/tenantContext';
 
 export const runtime = 'nodejs';
 

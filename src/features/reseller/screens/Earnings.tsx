@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, CreditCard, Download, Loader2, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatPrice } from '@/src/lib/utils';
-import { useUser } from '@/src/context/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 interface ResellerCommission {
   id: string;

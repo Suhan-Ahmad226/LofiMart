@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Package2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react';
@@ -6,10 +6,10 @@ import toast from 'react-hot-toast';
 import {
   DEFAULT_ENABLED_MANUAL_ORDER_PAYMENT_METHODS,
   isKnownManualOrderPaymentMethod,
-} from '@/src/lib/commerce-channels';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
+} from '../../../lib/commerce-channels';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
 
 type Mode = 'seller' | 'reseller';
 
@@ -799,7 +799,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                         <div>
                           <p className="text-sm font-bold text-slate-900">{selectedProduct.name}</p>
                           <p className="text-xs text-slate-500">
-                            SKU: {buildVariantSku(selectedProduct, line) || selectedProduct.sku || 'Auto on save'} Ã¢â‚¬Â¢ Stock: {selectedProduct.stock}
+                            SKU: {buildVariantSku(selectedProduct, line) || selectedProduct.sku || 'Auto on save'} â€¢ Stock: {selectedProduct.stock}
                           </p>
                         </div>
                       </div>
@@ -900,7 +900,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                   <div>
                     <p className="text-sm font-bold text-slate-950">#{order.order_code || order.id}</p>
                     <p className="text-xs text-slate-500">
-                      {order.shipping_address?.name || 'Customer'} Ã¢â‚¬Â¢ {order.shipping_address?.phone || 'No phone'} Ã¢â‚¬Â¢ {order.shipping_address?.city || 'City pending'}
+                      {order.shipping_address?.name || 'Customer'} â€¢ {order.shipping_address?.phone || 'No phone'} â€¢ {order.shipping_address?.city || 'City pending'}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -915,7 +915,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {order.items.slice(0, 4).map((item) => (
                       <span key={item.id} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
-                        {item.sku ? `${item.sku} Ã¢â‚¬Â¢ ` : ''}{item.name || 'Item'} x{item.quantity}
+                        {item.sku ? `${item.sku} â€¢ ` : ''}{item.name || 'Item'} x{item.quantity}
                       </span>
                     ))}
                   </div>

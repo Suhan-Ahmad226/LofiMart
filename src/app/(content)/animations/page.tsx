@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/features/shared/immersive/AnimationDemoPage';
+export { default } from '../../../features/shared/immersive/AnimationDemoPage';

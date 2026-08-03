@@ -1,6 +1,6 @@
 import { eventPublisher } from '../../events/publisher';
 import { createInventoryModule } from './application';
-import { PrismaInventoryRepository } from '../../services/inventory/prismaInventoryRepository';
+import { PrismaInventoryRepository } from '../../features/inventory/services/prismaInventoryRepository';
 
 const inventoryRepository = new PrismaInventoryRepository();
 

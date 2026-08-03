@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '../../products/shared';
-import { uploadDataUrlToCloudinary, validateUploadInput } from '@/src/services/media/cloudinaryUpload';
+import { uploadDataUrlToCloudinary, validateUploadInput } from '../../../../features/shared/services/media/cloudinaryUpload';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

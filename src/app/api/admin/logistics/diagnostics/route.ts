@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/src/services/database/prisma';
-import { courierProviderRegistry } from '@/src/services/logistics/providerRegistry';
-import { requireRole, requireUser } from '@/src/server/next/requireUser';
+import { prisma } from '../../../../../features/shared/services/database/prisma';
+import { courierProviderRegistry } from '../../../../../features/courier/services/providerRegistry';
+import { requireRole, requireUser } from '../../../../../server/next/requireUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

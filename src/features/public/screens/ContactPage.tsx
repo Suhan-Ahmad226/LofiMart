@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from '@/src/lib/navigation';
-import { FormNotice } from '@/src/components/ui/FeedbackState';
+import { useNavigate } from '../../../lib/navigation';
+import { FormNotice } from '../../../components/ui/FeedbackState';
 
 export const ContactPage = () => {
   const navigate = useNavigate();

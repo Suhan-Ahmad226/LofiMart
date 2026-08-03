@@ -1,7 +1,7 @@
 import { eventPublisher } from '../../events/publisher';
 import { shipmentBookedEvent } from '../../events/logistics';
 import { createLogisticsModule } from './application';
-import { courierProviderRegistry } from '../../services/logistics/providerRegistry';
+import { courierProviderRegistry } from '../../features/courier/services/providerRegistry';
 
 const moduleCore = createLogisticsModule({
   registry: courierProviderRegistry,

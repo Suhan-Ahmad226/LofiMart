@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerNetwork as default } from '@/src/features/reseller/screens/Network';
+export { ResellerNetwork as default } from '../../../../features/reseller/screens/Network';

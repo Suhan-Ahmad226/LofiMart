@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { ensureRedis } from '@/src/services/messaging/redis';
-import { getServerEnv } from '@/src/lib/env';
+import { ensureRedis } from '../../../features/shared/services/messaging/redis';
+import { getServerEnv } from '../../../lib/env';
 import { requireApiUser, toPlainNumber } from '../products/shared';
 
 export { requireApiUser, toPlainNumber };

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { CheckCircle2, Copy, ExternalLink, Globe, Loader2, RefreshCw, Sparkles } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import CloudinaryUpload from '@/src/components/media/CloudinaryUpload';
-import { Link } from '@/src/lib/navigation';
-import { CenteredLoader, FormNotice } from '@/src/components/ui/FeedbackState';
-import { copyText } from '@/src/lib/browser-actions';
+import { useUser } from '../../../features/shared/state/UserContext';
+import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
+import { Link } from '../../../lib/navigation';
+import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
+import { copyText } from '../../../lib/browser-actions';
 
 type ResellerStorefrontSettings = {
   store_name: string;

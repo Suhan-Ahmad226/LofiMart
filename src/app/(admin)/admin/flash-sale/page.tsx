@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminFlashSalePage } from '@/src/features/admin/screens/FlashSale';
+import { AdminFlashSalePage } from '../../../../features/admin/screens/FlashSale';
 
 export const dynamic = 'force-dynamic';
 

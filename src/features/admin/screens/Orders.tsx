@@ -9,10 +9,10 @@ import {
   Undo2,
   XCircle,
 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 import toast from 'react-hot-toast';
-import { TableSkeleton } from '@/src/components/ui/DataSkeletons';
+import { TableSkeleton } from '../../../components/ui/DataSkeletons';
 
 type AdminOrder = {
   id: string;

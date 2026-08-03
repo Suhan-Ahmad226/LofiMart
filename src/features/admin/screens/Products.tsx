@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Filter, Eye, Trash2, Printer } from 'lucide-react';
-import { formatPrice } from '@/src/lib/utils';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { useUser } from '@/src/context/UserContext';
-import { Link } from '@/src/lib/navigation';
+import { formatPrice } from '../../../lib/utils';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { Link } from '../../../lib/navigation';
 import toast from 'react-hot-toast';
-import { TableSkeleton } from '@/src/components/ui/DataSkeletons';
-import { printSkuLabel, printSkuLabelSheet } from '@/src/lib/skuLabel';
+import { TableSkeleton } from '../../../components/ui/DataSkeletons';
+import { printSkuLabel, printSkuLabelSheet } from '../../../lib/skuLabel';
 
 export const AdminProductsPage = () => {
   const { token } = useUser();

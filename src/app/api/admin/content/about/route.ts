@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prismaDirect } from '@/src/services/database/prisma';
+import { prismaDirect } from '../../../../../features/shared/services/database/prisma';
 import { requireAdminRole, requireApiUser } from '../../../_compat/shared';
 
 export const runtime = 'nodejs';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Product } from '@/src/types';
+import { Product } from '../../../types';
 
 interface CompareContextType {
   items: Product[];

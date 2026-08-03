@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/server';
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../lib/env';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { sendTelegramDocument } from './telegram';
 

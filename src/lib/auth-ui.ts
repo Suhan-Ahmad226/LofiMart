@@ -155,34 +155,6 @@ export function rememberPendingOAuthRedirect(options?: {
   }
 }
 
-export function getPendingOAuthRedirect() {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const raw = window.sessionStorage.getItem(PENDING_OAUTH_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as {
-      redirectTarget?: string | null;
-      role?: AccountRole | null;
-      referralCode?: string | null;
-      mode?: 'login' | 'register';
-    };
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export function clearPendingOAuthRedirect() {
-  if (typeof window === 'undefined') return;
-
-  try {
-    window.sessionStorage.removeItem(PENDING_OAUTH_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 export function getPasswordStrength(password: string) {
   if (!password) {
     return { label: 'Add a password', tone: 'bg-slate-200', width: 'w-0' };

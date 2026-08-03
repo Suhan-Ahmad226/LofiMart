@@ -1,5 +1,5 @@
-import { prisma } from '@/src/services/database/prisma';
-import type { AccountingRepository, JournalEntryInput, LedgerAccountType } from '@/src/modules/accounting/contracts';
+import { prisma } from '../../../../features/shared/services/database/prisma';
+import type { AccountingRepository, JournalEntryInput, LedgerAccountType } from '../../../../modules/accounting/contracts';
 
 export class PrismaAccountingRepository implements AccountingRepository {
   async ensureAccount(code: string, name: string, type: LedgerAccountType) {

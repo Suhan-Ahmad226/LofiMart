@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useLocation } from '@/src/lib/navigation';
+import { useLocation } from '../../../lib/navigation';
 
 interface PageTransitionProps {
   children: ReactNode;

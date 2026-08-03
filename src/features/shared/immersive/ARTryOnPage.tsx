@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Camera, CheckCircle2, Download, RotateCcw, Share2, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from '@/src/lib/navigation';
-import ARTryOn from '@/src/components/ar/ARTryOn';
-import DemoPageLinks from '@/src/components/DemoPageLinks';
-import NotificationContainer, { useNotification } from '@/src/components/animations/NotificationContainer';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { copyText } from '@/src/lib/browser-actions';
+import { Link, useLocation, useNavigate } from '../../../lib/navigation';
+import ARTryOn from '../../../components/ar/ARTryOn';
+import DemoPageLinks from '../../../components/DemoPageLinks';
+import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { copyText } from '../../../lib/browser-actions';
 
 type ARTryOnLocationState = {
   productName?: string;

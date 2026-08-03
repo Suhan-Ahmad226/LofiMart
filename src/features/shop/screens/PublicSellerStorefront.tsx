@@ -2,7 +2,7 @@
 
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link, useParams } from '@/src/lib/navigation';
+import { Link, useParams } from '../../../lib/navigation';
 import {
   ArrowRight,
   BadgeCheck,
@@ -19,11 +19,11 @@ import {
   Truck,
   Zap,
 } from 'lucide-react';
-import { ProductCard } from '@/src/components/ProductCard';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { Product } from '@/src/types';
-import { copyText } from '@/src/lib/browser-actions';
-import { formatPrice } from '@/src/lib/utils';
+import { ProductCard } from '../../../components/ProductCard';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { Product } from '../../../types';
+import { copyText } from '../../../lib/browser-actions';
+import { formatPrice } from '../../../lib/utils';
 
 type FlashSaleEntry = {
   id: string;

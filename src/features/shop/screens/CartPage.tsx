@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from '@/src/lib/navigation';
+import { Link, useSearchParams } from '../../../lib/navigation';
 import {
   ArrowRight,
   BadgePercent,
@@ -14,11 +14,11 @@ import {
   Truck,
   X,
 } from 'lucide-react';
-import { useCart } from '@/src/context/CartContext';
-import { formatPrice, cn } from '@/src/lib/utils';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { getOptimizedCloudinaryImage } from '@/src/lib/cloudinary';
-import { FormNotice } from '@/src/components/ui/FeedbackState';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { formatPrice, cn } from '../../../lib/utils';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { getOptimizedCloudinaryImage } from '../../../lib/cloudinary';
+import { FormNotice } from '../../../components/ui/FeedbackState';
 
 const trustPoints = [
   {

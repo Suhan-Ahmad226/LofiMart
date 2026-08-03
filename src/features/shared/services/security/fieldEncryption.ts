@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../../lib/env';
 
 type EncryptedPayload = {
   iv: string;

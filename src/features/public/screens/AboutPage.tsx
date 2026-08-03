@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import { motion } from 'motion/react';
 import { Shield, Truck, Clock, Heart, ArrowRight, type LucideIcon } from 'lucide-react';
-import { AnimatedIcon } from '@/src/components/ui/AnimatedIcon';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
+import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
 
 type TrustCard = {
   icon: 'shield' | 'truck' | 'clock' | 'heart';

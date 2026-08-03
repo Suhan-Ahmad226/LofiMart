@@ -1,6 +1,6 @@
 'use client';
 
-import { SellerNotificationsPage } from '@/src/features/seller/screens/Notifications';
+import { SellerNotificationsPage } from '../../../../features/seller/screens/Notifications';
 
 export default function SellerNotificationsRoute() {
   return <SellerNotificationsPage />;

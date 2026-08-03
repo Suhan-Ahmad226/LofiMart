@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminAboutContentPage } from '@/src/features/admin/screens/AboutContent';
+import { AdminAboutContentPage } from '../../../../features/admin/screens/AboutContent';
 
 export default function AdminAboutRoute() {
   return <AdminAboutContentPage />;

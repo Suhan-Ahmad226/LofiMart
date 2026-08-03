@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wifi, WifiOff } from 'lucide-react';
-import { useOffline } from '@/src/hooks/useOffline';
+import { useOffline } from '../../../hooks/useOffline';
 
 export const OfflineIndicator: React.FC = () => {
   const { recentlyOffline, recentlyOnline } = useOffline();

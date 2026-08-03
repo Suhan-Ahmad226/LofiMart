@@ -80,24 +80,6 @@ export function Link({ to, state, onClick, replace, scroll, ...props }: LinkProp
   );
 }
 
-export function Navigate({
-  to,
-  replace,
-  state,
-}: {
-  to: To;
-  replace?: boolean;
-  state?: unknown;
-}) {
-  const navigate = useNavigate();
-
-  React.useEffect(() => {
-    navigate(to, { replace, state });
-  }, [navigate, replace, state, to]);
-
-  return null;
-}
-
 export function useNavigate() {
   const router = useRouter();
 

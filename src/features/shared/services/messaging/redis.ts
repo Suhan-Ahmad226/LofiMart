@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../../lib/env';
 
 declare global {
   var __amarshopRedis__: Redis | undefined;

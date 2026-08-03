@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import { ArrowRight, Scale, Star, Trash2, X } from 'lucide-react';
-import { useCompare } from '@/src/context/CompareContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useCompare } from '../../../features/shop/state/CompareContext';
+import { formatPrice } from '../../../lib/utils';
 
 export const ComparePage = () => {
   const { items, removeFromCompare, clearCompare } = useCompare();

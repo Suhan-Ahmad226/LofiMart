@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/src/lib/logger';
+import { logger } from '../../../lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

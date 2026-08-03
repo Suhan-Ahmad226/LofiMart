@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, MapPin, Phone, RefreshCw, Save, Store, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useInventoryState } from '@/src/context/InventoryContext';
-import { useInventoryActions } from '@/src/hooks/useInventoryActions';
-import { inventoryApi } from '@/src/services/inventoryApi';
+import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
+import { useInventoryActions } from '../../../hooks/useInventoryActions';
+import { inventoryApi } from '../../../services/inventoryApi';
 
 type PathaoOption = {
   id: number;

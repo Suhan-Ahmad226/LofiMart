@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Mail, MessageSquare, Search, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { formatPrice } from '@/src/lib/utils';
-import { useUser } from '@/src/context/UserContext';
-import { copyText, openMailto } from '@/src/lib/browser-actions';
+import { formatPrice } from '../../../lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { copyText, openMailto } from '../../../lib/browser-actions';
 
 interface NetworkStats {
   directReferrals: number;

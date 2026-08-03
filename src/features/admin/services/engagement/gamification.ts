@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
-import { prisma } from '@/src/services/database/prisma';
+import { prisma } from '../../../../features/shared/services/database/prisma';
 
 type RewardGrantInput = {
   userId: string;

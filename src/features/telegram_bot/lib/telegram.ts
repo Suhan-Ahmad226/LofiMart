@@ -1,4 +1,4 @@
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../lib/env';
 import type { TelegramInlineKeyboardButton } from '../types';
 
 type SendMessageInput = {

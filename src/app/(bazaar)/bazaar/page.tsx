@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 import { Bot, Gift, Link2, Share2, Sparkles, Users } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { filterRoleAwareLinks, type NavigationRole, type RoleAwareLink } from '@/src/lib/role-navigation';
+import { Link } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { filterRoleAwareLinks, type NavigationRole, type RoleAwareLink } from '../../../lib/role-navigation';
 
 type Tool = RoleAwareLink & {
   description: string;

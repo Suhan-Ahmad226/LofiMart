@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/features/bazaar/screens/AffiliateCatalog';
+export { default } from '../../../../features/bazaar/screens/AffiliateCatalog';

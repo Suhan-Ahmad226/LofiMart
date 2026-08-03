@@ -2,10 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { CreditCard, Loader2, Minus, Plus, Printer, Search, ShoppingCart } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { openPrintDocument } from '@/src/lib/browser-actions';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { openPrintDocument } from '../../../lib/browser-actions';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
 
 type PosProduct = {
   id: string;

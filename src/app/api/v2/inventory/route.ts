@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getOrSetCache } from '@/src/services/cache/store';
-import { privateNoStore } from '@/src/server/httpCache';
-import { inventoryModule } from '@/src/modules/inventory';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
-import { apiSuccess } from '@/src/lib/api-response';
-import { withTenantContext } from '@/src/services/database/tenantContext';
+import { getOrSetCache } from '../../../../features/shared/services/cache/store';
+import { privateNoStore } from '../../../../server/httpCache';
+import { inventoryModule } from '../../../../modules/inventory';
+import { secureApiRoute } from '../../../../server/next/apiSecurity';
+import { apiSuccess } from '../../../../lib/api-response';
+import { withTenantContext } from '../../../../features/shared/services/database/tenantContext';
 
 export const runtime = 'nodejs';
 

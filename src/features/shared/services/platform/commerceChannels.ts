@@ -8,9 +8,9 @@ import {
   type CheckoutPaymentMethod,
   type CourierProviderCode,
   type ManualOrderPaymentMethod,
-} from '@/src/lib/commerce-channels';
-import { getOrSetCache } from '@/src/services/cache/store';
-import { prismaDirect } from '@/src/services/database/prisma';
+} from '../../../../lib/commerce-channels';
+import { getOrSetCache } from '../../../../features/shared/services/cache/store';
+import { prismaDirect } from '../../../../features/shared/services/database/prisma';
 
 const PLATFORM_SETTING_KEYS = {
   checkout: 'enabled_checkout_payment_methods',

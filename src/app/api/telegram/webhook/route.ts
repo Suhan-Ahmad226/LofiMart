@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processTelegramUpdate, validateTelegramWebhookSecret, type TelegramUpdate } from '@/src/features/telegram_bot';
+import { processTelegramUpdate, validateTelegramWebhookSecret, type TelegramUpdate } from '../../../../features/telegram_bot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getServerEnv } from '@/src/lib/env';
-import { ensureRedis } from '@/src/services/messaging/redis';
-import { getSecureCookieOptions } from '@/src/server/security/cookies';
+import { getServerEnv } from '../../../lib/env';
+import { ensureRedis } from '../../../features/shared/services/messaging/redis';
+import { getSecureCookieOptions } from '../../../server/security/cookies';
 
 export type SessionUser = {
   id: number | string;

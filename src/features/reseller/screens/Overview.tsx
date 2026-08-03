@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { DollarSign, Loader2, Share2, ShoppingBag, TrendingUp, Users, Zap } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
 
 type ResellerStatCard = {
   label: string;

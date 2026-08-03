@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { validateAccessToken, type SessionUser } from '@/src/services/auth/sessionStore';
-import { isRole, type Role } from '@/src/modules/rbac/roles';
+import { validateAccessToken, type SessionUser } from '../../features/auth/services/sessionStore';
+import { isRole, type Role } from '../../modules/rbac/roles';
 
 function roleHome(role: string) {
   if (role === 'admin') return '/admin/dashboard';

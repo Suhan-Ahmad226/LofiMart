@@ -1,4 +1,4 @@
-import { validateAccessToken } from '../services/auth/sessionStore';
+import { validateAccessToken } from '../features/auth/services/sessionStore';
 
 export function createAuthenticateToken(_jwtSecret: string) {
   return async (req: any, res: any, next: any) => {

@@ -12,15 +12,15 @@ import {
   Archive,
   AlertTriangle,
 } from 'lucide-react';
-import { Product } from '@/src/types';
-import { formatPrice } from '@/src/lib/utils';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { Link, useNavigate } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { TableSkeleton } from '@/src/components/ui/DataSkeletons';
-import { printSkuLabel, printSkuLabelSheet } from '@/src/lib/skuLabel';
+import { Product } from '../../../types';
+import { formatPrice } from '../../../lib/utils';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { Link, useNavigate } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { TableSkeleton } from '../../../components/ui/DataSkeletons';
+import { printSkuLabel, printSkuLabelSheet } from '../../../lib/skuLabel';
 import toast from 'react-hot-toast';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/src/components/seller/SellerPageHeader';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
 
 type ProductTab = 'all' | 'active' | 'low_stock' | 'out_of_stock';
 

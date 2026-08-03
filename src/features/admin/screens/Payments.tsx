@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { CreditCard, AlertTriangle, CheckCircle2, Download, Search } from 'lucide-react';
-import { formatPrice } from '@/src/lib/utils';
-import { useUser } from '@/src/context/UserContext';
-import { CenteredLoader, EmptyState, FormNotice } from '@/src/components/ui/FeedbackState';
-import { useNavigate } from '@/src/lib/navigation';
+import { formatPrice } from '../../../lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import { useNavigate } from '../../../lib/navigation';
 
 export const AdminPaymentsPage = () => {
   const { token } = useUser();

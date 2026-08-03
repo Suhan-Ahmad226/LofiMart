@@ -1,5 +1,5 @@
-import { getServerEnv } from '@/src/lib/env';
-import { ensureRedis } from '@/src/services/messaging/redis';
+import { getServerEnv } from '../../../lib/env';
+import { ensureRedis } from '../../../features/shared/services/messaging/redis';
 
 type PathaoTokenBundle = {
   tokenType: string;

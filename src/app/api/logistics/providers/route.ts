@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { courierProviderRegistry } from '@/src/services/logistics/providerRegistry';
-import { getCommerceChannelSettings } from '@/src/services/platform/commerceChannels';
+import { courierProviderRegistry } from '../../../../features/courier/services/providerRegistry';
+import { getCommerceChannelSettings } from '../../../../features/shared/services/platform/commerceChannels';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

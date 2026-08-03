@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerEnv } from '@/src/lib/env';
-import { logger } from '@/src/lib/logger';
+import { getServerEnv } from '../../../../../lib/env';
+import { logger } from '../../../../../lib/logger';
 import {
   executeBkashPayment,
   getBkashTransactionByPaymentId,
   markBkashPaymentCancelledOrFailed,
   queryBkashPayment,
   syncBkashOrderPaymentState,
-} from '@/src/services/payments/bkash';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
+} from '../../../../../features/pos/services/payments/bkash';
+import { secureApiRoute } from '../../../../../server/next/apiSecurity';
 
 export const runtime = 'nodejs';
 

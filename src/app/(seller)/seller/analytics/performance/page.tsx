@@ -1,3 +1,3 @@
 'use client';
 
-export { SellerDashboard as default } from '@/src/features/seller/screens/Dashboard';
+export { SellerDashboard as default } from '../../../../../features/seller/screens/Dashboard';

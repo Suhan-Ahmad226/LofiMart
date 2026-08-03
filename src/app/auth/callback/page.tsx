@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from '@/src/lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 function normalizeRedirectTarget(value: string | null) {
   if (!value || !value.startsWith('/')) {
@@ -62,7 +62,7 @@ export default function AuthCallbackPage() {
       try {
         const [{ createClient, hasSupabaseBrowserEnv }, { exchangeSupabaseSession, mapAuthMessage }, { default: toast }] = await Promise.all([
           import('@/lib/client'),
-          import('@/src/lib/auth-ui'),
+          import('@/lib/auth-ui'),
           import('react-hot-toast'),
         ]);
 
@@ -147,7 +147,7 @@ export default function AuthCallbackPage() {
         navigate(resolvePostAuthDestination(payload.user.role, redirectTarget), { replace: true });
       } catch (err: any) {
         if (!cancelled) {
-          const { mapAuthMessage } = await import('@/src/lib/auth-ui');
+          const { mapAuthMessage } = await import('@/lib/auth-ui');
           setError(mapAuthMessage(err.message || 'Authentication failed'));
         }
       }

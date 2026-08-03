@@ -1,9 +1,9 @@
 'use client';
 
-import AIGiftFinder from '@/src/features/bazaar/screens/AIGiftFinder';
-import { useCart } from '@/src/context/CartContext';
-import { useNavigate } from '@/src/lib/navigation';
-import { Product } from '@/src/types';
+import AIGiftFinder from '../../../../features/bazaar/screens/AIGiftFinder';
+import { useCart } from '../../../../features/shop/state/CartContext';
+import { useNavigate } from '../../../../lib/navigation';
+import { Product } from '../../../../types';
 
 export default function AIGiftFinderPage() {
   const { addToCart } = useCart();

@@ -9,7 +9,7 @@ import {
   Search as SearchIcon,
   Volume2,
 } from 'lucide-react';
-import { useVoiceSearch } from '@/src/hooks/useVoiceSearch';
+import { useVoiceSearch } from '../../../hooks/useVoiceSearch';
 
 interface VoiceSearchProps {
   onSearch?: (query: string) => void;

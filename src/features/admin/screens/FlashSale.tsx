@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2, Plus, XCircle, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 
 type FlashSaleEntry = {
   id: string;

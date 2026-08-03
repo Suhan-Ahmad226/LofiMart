@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useCart } from '@/src/context/CartContext';
-import { useUser } from '@/src/context/UserContext';
+import { useCart } from '../../../../features/shop/state/CartContext';
+import { useUser } from '../../../../features/shared/state/UserContext';
 
 export default function CartRecoveryTracker() {
   const { items, isReady } = useCart();

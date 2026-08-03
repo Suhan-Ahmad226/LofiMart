@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { validateAccessToken } from '../../services/auth/sessionStore';
-import { isRole, type Role } from '@/src/modules/rbac/roles';
-import { can, type Permission } from '@/src/modules/rbac';
+import { validateAccessToken } from '../../features/auth/services/sessionStore';
+import { isRole, type Role } from '../../modules/rbac/roles';
+import { can, type Permission } from '../../modules/rbac/index';
 
 export type ApiUser = {
   id: number | string;

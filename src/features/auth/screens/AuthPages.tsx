@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from '@/src/lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import toast from 'react-hot-toast';
 import {
   ArrowRight,
@@ -14,8 +14,8 @@ import {
   Store,
   User,
 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { AuthAlert, AuthShell, InputField, PasswordVisibilityButton } from '@/src/components/auth/AuthUI';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { AuthAlert, AuthShell, InputField, PasswordVisibilityButton } from '../../../components/auth/AuthUI';
 import {
   buildAuthCallbackUrl,
   exchangeSupabaseSession,
@@ -27,7 +27,7 @@ import {
   rememberPendingOAuthRedirect,
   resolvePostAuthDestination,
   type AccountRole,
-} from '@/src/lib/auth-ui';
+} from '../../../lib/auth-ui';
 
 type RoleConfig = {
   title: string;
@@ -399,7 +399,7 @@ export const RegisterPage = () => {
 
     setLoading(true);
 
-    let registerStage: 'server-register' | null = 'server-register';
+    const registerStage: 'server-register' | null = 'server-register';
 
     try {
       const registerResponse = await fetch('/api/auth/supabase/register', {

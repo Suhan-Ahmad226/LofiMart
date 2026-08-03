@@ -11,8 +11,8 @@ import {
   ShoppingBag,
   SlidersHorizontal,
 } from 'lucide-react';
-import { useVoiceSearch } from '@/src/hooks/useVoiceSearch';
-import { useVoiceCommerce } from '@/src/hooks/useVoiceCommerce';
+import { useVoiceSearch } from '../../../hooks/useVoiceSearch';
+import { useVoiceCommerce } from '../../../hooks/useVoiceCommerce';
 
 const commandExamples = {
   search: [

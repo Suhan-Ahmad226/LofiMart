@@ -9,7 +9,7 @@ import {
   Package,
   Smartphone,
 } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 
 export const ResellerLandingPage = () => {
   const benefits = [

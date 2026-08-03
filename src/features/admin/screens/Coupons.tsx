@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, Plus, Trash2, Loader2, Calendar } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 import toast from 'react-hot-toast';
-import { CenteredLoader, EmptyState, FormNotice } from '@/src/components/ui/FeedbackState';
+import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
 
 export const AdminCouponsPage = () => {
   const { token } = useUser();

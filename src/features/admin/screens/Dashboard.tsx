@@ -2,17 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import dynamic from 'next/dynamic';
 import { Activity, DollarSign, Loader2, ShieldCheck, ShoppingBag, Store, Users } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
 
-const SalesChart = dynamic(() => import('@/src/components/analytics/SalesChart'), {
+const SalesChart = dynamic(() => import('@/components/analytics/SalesChart'), {
   ssr: false,
   loading: () => (
     <div className="h-64 w-full animate-pulse rounded-2xl border border-black/5 bg-white p-4 shadow-sm" />
   ),
 });
 
-const ActivityHeatmap = dynamic(() => import('@/src/components/analytics/ActivityHeatmap'), {
+const ActivityHeatmap = dynamic(() => import('@/components/analytics/ActivityHeatmap'), {
   ssr: false,
   loading: () => (
     <div className="h-64 w-full animate-pulse rounded-2xl border border-black/5 bg-white p-4 shadow-sm" />

@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from '@/src/features/bazaar/screens/ResellerDiscovery';
+export { default } from '../../../../features/bazaar/screens/ResellerDiscovery';

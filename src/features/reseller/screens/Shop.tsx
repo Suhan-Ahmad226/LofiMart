@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Copy, ExternalLink, Plus, Search, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from '@/src/lib/navigation';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { ProductGridSkeleton } from '@/src/components/ui/DataSkeletons';
-import type { Product } from '@/src/types';
-import { useCart } from '@/src/context/CartContext';
-import { copyText } from '@/src/lib/browser-actions';
+import { useNavigate } from '../../../lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { ProductGridSkeleton } from '../../../components/ui/DataSkeletons';
+import type { Product } from '../../../types';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { copyText } from '../../../lib/browser-actions';
 
 interface ResellerProductLink {
   id: string;

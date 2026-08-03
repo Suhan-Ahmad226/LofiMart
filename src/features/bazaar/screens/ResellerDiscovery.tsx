@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Sparkles } from 'lucide-react';
-import { useNavigate } from '@/src/lib/navigation';
+import { useNavigate } from '../../../lib/navigation';
 
 const ResellerDiscovery: React.FC = () => {
   const navigate = useNavigate();

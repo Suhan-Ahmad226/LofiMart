@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, Check, RefreshCcw, ShoppingBag } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 const questions = [
   {
     id: 1,

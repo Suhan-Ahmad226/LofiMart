@@ -1,5 +1,5 @@
 'use client';
 
-import { RegisterPage } from '@/src/features/auth/screens/AuthPages';
+import { RegisterPage } from '../../../features/auth/screens/AuthPages';
 
 export default RegisterPage;

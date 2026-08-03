@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import { NextRequest } from 'next/server';
 
 const CSRF_HEADER = 'x-csrf-token';
 const CSRF_COOKIE = 'csrf-token';

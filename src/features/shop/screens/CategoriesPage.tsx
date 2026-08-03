@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import {
   ArrowRight,
   Baby,
@@ -18,9 +18,9 @@ import {
   Utensils,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { AnimatedIcon } from '@/src/components/ui/AnimatedIcon';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { cn } from '@/src/lib/utils';
+import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { cn } from '../../../lib/utils';
 
 type Subsubcategory = {
   id: string | number;

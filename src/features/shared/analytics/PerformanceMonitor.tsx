@@ -101,7 +101,7 @@ export default function PerformanceMonitor() {
       });
       lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
       observers.push(lcpObserver);
-    } catch {}
+    } catch { /* ignored */ }
 
     try {
       const clsObserver = new PerformanceObserver((entryList) => {
@@ -113,7 +113,7 @@ export default function PerformanceMonitor() {
       });
       clsObserver.observe({ type: 'layout-shift', buffered: true });
       observers.push(clsObserver);
-    } catch {}
+    } catch { /* ignored */ }
 
     try {
       const paintObserver = new PerformanceObserver((entryList) => {
@@ -126,7 +126,7 @@ export default function PerformanceMonitor() {
       });
       paintObserver.observe({ type: 'paint', buffered: true });
       observers.push(paintObserver);
-    } catch {}
+    } catch { /* ignored */ }
 
     try {
       const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
@@ -135,7 +135,7 @@ export default function PerformanceMonitor() {
         ttfbSent = true;
         report('TTFB', navigationEntry.responseStart, navigationEntry.name || 'navigation');
       }
-    } catch {}
+    } catch { /* ignored */ }
 
     try {
       const eventObserver = new PerformanceObserver((entryList) => {
@@ -146,7 +146,7 @@ export default function PerformanceMonitor() {
       });
       eventObserver.observe({ type: 'event', buffered: true } as PerformanceObserverInit);
       observers.push(eventObserver);
-    } catch {}
+    } catch { /* ignored */ }
 
     const flush = () => {
       if (lcpValue > 0) {

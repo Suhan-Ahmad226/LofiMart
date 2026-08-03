@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerManualOrdersPage as default } from '@/src/features/reseller/screens/ManualOrders';
+export { ResellerManualOrdersPage as default } from '../../../../features/reseller/screens/ManualOrders';

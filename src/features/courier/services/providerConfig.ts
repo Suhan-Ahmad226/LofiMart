@@ -1,4 +1,4 @@
-import { getServerEnv } from '@/src/lib/env';
+import { getServerEnv } from '../../../lib/env';
 
 export function getCourierProviderSetupStatus(code: string) {
   const env = getServerEnv();

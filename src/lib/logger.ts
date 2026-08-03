@@ -40,7 +40,7 @@ function write(level: LogLevel, message: string, context?: Record<string, unknow
     return;
   }
 
-  console.log(payload);
+  console.warn(payload);
 }
 
 export const logger = {

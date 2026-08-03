@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccessCookieOptions, getRefreshCookieOptions, rotateSession } from '@/src/services/auth/sessionStore';
+import { getAccessCookieOptions, getRefreshCookieOptions, rotateSession } from '../../../../features/auth/services/sessionStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

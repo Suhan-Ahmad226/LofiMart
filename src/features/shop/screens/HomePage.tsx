@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 import {
   ArrowRight,
   ChevronLeft,
@@ -10,12 +10,12 @@ import {
   Star,
   Store,
 } from 'lucide-react';
-import { ProductCard } from '@/src/components/ProductCard';
-import OptimizedImage from '@/src/components/ui/OptimizedImage';
-import { useCart } from '@/src/context/CartContext';
-import { getCachedClientValue } from '@/src/lib/client-cache';
-import { formatPrice } from '@/src/lib/utils';
-import type { Product } from '@/src/types';
+import { ProductCard } from '../../../components/ProductCard';
+import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { useCart } from '../../../features/shop/state/CartContext';
+import { getCachedClientValue } from '../../../lib/client-cache';
+import { formatPrice } from '../../../lib/utils';
+import type { Product } from '../../../types';
 
 type Category = {
   id: string | number;

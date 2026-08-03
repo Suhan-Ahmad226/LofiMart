@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getOrSetCache } from '@/src/services/cache/store';
-import { privateNoStore } from '@/src/server/httpCache';
-import { inventoryModule } from '@/src/modules/inventory';
-import { enqueueInventoryAlertScan } from '@/src/workers/queue';
-import { getServerEnv } from '@/src/lib/env';
-import { secureApiRoute } from '@/src/server/next/apiSecurity';
-import { apiSuccess } from '@/src/lib/api-response';
-import { withTenantContext } from '@/src/services/database/tenantContext';
+import { getOrSetCache } from '../../../../../features/shared/services/cache/store';
+import { privateNoStore } from '../../../../../server/httpCache';
+import { inventoryModule } from '../../../../../modules/inventory';
+import { enqueueInventoryAlertScan } from '../../../../../workers/queue';
+import { getServerEnv } from '../../../../../lib/env';
+import { secureApiRoute } from '../../../../../server/next/apiSecurity';
+import { apiSuccess } from '../../../../../lib/api-response';
+import { withTenantContext } from '../../../../../features/shared/services/database/tenantContext';
 
 export const runtime = 'nodejs';
 

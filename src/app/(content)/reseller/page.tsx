@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerLandingPage as default } from '@/src/features/public/screens/ResellerLandingPage';
+export { ResellerLandingPage as default } from '../../../features/public/screens/ResellerLandingPage';

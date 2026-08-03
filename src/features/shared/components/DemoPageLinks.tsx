@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight, Compass } from 'lucide-react';
-import { Link } from '@/src/lib/navigation';
+import { Link } from '../../../lib/navigation';
 
 type JourneyLink = {
   href: string;

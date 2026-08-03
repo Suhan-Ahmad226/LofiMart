@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, ArrowDownRight, ArrowUpRight, Coins, Gift, History, Loader2, RotateCcw, Trophy, Users, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useUser } from '@/src/context/UserContext';
-import { formatPrice } from '@/src/lib/utils';
-import { Link } from '@/src/lib/navigation';
+import { useUser } from '../../../features/shared/state/UserContext';
+import { formatPrice } from '../../../lib/utils';
+import { Link } from '../../../lib/navigation';
 import toast from 'react-hot-toast';
-import { EmptyState } from '@/src/components/ui/FeedbackState';
+import { EmptyState } from '../../../components/ui/FeedbackState';
 
 type WalletTransaction = {
   id: string;

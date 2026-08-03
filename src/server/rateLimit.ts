@@ -1,5 +1,5 @@
 import { getServerEnv } from '../lib/env';
-import { ensureRedis } from '../services/messaging/redis';
+import { ensureRedis } from '../features/shared/services/messaging/redis';
 
 export type RateBucket = { timestamps: number[] };
 

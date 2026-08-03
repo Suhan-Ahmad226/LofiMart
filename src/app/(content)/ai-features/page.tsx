@@ -1,9 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import PageSkeleton from '@/src/components/ui/PageSkeleton';
+import PageSkeleton from '../../../features/shared/ui/PageSkeleton';
 
-const AIFeaturesPage = dynamic(() => import('@/src/features/ai/screens/AIFeaturesPage'), {
+const AIFeaturesPage = dynamic(() => import('@/features/ai/screens/AIFeaturesPage'), {
   ssr: false,
   loading: () => <PageSkeleton variant="content" />,
 });

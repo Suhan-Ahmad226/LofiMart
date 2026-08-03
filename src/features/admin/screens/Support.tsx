@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Mail, Trash2, CheckCircle, Clock } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 import toast from 'react-hot-toast';
-import { CenteredLoader, EmptyState, FormNotice } from '@/src/components/ui/FeedbackState';
-import { openMailto } from '@/src/lib/browser-actions';
+import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import { openMailto } from '../../../lib/browser-actions';
 
 export const AdminSupportPage = () => {
   const { token } = useUser();

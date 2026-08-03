@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bot, CheckCircle2, Copy, ExternalLink, Loader2, RefreshCcw, Send, Unlink } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 type TelegramStatus = {
   configured: boolean;

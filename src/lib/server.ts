@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-export { prisma } from '@/src/services/database/prisma';
+export { prisma } from '../features/shared/services/database/prisma';
 
 function getSupabaseUrl() {
   return process.env.NEXT_PUBLIC_SUPABASE_URL!;

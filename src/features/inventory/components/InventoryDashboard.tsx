@@ -1,5 +1,5 @@
 import React from 'react';
-import { useInventoryState } from '@/src/context/InventoryContext';
+import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
 
 const InventoryDashboard: React.FC = () => {
   const { warehouses, suppliers, inventory, purchaseOrders } = useInventoryState();

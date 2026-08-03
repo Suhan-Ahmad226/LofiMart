@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { createSession, getAccessCookieOptions, getRefreshCookieOptions } from '@/src/services/auth/sessionStore';
+import { createSession, getAccessCookieOptions, getRefreshCookieOptions } from '../../../../features/auth/services/sessionStore';
 
 export const AUTH_ROLES = ['customer', 'seller', 'reseller'] as const;
 

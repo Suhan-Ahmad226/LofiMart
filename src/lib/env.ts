@@ -97,6 +97,7 @@ const ServerEnvSchema = z.object({
   CLOUDINARY_CLOUD_NAME: optionalString(),
   CLOUDINARY_API_KEY: optionalString(),
   CLOUDINARY_API_SECRET: optionalString(),
+  SUPABASE_SERVICE_ROLE_KEY: optionalString(),
   RESEND_API_KEY: optionalString(),
   SMTP_HOST: optionalString(),
   SMTP_PORT: intFromString('SMTP_PORT', 587),

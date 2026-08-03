@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prismaDirect } from '@/src/services/database/prisma';
-import { deleteCache } from '@/src/services/cache/store';
+import { prismaDirect } from '../../../../features/shared/services/database/prisma';
+import { deleteCache } from '../../../../features/shared/services/cache/store';
 import {
   AVAILABLE_CHECKOUT_PAYMENT_METHODS,
   AVAILABLE_COURIER_PROVIDERS,
   AVAILABLE_MANUAL_ORDER_PAYMENT_METHODS,
-} from '@/src/lib/commerce-channels';
+} from '../../../../lib/commerce-channels';
 import { requireAdminRole, requireApiUser } from '../../_compat/shared';
 
 export const runtime = 'nodejs';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from '@/src/lib/navigation';
+import { useNavigate, useParams } from '../../../lib/navigation';
 import {
   ArrowDown,
   ArrowLeft,
@@ -19,10 +19,10 @@ import {
   Trash2,
   AlertCircle,
 } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
-import CloudinaryUpload from '@/src/components/media/CloudinaryUpload';
-import type { ProductSpecification, ProductVariantOption, ProductVariantValue } from '@/src/types';
-import { insertAroundSelection, renderProductDescription } from '@/src/lib/product-description';
+import { useUser } from '../../../features/shared/state/UserContext';
+import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
+import type { ProductSpecification, ProductVariantOption, ProductVariantValue } from '../../../types';
+import { insertAroundSelection, renderProductDescription } from '../../../lib/product-description';
 
 const CATEGORY_SPEC_TEMPLATES: Record<string, string[]> = {
   Fashion: ['Color', 'Size', 'Fabric', 'Fit'],

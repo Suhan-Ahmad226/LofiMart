@@ -1,0 +1,1 @@
+export { default } from '../features/shared/immersive/hooks/use3DModel';export * from '../features/shared/immersive/hooks/use3DModel';

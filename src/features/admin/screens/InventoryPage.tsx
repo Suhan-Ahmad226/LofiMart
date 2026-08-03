@@ -1,13 +1,13 @@
 import React from 'react';
-import WarehouseList from '@/src/components/Inventory/WarehouseList';
-import SupplierList from '@/src/components/Inventory/SupplierList';
-import PurchaseOrderList from '@/src/components/Inventory/PurchaseOrderList';
-import InventoryItemList from '@/src/components/Inventory/InventoryItemList';
-import InventoryDashboard from '@/src/components/Inventory/InventoryDashboard';
-import { useInventoryActions } from '@/src/hooks/useInventoryActions';
-import { useInventorySync } from '@/src/hooks/useInventorySync';
-import { useInventoryState } from '@/src/context/InventoryContext';
-import { Link } from '@/src/lib/navigation';
+import WarehouseList from '../../../components/Inventory/WarehouseList';
+import SupplierList from '../../../components/Inventory/SupplierList';
+import PurchaseOrderList from '../../../components/Inventory/PurchaseOrderList';
+import InventoryItemList from '../../../components/Inventory/InventoryItemList';
+import InventoryDashboard from '../../../components/Inventory/InventoryDashboard';
+import { useInventoryActions } from '../../../hooks/useInventoryActions';
+import { useInventorySync } from '../../../hooks/useInventorySync';
+import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
+import { Link } from '../../../lib/navigation';
 
 const InventoryPage: React.FC = () => {
   const { loadAll } = useInventoryActions();

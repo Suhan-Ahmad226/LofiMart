@@ -1,5 +1,5 @@
 import React from 'react';
-import ProfileManager from '@/src/components/profile/ProfileManager';
+import ProfileManager from '../../../components/profile/ProfileManager';
 
 export const CustomerSettingsPage = () => {
   return (

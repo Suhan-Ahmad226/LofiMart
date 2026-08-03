@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { CheckCircle2, EyeOff, Loader2, MessageSquare, Search, ShieldCheck, SquarePen, XCircle } from 'lucide-react';
-import { useUser } from '@/src/context/UserContext';
+import { useUser } from '../../../features/shared/state/UserContext';
 
 type AdminCommunityPost = {
   id: string;
