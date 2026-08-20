@@ -14,13 +14,13 @@ import {
 } from 'lucide-react';
 import { Product } from '../../../types';
 import { formatPrice } from '../../../lib/utils';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { Link, useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { TableSkeleton } from '../../../components/ui/DataSkeletons';
+import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
 import { printSkuLabel, printSkuLabelSheet } from '../../../lib/skuLabel';
-import toast from 'react-hot-toast';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import toast from '@/lib/toast';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 
 type ProductTab = 'all' | 'active' | 'low_stock' | 'out_of_stock';
 
@@ -100,8 +100,10 @@ export const SellerProductsPage = () => {
       if (!response.ok) throw new Error(data?.error || 'Failed to delete product');
       setDeleteConfirmId(null);
       setProducts((current) => current.filter((p) => p.id !== id));
+      toast.success('Product deleted');
     } catch (err: any) {
       setError(err.message);
+      toast.error(err instanceof Error ? err.message : 'Failed to delete product');
     }
   };
 

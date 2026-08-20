@@ -18,8 +18,8 @@ import {
   Utensils,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
-import { Skeleton } from '../../../components/ui/Skeleton';
+import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
+import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { cn } from '../../../lib/utils';
 
 type Subsubcategory = {

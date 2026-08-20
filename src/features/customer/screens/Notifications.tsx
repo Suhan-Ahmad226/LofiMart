@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Coins, Package, ShieldCheck, Tag, Wallet, BadgeCheck, Users, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { Link, useNavigate } from '../../../lib/navigation';
-import { CenteredLoader, EmptyState } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, EmptyState } from '@/features/shared/ui/FeedbackState';
 
 type NotificationItem = {
   id: string;

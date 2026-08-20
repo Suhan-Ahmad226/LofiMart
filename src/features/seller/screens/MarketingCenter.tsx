@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Calendar, Copy, Loader2, Plus, Tag, Trash2 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Loader2, ShieldCheck, Tag, Wallet, BadgeCheck, Users, Zap, Package, Truck } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link, useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 
 type NotificationItem = {
   id: string;

@@ -49,7 +49,7 @@ export function registerUserRoutes(ctx: RouteContext): void {
     entityId?: string | null,
     metadata?: Record<string, unknown>,
   ) => {
-    await ctx.handleAuditLog({ userId: userId ?? undefined, action, entityType, entityId: entityId ?? undefined, metadata });
+    await ctx.handleAuditLog(userId ?? undefined, action, entityType, entityId ?? undefined, metadata);
   };
 
   app.get("/api/users/profile", authenticateToken, async (req: any, res) => {

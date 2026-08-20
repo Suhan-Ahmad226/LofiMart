@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '../../../lib/bangladesh-address';
-import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type ProfileManagerProps = {
   role: 'customer' | 'seller' | 'reseller';

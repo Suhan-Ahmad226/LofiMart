@@ -4,7 +4,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { Product } from '../../../types';
 import { formatPrice } from '../../../lib/utils';
 import { useCart } from '../../../features/shop/state/CartContext';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { getCachedClientValue } from '../../../lib/client-cache';
 
 interface FrequentlyBoughtTogetherProps {

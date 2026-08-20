@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { CheckCircle2, EyeOff, Loader2, MessageSquare, Search, ShieldCheck, SquarePen, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 
@@ -247,10 +247,10 @@ export const AdminCommunityPage = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-slate-950">{post.user.name}</p>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="dashboard-stat-chip bg-white text-slate-500 uppercase tracking-wide">
                         {post.user.role}
                       </span>
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                      <span className="dashboard-stat-chip bg-emerald-50 text-emerald-700 uppercase tracking-wide">
                         {post.status}
                       </span>
                     </div>
@@ -313,10 +313,10 @@ export const AdminCommunityPage = () => {
                 <div key={comment.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-bold text-slate-950">{comment.user.name}</p>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span className="dashboard-stat-chip bg-white text-slate-500 uppercase tracking-wide">
                       {comment.user.role}
                     </span>
-                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                    <span className="dashboard-stat-chip bg-indigo-50 text-indigo-700 uppercase tracking-wide">
                       {comment.status}
                     </span>
                   </div>
@@ -369,10 +369,10 @@ export const AdminCommunityPage = () => {
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-bold text-slate-950">{report.user.name}</p>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span className="dashboard-stat-chip bg-white text-slate-500 uppercase tracking-wide">
                       {report.user.role}
                     </span>
-                    <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-700">
+                    <span className="dashboard-stat-chip bg-rose-50 text-rose-700 uppercase tracking-wide">
                       {report.status}
                     </span>
                   </div>

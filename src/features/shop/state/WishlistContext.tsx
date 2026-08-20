@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../../../types';
 import { useUser } from '../../../features/shared/state/UserContext';
+import toast from '@/lib/toast';
 
 interface WishlistContextType {
   items: Product[];
@@ -137,6 +138,10 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [items]);
 
   const addToWishlist = async (product: Product) => {
+    const notifyAdded = () => {
+      toast.success(product.name ? `${product.name} added to wishlist` : 'Added to wishlist');
+    };
+
     if (isAuthenticated && token && user) {
       try {
         const res = await fetch('/api/wishlist', {
@@ -148,22 +153,43 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           body: JSON.stringify({ productId: product.id })
         });
         if (res.ok) {
-          setItems(prev => [...prev.filter(i => i.id !== product.id), product]);
+          setItems(prev => {
+            const next = [...prev.filter(i => i.id !== product.id), product];
+            return next;
+          });
+          notifyAdded();
         } else if (res.status === 401 || res.status === 403) {
           setItems(prev => (prev.find(item => item.id === product.id) ? prev : [...prev, product]));
+          notifyAdded();
         }
       } catch {
         setItems(prev => (prev.find(item => item.id === product.id) ? prev : [...prev, product]));
+        notifyAdded();
       }
     } else {
+      const alreadySaved = items.some(item => item.id === product.id);
       setItems(prev => {
         if (prev.find(item => item.id === product.id)) return prev;
         return [...prev, product];
       });
+      if (!alreadySaved) {
+        notifyAdded();
+      }
     }
   };
 
   const removeFromWishlist = async (productId: number) => {
+    const removed = items.find((it) => it.id === productId);
+    const notifyRemoved = () => {
+      if (!removed) return;
+      toast.success(removed.name ? `${removed.name} removed from wishlist` : 'Removed from wishlist', {
+        action: {
+          label: 'Undo',
+          onClick: () => setItems((current) => [removed, ...current]),
+        },
+      });
+    };
+
     if (isAuthenticated && token && user) {
       try {
         const res = await fetch(`/api/wishlist/${productId}`, {
@@ -172,12 +198,15 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
         if (res.ok || res.status === 401 || res.status === 403) {
           setItems(prev => prev.filter(item => item.id !== productId));
+          notifyRemoved();
         }
       } catch {
         setItems(prev => prev.filter(item => item.id !== productId));
+        notifyRemoved();
       }
     } else {
       setItems(prev => prev.filter(item => item.id !== productId));
+      notifyRemoved();
     }
   };
 

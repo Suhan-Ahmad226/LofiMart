@@ -4,9 +4,9 @@ import { formatPrice } from '../../../lib/utils';
 import { Link, useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { useCart } from '../../../features/shop/state/CartContext';
-import { ListCardSkeleton } from '../../../components/ui/DataSkeletons';
-import { EmptyState } from '../../../components/ui/FeedbackState';
-import toast from 'react-hot-toast';
+import { ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
+import { EmptyState } from '@/features/shared/ui/FeedbackState';
+import toast from '@/lib/toast';
 
 export const CustomerOrdersPage = () => {
   const [orders, setOrders] = useState<any[]>([]);
@@ -219,7 +219,7 @@ export const CustomerOrdersPage = () => {
                         {order.shipments.slice(0, 3).map((shipment: any) => (
                           <span
                             key={shipment.id}
-                            className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                            className="dashboard-stat-chip bg-slate-100 text-slate-600"
                           >
                             {shipment.warehouse_name || 'Pickup point'} /{' '}
                             {String(shipment.status).replaceAll('_', ' ')}
@@ -238,7 +238,7 @@ export const CustomerOrdersPage = () => {
                       {order.items.slice(0, 2).map((item: any) => (
                         <span
                           key={item.id}
-                          className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                          className="dashboard-stat-chip bg-slate-100 text-slate-600"
                         >
                           {item.sku || 'SKU pending'}
                         </span>
@@ -247,7 +247,7 @@ export const CustomerOrdersPage = () => {
                   ) : null}
                   {order.can_edit || order.can_cancel ? (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                      <span className="dashboard-stat-chip bg-emerald-50 text-emerald-700 uppercase tracking-wider">
                         Editable before seller accepts
                       </span>
                       {order.can_edit ? (

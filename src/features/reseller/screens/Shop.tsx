@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Copy, ExternalLink, Plus, Search, ShoppingCart } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
-import { ProductGridSkeleton } from '../../../components/ui/DataSkeletons';
+import { ProductGridSkeleton } from '@/features/shared/ui/DataSkeletons';
 import type { Product } from '../../../types';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { copyText } from '../../../lib/browser-actions';

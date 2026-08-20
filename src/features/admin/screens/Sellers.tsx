@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, ExternalLink, Eye, Loader2, Search, ShieldAlert, Store, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
@@ -256,7 +256,7 @@ export const AdminSellersPage = () => {
           ) : selectedSeller ? (
             <div className="space-y-6">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Seller review</p>
+                <p className="section-kicker text-primary/70">Seller review</p>
                 <h2 className="mt-2 text-xl font-bold text-slate-950">{selectedSeller.user?.store_name || selectedSeller.user?.name || 'Seller'}</h2>
                 <p className="mt-1 text-sm text-slate-500">{selectedSeller.user?.email}</p>
               </div>

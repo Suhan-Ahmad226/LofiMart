@@ -6,6 +6,27 @@ import { raceWithTimeout } from '../_utils/route-timeout';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function takeProducts<T>(products: T[], start: number, count: number) {
+  const result: T[] = [];
+  const end = Math.min(products.length, start + count);
+
+  for (let index = start; index < end; index += 1) {
+    result.push(products[index]);
+  }
+
+  return result;
+}
+
+function groupHomepageProducts<T>(products: T[]) {
+  return {
+    flashSale: takeProducts(products, 0, 4),
+    featured: takeProducts(products, 4, 8),
+    bestSelling: takeProducts(products, 12, 6),
+    newArrivals: takeProducts(products, 18, 6),
+    trending: takeProducts(products, 24, 6),
+  };
+}
+
 export async function GET() {
   try {
     const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: banners }] =
@@ -64,8 +85,15 @@ export async function GET() {
             icon: null,
           }));
 
+    const groups = groupHomepageProducts(productPayload);
+
     return NextResponse.json({
       products: productPayload,
+      homepage: {
+        products: groups,
+        sellers: [],
+      },
+      groups,
       categories: categoryPayload,
       banners: banners.map((banner) => ({
         id: banner.id,
@@ -76,6 +104,10 @@ export async function GET() {
         button_text: banner.buttonText,
         buttonText: banner.buttonText,
       })),
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=900',
+      },
     });
   } catch (error) {
     console.error('GET /api/shop-page error:', error);

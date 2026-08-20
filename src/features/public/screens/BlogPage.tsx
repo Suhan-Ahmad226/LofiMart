@@ -12,7 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { Link } from '../../../lib/navigation';
-import { Skeleton } from '../../../components/ui/Skeleton';
+import { Skeleton } from '@/features/shared/ui/Skeleton';
 import {
   decorateBlogPost,
   formatBlogDate,

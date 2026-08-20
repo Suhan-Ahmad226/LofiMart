@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from '../../../lib/navigation';
 import { AlertTriangle, CheckCircle, ChevronLeft, Clock, CreditCard, Download, ExternalLink, Loader2, MapPin, Package, RotateCcw, ScanLine, Truck } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { formatPrice } from '../../../lib/utils';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useUser } from '../../../features/shared/state/UserContext';
 

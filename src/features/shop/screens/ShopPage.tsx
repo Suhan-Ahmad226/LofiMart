@@ -1,63 +1,118 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from '../../../lib/navigation';
-import { ChevronDown, LayoutGrid, List, ChevronRight, Search, Star, Sparkles, Scale, SlidersHorizontal, X } from 'lucide-react';
-import { ProductCard } from '../../../components/ProductCard';
+import {
+  ChevronDown,
+  LayoutGrid,
+  List,
+  ChevronRight,
+  Search,
+  Star,
+  Sparkles,
+  Scale,
+  SlidersHorizontal,
+  X,
+  RotateCcw,
+  PackageSearch,
+} from 'lucide-react';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import { Product } from '../../../types';
 import { useCompare } from '../../../features/shop/state/CompareContext';
 import { getCachedClientValue } from '../../../lib/client-cache';
 import { ProductQuickView } from '../../../features/shop/components/ProductQuickView';
 
+type ShopCategory = {
+  id: string | number;
+  name: string;
+};
+
+type SortOption = 'featured' | 'price-low' | 'price-high' | 'rating' | 'discount';
+type ViewMode = 'grid' | 'list';
+
+const DEFAULT_MAX_PRICE = 50000;
+const MIN_PRICE = 500;
+const SEARCH_DEBOUNCE_MS = 300;
+const PRICE_DEBOUNCE_MS = 180;
+
 function getProductList(payload: unknown): Product[] {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== 'object') return [];
 
-  const record = payload as Record<string, any>;
+  const record = payload as Record<string, unknown>;
   if (Array.isArray(record.products)) return record.products;
   if (Array.isArray(record.items)) return record.items;
   if (Array.isArray(record.data)) return record.data;
-  if (Array.isArray(record.data?.products)) return record.data.products;
-  if (Array.isArray(record.data?.items)) return record.data.items;
+  const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : null;
+  if (Array.isArray(data?.products)) return data.products;
+  if (Array.isArray(data?.items)) return data.items;
 
   return [];
 }
 
-function getCategoryList(payload: unknown): any[] {
+function getCategoryList(payload: unknown): ShopCategory[] {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== 'object') return [];
 
-  const record = payload as Record<string, any>;
+  const record = payload as Record<string, unknown>;
   if (Array.isArray(record.categories)) return record.categories;
   if (Array.isArray(record.data)) return record.data;
-  if (Array.isArray(record.data?.categories)) return record.data.categories;
+  const data = record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : null;
+  if (Array.isArray(data?.categories)) return data.categories;
 
   return [];
+}
+
+function normalizeSort(value: string | null): SortOption {
+  return value === 'price-low' || value === 'price-high' || value === 'rating' || value === 'discount' ? value : 'featured';
+}
+
+function normalizeViewMode(value: string | null): ViewMode {
+  return value === 'list' ? 'list' : 'grid';
+}
+
+function normalizeRating(value: string | null) {
+  const rating = Number(value || 0);
+  return Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 0;
+}
+
+function normalizePrice(value: string | null) {
+  const price = Number(value || DEFAULT_MAX_PRICE);
+  return Number.isFinite(price) ? Math.max(MIN_PRICE, Math.min(DEFAULT_MAX_PRICE, Math.round(price))) : DEFAULT_MAX_PRICE;
+}
+
+function getDiscountAmount(product: Product) {
+  return Math.max(0, Number(product.old_price || 0) - Number(product.price || 0));
 }
 
 export const ShopPage = () => {
   const { items: compareItems, clearCompare } = useCompare();
   const [searchParams, setSearchParams] = useSearchParams();
-  const categoryParam = searchParams.get('category');
-  const queryParam = searchParams.get('q');
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<ShopCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState('featured');
-  const [selectedRating, setSelectedRating] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(50000);
-  const [searchDraft, setSearchDraft] = useState(queryParam || '');
+  const [searchDraft, setSearchDraft] = useState(() => searchParams.get('q') || '');
+  const [maxPriceDraft, setMaxPriceDraft] = useState(() => normalizePrice(searchParams.get('price')));
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
+  const categoryParam = searchParams.get('category') || '';
+  const queryParam = searchParams.get('q') || '';
+  const sortBy = normalizeSort(searchParams.get('sort'));
+  const selectedRating = normalizeRating(searchParams.get('rating'));
+  const maxPrice = normalizePrice(searchParams.get('price'));
+  const viewMode = normalizeViewMode(searchParams.get('view'));
+
+  const loadShopData = useCallback((signal: AbortSignal) => {
     const controller = new AbortController();
+    const abortForwarder = () => controller.abort();
+    signal.addEventListener('abort', abortForwarder, { once: true });
 
     setLoading(true);
     setError('');
 
-    getCachedClientValue('shop-page:v1', 5 * 60 * 1000, async () => {
-      const res = await fetch('/api/shop-page', { cache: 'no-store', signal: controller.signal });
+    return getCachedClientValue('shop-page:v2', 5 * 60 * 1000, async () => {
+      const res = await fetch('/api/shop-page', { cache: 'force-cache', signal: controller.signal });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(data?.error || 'Unable to load shop products right now.');
@@ -80,147 +135,274 @@ export const ShopPage = () => {
         if (!controller.signal.aborted) {
           setLoading(false);
         }
+        signal.removeEventListener('abort', abortForwarder);
       });
-
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    setSearchDraft(queryParam || '');
+    const controller = new AbortController();
+
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadShopData(controller.signal);
+      }
+    });
+
+    return () => controller.abort();
+  }, [loadShopData]);
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (active) {
+        setSearchDraft(queryParam || '');
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, [queryParam]);
 
-  const safeProducts = getProductList(products);
-  const safeCategories = getCategoryList(categories);
-  const safeCompareItems = Array.isArray(compareItems) ? compareItems : [];
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (active) {
+        setMaxPriceDraft(maxPrice);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [maxPrice]);
 
-  const filteredProducts = safeProducts
-    .filter((product) => {
+  const updateUrlParams = useCallback(
+    (
+      updates: Record<string, string | number | null | undefined>,
+      options: { replace?: boolean; scroll?: boolean } = {},
+    ) => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || typeof value === 'undefined' || value === '') {
+          nextParams.delete(key);
+          return;
+        }
+        nextParams.set(key, String(value));
+      });
+
+      setSearchParams(nextParams, { scroll: false, ...options });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  useEffect(() => {
+    const normalizedDraft = searchDraft.trim();
+    if (normalizedDraft === queryParam) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      updateUrlParams({ q: normalizedDraft || null }, { replace: true, scroll: false });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [queryParam, searchDraft, updateUrlParams]);
+
+  useEffect(() => {
+    if (maxPriceDraft === maxPrice) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      updateUrlParams({ price: maxPriceDraft < DEFAULT_MAX_PRICE ? maxPriceDraft : null }, { replace: true, scroll: false });
+    }, PRICE_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [maxPrice, maxPriceDraft, updateUrlParams]);
+
+  const safeProducts = useMemo(() => getProductList(products), [products]);
+  const safeCategories = useMemo(() => getCategoryList(categories), [categories]);
+  const safeCompareItems = useMemo(() => (Array.isArray(compareItems) ? compareItems : []), [compareItems]);
+  const normalizedQuery = useMemo(() => queryParam.trim().toLowerCase(), [queryParam]);
+  const categoryOptions = useMemo(
+    () =>
+      safeCategories.length > 0
+        ? safeCategories
+        : Array.from(new Set(safeProducts.map((product) => product.category).filter(Boolean))).map((name) => ({
+            id: name,
+            name,
+          })),
+    [safeCategories, safeProducts],
+  );
+
+  const filteredProducts = useMemo(() => {
+    const filtered = safeProducts.filter((product) => {
       if (categoryParam && product.category !== categoryParam) {
         return false;
       }
 
-      if (queryParam) {
-        const q = queryParam.toLowerCase();
+      if (normalizedQuery) {
+        const productName = product.name?.toLowerCase() || '';
+        const productCategory = product.category?.toLowerCase() || '';
+        const productDescription = product.description?.toLowerCase() || '';
+        const sellerName = (product.store_name || product.seller_name || '').toLowerCase();
         const matchesQuery =
-          product.name.toLowerCase().includes(q) ||
-          product.category.toLowerCase().includes(q) ||
-          product.description.toLowerCase().includes(q);
+          productName.includes(normalizedQuery) ||
+          productCategory.includes(normalizedQuery) ||
+          productDescription.includes(normalizedQuery) ||
+          sellerName.includes(normalizedQuery);
 
         if (!matchesQuery) {
           return false;
         }
       }
 
-      if (selectedRating > 0 && product.rating < selectedRating) {
+      if (selectedRating > 0 && Number(product.rating || 0) < selectedRating) {
         return false;
       }
 
-      if (product.price > maxPrice) {
+      if (Number(product.price || 0) > maxPrice) {
         return false;
       }
 
       return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'price-low':
-          return a.price - b.price;
-        case 'price-high':
-          return b.price - a.price;
-        case 'rating':
-          return b.rating - a.rating;
-        case 'discount':
-          return (b.old_price - b.price) - (a.old_price - a.price);
-        default:
-          return b.reviews_count - a.reviews_count;
-      }
     });
 
-  const featuredCategories = safeCategories.slice(0, 5);
-  const priceProgress = Math.max(0, Math.min(100, (maxPrice / 50000) * 100));
-  const activeFiltersCount =
-    Number(Boolean(categoryParam)) +
-    Number(Boolean(queryParam)) +
-    Number(selectedRating > 0) +
-    Number(maxPrice < 50000);
-
-  const updateSearchQuery = (nextQuery?: string) => {
-    const normalizedQuery = nextQuery?.trim();
-    setSearchParams({
-      ...(normalizedQuery ? { q: normalizedQuery } : {}),
-      ...(categoryParam ? { category: categoryParam } : {}),
-    });
-  };
-
-  const updateCategoryFilter = (categoryName?: string) => {
-    setSearchParams({
-      ...(queryParam ? { q: queryParam } : {}),
-      ...(categoryName ? { category: categoryName } : {}),
-    });
-  };
-
-  const clearAllFilters = () => {
-    setSelectedRating(0);
-    setMaxPrice(50000);
-    setSearchParams(queryParam ? { q: queryParam } : {});
-  };
-
-  const activeFilterChips = [
-    categoryParam
-      ? {
-          key: 'category',
-          label: `Category: ${categoryParam}`,
-          onRemove: () => updateCategoryFilter(undefined),
+    return filtered
+      .map((product, index) => ({ product, index }))
+      .sort((a, b) => {
+        let result = 0;
+        switch (sortBy) {
+          case 'price-low':
+            result = Number(a.product.price || 0) - Number(b.product.price || 0);
+            break;
+          case 'price-high':
+            result = Number(b.product.price || 0) - Number(a.product.price || 0);
+            break;
+          case 'rating':
+            result = Number(b.product.rating || 0) - Number(a.product.rating || 0);
+            break;
+          case 'discount':
+            result = getDiscountAmount(b.product) - getDiscountAmount(a.product);
+            break;
+          default:
+            result = Number(b.product.reviews_count || 0) - Number(a.product.reviews_count || 0);
         }
-      : null,
-    queryParam
-      ? {
-          key: 'query',
-          label: `Search: ${queryParam}`,
-          onRemove: () => updateSearchQuery(undefined),
-        }
-      : null,
-    selectedRating > 0
-      ? {
-          key: 'rating',
-          label: `${selectedRating}+ stars`,
-          onRemove: () => setSelectedRating(0),
-        }
-      : null,
-    maxPrice < 50000
-      ? {
-          key: 'price',
-          label: `Up to ${maxPrice.toLocaleString()} BDT`,
-          onRemove: () => setMaxPrice(50000),
-        }
-      : null,
-  ].filter(Boolean) as Array<{ key: string; label: string; onRemove: () => void }>;
+        return result || a.index - b.index;
+      })
+      .map(({ product }) => product);
+  }, [categoryParam, maxPrice, normalizedQuery, safeProducts, selectedRating, sortBy]);
+
+  const featuredCategories = useMemo(() => categoryOptions.slice(0, 5), [categoryOptions]);
+  const priceProgress = useMemo(() => Math.max(0, Math.min(100, (maxPriceDraft / DEFAULT_MAX_PRICE) * 100)), [maxPriceDraft]);
+  const activeFiltersCount = useMemo(
+    () =>
+      Number(Boolean(categoryParam)) +
+      Number(Boolean(queryParam)) +
+      Number(selectedRating > 0) +
+      Number(maxPrice < DEFAULT_MAX_PRICE),
+    [categoryParam, maxPrice, queryParam, selectedRating],
+  );
+
+  const updateSearchQuery = useCallback(
+    (nextQuery?: string, replace = false) => {
+      const normalizedSearch = nextQuery?.trim();
+      updateUrlParams({ q: normalizedSearch || null }, { replace, scroll: false });
+    },
+    [updateUrlParams],
+  );
+
+  const updateCategoryFilter = useCallback(
+    (categoryName?: string) => {
+      updateUrlParams({ category: categoryName || null }, { scroll: false });
+    },
+    [updateUrlParams],
+  );
+
+  const updateRatingFilter = useCallback(
+    (rating: number) => {
+      updateUrlParams({ rating: rating > 0 ? rating : null }, { scroll: false });
+    },
+    [updateUrlParams],
+  );
+
+  const updateSort = useCallback(
+    (value: string) => {
+      updateUrlParams({ sort: normalizeSort(value) === 'featured' ? null : normalizeSort(value) }, { scroll: false });
+    },
+    [updateUrlParams],
+  );
+
+  const updateViewMode = useCallback(
+    (value: ViewMode) => {
+      updateUrlParams({ view: value === 'grid' ? null : value }, { replace: true, scroll: false });
+    },
+    [updateUrlParams],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchDraft('');
+    setMaxPriceDraft(DEFAULT_MAX_PRICE);
+    updateUrlParams({ category: null, q: null, rating: null, price: null }, { scroll: false });
+  }, [updateUrlParams]);
+
+  const openMobileFilters = useCallback(() => setMobileFiltersOpen(true), []);
+  const closeMobileFilters = useCallback(() => setMobileFiltersOpen(false), []);
+  const openQuickView = useCallback((product: Product) => setQuickViewProduct(product), []);
+  const closeQuickView = useCallback(() => setQuickViewProduct(null), []);
+  const retryLoad = useCallback(() => {
+    const controller = new AbortController();
+    void loadShopData(controller.signal);
+  }, [loadShopData]);
+
+  const activeFilterChips = useMemo(
+    () =>
+      [
+        categoryParam
+          ? {
+              key: 'category',
+              label: `Category: ${categoryParam}`,
+              onRemove: () => updateCategoryFilter(undefined),
+            }
+          : null,
+        queryParam
+          ? {
+              key: 'query',
+              label: `Search: ${queryParam}`,
+              onRemove: () => {
+                setSearchDraft('');
+                updateSearchQuery(undefined);
+              },
+            }
+          : null,
+        selectedRating > 0
+          ? {
+              key: 'rating',
+              label: `${selectedRating}+ stars`,
+              onRemove: () => updateRatingFilter(0),
+            }
+          : null,
+        maxPrice < DEFAULT_MAX_PRICE
+          ? {
+              key: 'price',
+              label: `Up to ${maxPrice.toLocaleString()} BDT`,
+              onRemove: () => {
+                setMaxPriceDraft(DEFAULT_MAX_PRICE);
+                updateUrlParams({ price: null }, { scroll: false });
+              },
+            }
+          : null,
+      ].filter(Boolean) as Array<{ key: string; label: string; onRemove: () => void }>,
+    [categoryParam, maxPrice, queryParam, selectedRating, updateCategoryFilter, updateRatingFilter, updateSearchQuery, updateUrlParams],
+  );
+
+  const productGridClass = useMemo(
+    () =>
+      viewMode === 'grid'
+        ? 'grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+        : 'grid grid-cols-1 gap-4',
+    [viewMode],
+  );
 
   const filterContent = (
-    <aside className="content-stack">
-      <div className="surface-card p-5 sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="section-kicker">Smart Filters</p>
-            <h2 className="mt-2 text-xl font-bold text-gray-900">Shop your way</h2>
-          </div>
-          <div className="rounded-2xl bg-primary/10 p-3 text-primary">
-            <Sparkles size={18} />
-          </div>
-        </div>
-        <p className="text-sm text-gray-500">
-          Narrow by category, price, and review score to find the best match faster.
-        </p>
-        {activeFiltersCount > 0 ? (
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="mt-4 text-sm font-semibold text-primary hover:text-primary-dark"
-          >
-            Clear all filters
-          </button>
-        ) : null}
-      </div>
+    <div className="content-stack">
+    
 
       <div className="surface-card p-5 sm:p-6">
         <h3 className="mb-4 flex items-center justify-between text-base font-bold sm:text-lg">
@@ -228,15 +410,15 @@ export const ShopPage = () => {
           <ChevronDown size={16} />
         </h3>
         <div className="space-y-2">
-          {safeCategories.map((cat) => (
-            <label key={cat.id} className="group flex cursor-pointer items-center space-x-2">
+          {categoryOptions.map((cat) => (
+            <label key={cat.id} className="group flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 transition hover:bg-primary/5">
               <input
                 type="checkbox"
                 checked={categoryParam === cat.name}
                 onChange={() => updateCategoryFilter(categoryParam === cat.name ? undefined : cat.name)}
                 className="rounded text-primary focus:ring-primary"
               />
-              <span className="text-sm text-gray-600 transition-colors group-hover:text-primary">{cat.name}</span>
+              <span className="text-sm font-medium text-gray-600 transition-colors group-hover:text-primary">{cat.name}</span>
             </label>
           ))}
         </div>
@@ -247,18 +429,17 @@ export const ShopPage = () => {
         <input
           type="range"
           className="w-full accent-primary"
-          min="500"
+          min="5"
           max="50000"
           step="500"
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(Number(e.target.value))}
+          value={maxPriceDraft}
+          onChange={(e) => setMaxPriceDraft(Number(e.target.value))}
+          aria-label="Maximum product price"
         />
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-200">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${priceProgress}%` }} />
-        </div>
+        
         <div className="mt-2 flex justify-between text-xs text-gray-500">
           <span>0 BDT</span>
-          <span>Up to {maxPrice.toLocaleString()} BDT</span>
+          <span>Up to {maxPriceDraft.toLocaleString()} BDT</span>
         </div>
       </div>
 
@@ -266,12 +447,12 @@ export const ShopPage = () => {
         <h3 className="mb-4 text-base font-bold sm:text-lg">Rating</h3>
         <div className="space-y-2">
           {[5, 4, 3, 2, 1].map((star) => (
-            <label key={star} className="flex items-center space-x-2 cursor-pointer">
+            <label key={star} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 transition hover:bg-amber-50">
               <input
                 type="checkbox"
                 checked={selectedRating === star}
-                onChange={() => setSelectedRating((current) => (current === star ? 0 : star))}
-                className="rounded text-primary"
+                onChange={() => updateRatingFilter(selectedRating === star ? 0 : star)}
+                className="rounded text-primary focus:ring-primary"
               />
               <span className="flex items-center gap-1 text-sm text-gray-600">
                 <Star size={14} fill="currentColor" className="text-amber-400" />
@@ -281,12 +462,12 @@ export const ShopPage = () => {
           ))}
         </div>
       </div>
-    </aside>
+    </div>
   );
 
   return (
-    <div className="page-shell py-6 md:py-12">
-      <nav className="mb-8 hidden items-center space-x-2 text-sm text-gray-500 md:flex">
+    <div className="page-shell scroll-smooth py-5 md:py-10 xl:py-12">
+      <nav className="mb-6 hidden items-center space-x-2 text-sm text-gray-500 md:flex" aria-label="Breadcrumb">
         <Link to="/" className="transition-colors hover:text-primary">Home</Link>
         <ChevronRight size={14} />
         <Link to="/shop" className="transition-colors hover:text-primary">Shop</Link>
@@ -307,8 +488,9 @@ export const ShopPage = () => {
       <div className="mb-4 flex items-center gap-3 md:hidden">
         <button
           type="button"
-          onClick={() => setMobileFiltersOpen(true)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-black/5 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm"
+          onClick={openMobileFilters}
+          aria-label="Open product filters"
+          className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-black/5 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition active:scale-[0.98]"
         >
           <SlidersHorizontal size={16} />
           Filters
@@ -322,10 +504,17 @@ export const ShopPage = () => {
       </div>
 
       {mobileFiltersOpen ? (
-        <div className="fixed inset-0 z-[70] bg-slate-950/45 md:hidden" onClick={() => setMobileFiltersOpen(false)}>
+        <div
+          className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-sm md:hidden"
+          onClick={closeMobileFilters}
+          role="presentation"
+        >
           <div
-            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-y-auto rounded-t-[2rem] bg-white p-5 shadow-2xl"
+            className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-[2rem] bg-white p-5 shadow-2xl transition-transform duration-200 ease-out"
             onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Product filters"
           >
             <div className="mb-5 flex items-center justify-between">
               <div>
@@ -334,8 +523,9 @@ export const ShopPage = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setMobileFiltersOpen(false)}
-                className="rounded-full bg-slate-100 p-2 text-slate-600"
+                onClick={closeMobileFilters}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                aria-label="Close filters"
               >
                 <X size={18} />
               </button>
@@ -346,8 +536,8 @@ export const ShopPage = () => {
             <div className="sticky bottom-0 -mx-5 mt-6 border-t border-slate-200 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
               <button
                 type="button"
-                onClick={() => setMobileFiltersOpen(false)}
-                className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                onClick={closeMobileFilters}
+                className="min-h-12 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800 active:scale-[0.99]"
               >
                 Show {filteredProducts.length} products
               </button>
@@ -356,15 +546,15 @@ export const ShopPage = () => {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-8 md:flex-row">
-        <aside className="hidden w-full md:block md:w-72 md:shrink-0">
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+        <aside className="hidden w-full md:block lg:w-72 lg:shrink-0 xl:w-80">
           {filterContent}
         </aside>
 
-        <main className="flex-1">
+        <main className="min-w-0 flex-1" aria-live="polite">
           {safeCompareItems.length > 0 ? (
-          <div className="mb-6 rounded-[1.75rem] border border-primary/10 bg-primary/5 p-4 sm:flex sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
+            <div className="sticky top-3 z-30 mb-6 rounded-[1.5rem] border border-primary/10 bg-white/95 p-4 shadow-lg shadow-primary/5 backdrop-blur sm:flex sm:items-center sm:justify-between md:static md:rounded-[1.75rem] md:bg-primary/5 md:shadow-none">
+              <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-white p-3 text-primary shadow-sm">
                   <Scale size={18} />
                 </div>
@@ -373,17 +563,19 @@ export const ShopPage = () => {
                   <p className="text-xs text-slate-500">Open side-by-side comparison before making the final call.</p>
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="mt-4 flex gap-3 sm:mt-0">
                 <button
+                  type="button"
                   onClick={clearCompare}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/25 sm:flex-none"
+                  aria-label="Clear compare list"
                 >
                   <X size={16} />
                   <span>Clear</span>
                 </button>
                 <Link
                   to="/compare"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/25 sm:flex-none"
                 >
                   <Scale size={16} />
                   <span>Compare now</span>
@@ -395,10 +587,7 @@ export const ShopPage = () => {
           <div className="surface-card mb-6 p-4 sm:p-6">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Search size={16} />
-                  <span>{queryParam ? `Search results for "${queryParam}"` : 'Explore our best collections'}</span>
-                </div>
+                
                 <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
                   {categoryParam ? `${categoryParam} collection` : 'All products'}
                 </h1>
@@ -410,14 +599,17 @@ export const ShopPage = () => {
                   event.preventDefault();
                   updateSearchQuery(searchDraft);
                 }}
-                className="flex w-full max-w-xl flex-col items-stretch gap-3 rounded-[1.35rem] border border-black/5 bg-slate-50 px-4 py-3 shadow-sm sm:flex-row sm:items-center"
+                className="flex w-full max-w-xl flex-col items-stretch gap-3 rounded-[1.35rem] border border-black/5 bg-slate-50 px-4 py-3 shadow-sm transition focus-within:border-primary/30 focus-within:bg-white focus-within:ring-4 focus-within:ring-primary/10 sm:flex-row sm:items-center"
+                role="search"
               >
                 <Search size={18} className="text-gray-400" />
                 <input
+                  ref={searchInputRef}
                   value={searchDraft}
                   onChange={(event) => setSearchDraft(event.target.value)}
                   placeholder="Search products, categories, or styles"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
+                  aria-label="Search marketplace products"
+                  className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400"
                 />
                 {searchDraft ? (
                   <button
@@ -425,15 +617,17 @@ export const ShopPage = () => {
                     onClick={() => {
                       setSearchDraft('');
                       updateSearchQuery(undefined);
+                      searchInputRef.current?.focus();
                     }}
-                    className="text-xs font-semibold text-gray-500 hover:text-primary"
+                    className="min-h-10 rounded-xl px-2 text-xs font-semibold text-gray-500 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    aria-label="Clear search"
                   >
                     Clear
                   </button>
                 ) : null}
                 <button
                   type="submit"
-                  className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:shrink-0"
+                  className="min-h-10 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/25 sm:shrink-0"
                 >
                   Search
                 </button>
@@ -446,7 +640,7 @@ export const ShopPage = () => {
                   key={cat.id}
                   type="button"
                   onClick={() => updateCategoryFilter(cat.name)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                  className={`min-h-10 rounded-full px-4 py-2 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/25 ${
                     categoryParam === cat.name
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
                       : 'bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary'
@@ -465,25 +659,32 @@ export const ShopPage = () => {
                     key={chip.key}
                     type="button"
                     onClick={chip.onRemove}
-                    className="rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/10"
+                    className="rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/25"
+                    aria-label={`Remove ${chip.label} filter`}
                   >
-                    {chip.label} ×
+                    {chip.label} x
                   </button>
                 ))}
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-4 rounded-2xl bg-bg-light p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mt-5 flex flex-col gap-4 rounded-2xl bg-bg-light p-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`rounded p-2 ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-gray-400'}`}
+                  type="button"
+                  onClick={() => updateViewMode('grid')}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-primary/25 ${viewMode === 'grid' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-slate-700'}`}
+                  aria-label="Show products in grid view"
+                  aria-pressed={viewMode === 'grid'}
                 >
                   <LayoutGrid size={20} />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
-                  className={`rounded p-2 ${viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-gray-400'}`}
+                  type="button"
+                  onClick={() => updateViewMode('list')}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-primary/25 ${viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-slate-700'}`}
+                  aria-label="Show products in list view"
+                  aria-pressed={viewMode === 'list'}
                 >
                   <List size={20} />
                 </button>
@@ -494,8 +695,9 @@ export const ShopPage = () => {
                 <span className="text-sm text-gray-500">Sort by:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="min-w-0 rounded-xl border border-black/5 bg-white px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-primary/20"
+                  onChange={(e) => updateSort(e.target.value)}
+                  aria-label="Sort products"
+                  className="min-h-10 min-w-0 rounded-xl border border-black/5 bg-white px-4 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="featured">Most Popular</option>
                   <option value="price-low">Price: Low to High</option>
@@ -508,47 +710,69 @@ export const ShopPage = () => {
           </div>
 
           {loading ? (
-            <div className={viewMode === 'grid' ? 'responsive-grid' : 'grid grid-cols-1 gap-6'}>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className={productGridClass} aria-label="Loading products">
+              {Array.from({ length: viewMode === 'grid' ? 10 : 5 }).map((_, index) => (
+                <div key={index} className="min-h-[21rem] animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                   <div className="aspect-square rounded-2xl bg-slate-100" />
-                  <div className="mt-4 h-4 w-3/4 rounded bg-slate-100" />
-                  <div className="mt-2 h-4 w-1/2 rounded bg-slate-100" />
-                  <div className="mt-4 h-5 w-24 rounded bg-slate-100" />
+                  <div className="mt-4 h-4 w-5/6 rounded bg-slate-100" />
+                  <div className="mt-2 h-4 w-2/3 rounded bg-slate-100" />
+                  <div className="mt-3 h-3 w-20 rounded bg-slate-100" />
+                  <div className="mt-4 h-10 rounded-xl bg-slate-100" />
                 </div>
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-12 text-center">
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm sm:p-12">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-rose-500 shadow-sm">
+                <RotateCcw size={26} />
+              </div>
               <h2 className="text-2xl font-bold text-rose-900">Shop data is unavailable</h2>
-              <p className="mt-3 text-sm text-rose-700">{error}</p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-rose-700">{error}</p>
+              <button
+                type="button"
+                onClick={retryLoad}
+                className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-rose-900/10 transition hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-300"
+              >
+                <RotateCcw size={16} />
+                Retry loading
+              </button>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className={viewMode === 'grid' ? 'responsive-grid' : 'grid grid-cols-1 gap-6'}>
+            <section className={productGridClass} aria-label="Product results">
               {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onQuickView={setQuickViewProduct}
-                />
+                <div key={product.id} className="min-w-0 transition duration-200 hover:-translate-y-0.5">
+                  <ProductCard
+                    product={product}
+                    onQuickView={openQuickView}
+                  />
+                </div>
               ))}
-            </div>
+            </section>
           ) : (
-            <div className="rounded-3xl border border-dashed border-primary/20 bg-white/85 p-12 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Search size={28} />
+            <div className="rounded-3xl border border-dashed border-primary/20 bg-white/85 p-8 text-center shadow-sm sm:p-12">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+                <PackageSearch size={32} />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">No products matched your filters</h2>
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500">
                 Try a wider price range, remove a rating filter, or explore another category.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
+                {activeFiltersCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/25"
+                  >
+                    Remove filters
+                  </button>
+                ) : null}
                 {featuredCategories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => updateCategoryFilter(cat.name)}
-                    className="rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground hover:bg-primary/10 hover:text-primary"
+                    className="rounded-full bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
                   >
                     {cat.name}
                   </button>
@@ -563,7 +787,7 @@ export const ShopPage = () => {
         <ProductQuickView
           product={quickViewProduct}
           isOpen={!!quickViewProduct}
-          onClose={() => setQuickViewProduct(null)}
+          onClose={closeQuickView}
         />
       )}
     </div>

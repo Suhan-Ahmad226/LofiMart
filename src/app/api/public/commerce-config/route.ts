@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prismaDirect } from '../../../../features/shared/services/database/prisma';
+import {
+  getCommerceChannelSettings,
+  serializeCommerceChannelSettings,
+} from '../../../../features/shared/services/platform/commerceChannels';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,7 +37,7 @@ function toPlainNumber(value: unknown, fallback: number) {
 
 export async function GET() {
   try {
-    const [tenantSetting, rawSettings] = await Promise.all([
+    const [tenantSetting, rawSettings, commerceChannels] = await Promise.all([
       prismaDirect.tenantSetting.findFirst({
         orderBy: { createdAt: 'asc' },
       }),
@@ -51,6 +55,7 @@ export async function GET() {
           },
         },
       }),
+      getCommerceChannelSettings(),
     ]);
 
     const settingMap = rawSettings.reduce<Record<string, string>>((acc, row) => {
@@ -60,6 +65,7 @@ export async function GET() {
 
     return NextResponse.json({
       ...fallbackConfig,
+      ...serializeCommerceChannelSettings(commerceChannels),
       free_shipping_threshold: toPlainNumber(tenantSetting?.freeShippingThreshold, 2500),
       cart_recovery_delay_mins: tenantSetting?.cartRecoveryDelayMins ?? 120,
       exit_intent: {

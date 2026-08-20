@@ -37,14 +37,14 @@ import {
   X,
   Youtube,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
-import { AnimatedBadge, AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { AnimatedBadge, AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 import { filterRoleAwareLinks, type NavigationRole, type RoleAwareLink } from '../../../lib/role-navigation';
 import { getCachedClientValue } from '../../../lib/client-cache';
-import { usePWAInstall } from '../../../hooks/usePWAInstall';
+import { usePWAInstall } from '@/features/shared/pwa/hooks/usePWAInstall';
 
 type HeaderSubcategory = {
   id: string | number;
@@ -628,7 +628,7 @@ export const Header = () => {
                                 key={subcategory.id}
                                 to={`/shop?category=${encodeURIComponent(category.name)}&subcategory=${encodeURIComponent(subcategory.name)}`}
                                 onClick={() => setCategoryOpen(false)}
-                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:bg-slate-200"
+                                className="dashboard-stat-chip bg-slate-100 py-0.5 text-slate-600 transition hover:bg-slate-200"
                               >
                                 {subcategory.name}
                               </Link>
@@ -1027,6 +1027,7 @@ export const Footer = () => {
   const { user, isAuthenticated } = useUser();
   const { install, isInstallable, isInstalled } = usePWAInstall();
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterError, setNewsletterError] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [openMobileSections, setOpenMobileSections] = useState<Record<string, boolean>>({
     service: true,
@@ -1048,28 +1049,37 @@ export const Footer = () => {
     const email = newsletterEmail.trim().toLowerCase();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address.');
+      setNewsletterError('Please enter a valid email address.');
       return;
     }
 
+    setNewsletterError('');
     setNewsletterSubmitting(true);
 
     try {
-      const response = await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'footer' }),
-      });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Could not join the newsletter right now.');
-      }
+      await toast.promise(
+        fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source: 'footer' }),
+        }).then(async (response) => {
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload?.error || 'Could not join the newsletter right now.');
+          }
+          return payload;
+        }),
+        {
+          loading: 'Saving your newsletter signup…',
+          success: (payload: { alreadySubscribed?: boolean } | unknown) =>
+            payload && typeof payload === 'object' && 'alreadySubscribed' in payload && Boolean((payload as { alreadySubscribed?: boolean }).alreadySubscribed)
+              ? 'You are already on the list.'
+              : 'Newsletter subscription saved.',
+          error: (error) => (error instanceof Error ? error.message : 'Could not join the newsletter right now.'),
+        },
+      );
 
       setNewsletterEmail('');
-      toast.success(payload?.alreadySubscribed ? 'You are already on the list.' : 'Newsletter subscription saved.');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not join the newsletter right now.');
     } finally {
       setNewsletterSubmitting(false);
     }

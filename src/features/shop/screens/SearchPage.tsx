@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from '../../../lib/navigation';
 import { Search, Loader2 } from 'lucide-react';
 import { Product } from '../../../types';
-import { ProductCard } from '../../../components/ProductCard';
-import { ProductGridSkeleton } from '../../../components/ui/DataSkeletons';
-import { EmptyState } from '../../../components/ui/FeedbackState';
+import { ProductCard } from '@/features/shop/components/ProductCard';
+import { ProductGridSkeleton } from '@/features/shared/ui/DataSkeletons';
+import { EmptyState } from '@/features/shared/ui/FeedbackState';
 import { getCachedClientValue } from '../../../lib/client-cache';
 
 export const SearchPage = () => {

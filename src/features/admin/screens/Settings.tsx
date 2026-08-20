@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Globe, Loader2, Save, Shield, Truck } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import {
   AVAILABLE_CHECKOUT_PAYMENT_METHODS,
   AVAILABLE_COURIER_PROVIDERS,
   AVAILABLE_MANUAL_ORDER_PAYMENT_METHODS,
 } from '../../../lib/commerce-channels';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type SettingsState = {
   platform_name: string;

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2, Search, ShieldAlert, Undo2, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 type ReturnRequestRecord = {
   id: string;

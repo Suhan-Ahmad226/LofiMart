@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CreditCard, AlertTriangle, CheckCircle2, Download, Search } from 'lucide-react';
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 import { useNavigate } from '../../../lib/navigation';
 
 export const AdminPaymentsPage = () => {

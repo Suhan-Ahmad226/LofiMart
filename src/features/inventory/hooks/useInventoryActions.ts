@@ -1,5 +1,5 @@
 import { useInventoryDispatch } from '../../../features/inventory/state/InventoryContext';
-import { inventoryApi } from '../../../services/inventoryApi';
+import { inventoryApi } from '@/features/inventory/services/inventoryApi';
 import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '../../../types/inventory';
 
 export function useInventoryActions() {

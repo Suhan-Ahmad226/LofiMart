@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Copy, Download, Facebook, FileText, Image as ImageIcon, Instagram, Share2, Twitter, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { copyText } from '../../../lib/browser-actions';
 

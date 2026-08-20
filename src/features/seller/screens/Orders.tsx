@@ -3,7 +3,7 @@ import { Search, Download, Loader2, Clock3, Truck, CheckCircle2, AlertTriangle }
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { Link } from '../../../lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 
 export const SellerOrdersPage = () => {
   const { token } = useUser();
@@ -339,7 +339,7 @@ export const SellerOrdersPage = () => {
                         {order.shipments.slice(0, 3).map((shipment: any) => (
                           <span
                             key={shipment.id}
-                            className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                            className="dashboard-stat-chip bg-white text-slate-600"
                           >
                             {shipment.warehouse_name || 'Pickup point'} /{' '}
                             {shipment.courier_provider || 'courier pending'}
@@ -361,7 +361,7 @@ export const SellerOrdersPage = () => {
                       {order.items.slice(0, 2).map((item: any) => (
                         <span
                           key={item.id}
-                          className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                          className="dashboard-stat-chip bg-white text-slate-600"
                         >
                           {item.sku || 'SKU pending'}
                         </span>
@@ -446,7 +446,7 @@ export const SellerOrdersPage = () => {
                             {order.shipments.slice(0, 3).map((shipment: any) => (
                               <span
                                 key={shipment.id}
-                                className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                                className="dashboard-stat-chip bg-slate-100 text-slate-600"
                               >
                                 {shipment.warehouse_name || 'Pickup point'} /{' '}
                                 {shipment.courier_provider || 'courier pending'}
@@ -464,7 +464,7 @@ export const SellerOrdersPage = () => {
                               {order.items.slice(0, 2).map((item: any) => (
                                 <span
                                   key={item.id}
-                                  className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                                  className="dashboard-stat-chip bg-white text-slate-600"
                                 >
                                   {item.sku || 'SKU pending'}
                                 </span>
@@ -482,7 +482,7 @@ export const SellerOrdersPage = () => {
                           {order.shipments.slice(0, 2).map((shipment: any) => (
                             <span
                               key={shipment.id}
-                              className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                              className="dashboard-stat-chip bg-slate-100 text-slate-600"
                             >
                               {shipment.warehouse_name || 'Pickup point'} /{' '}
                               {String(shipment.status).replaceAll('_', ' ')}

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Edit2, Loader2, Image as ImageIcon, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link } from '../../../lib/navigation';
-import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
-import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 export const AdminBannersPage = () => {
   const { token } = useUser();

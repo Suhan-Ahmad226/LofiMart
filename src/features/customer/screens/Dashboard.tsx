@@ -4,7 +4,7 @@ import { useUser } from '../../../features/shared/state/UserContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
-import { DashboardStatsSkeleton, ListCardSkeleton } from '../../../components/ui/DataSkeletons';
+import { DashboardStatsSkeleton, ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
 
 type NotificationItem = {
   id: string;
@@ -178,7 +178,7 @@ export const CustomerDashboard = () => {
         <div className="rounded-3xl border border-border bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Account completion</p>
+              <p className="section-kicker text-primary/70">Account completion</p>
               <h2 className="mt-2 text-xl font-bold">Finish your account for faster checkout and smoother tracking</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {completedCustomerSteps}/{customerSteps.length} steps complete.

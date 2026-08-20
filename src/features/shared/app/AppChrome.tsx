@@ -2,25 +2,51 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { useLocation } from '../../../lib/navigation';
-import { MessageCircle } from 'lucide-react';
-import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '../../../components/Layout';
-import PageTransition from '../../../components/animations/PageTransition';
-import { NotificationContainer, useNotification } from '../../../components/animations/NotificationContainer';
-import PWAInstallPrompt from '../../../components/PWAInstallPrompt';
-import OfflineIndicator from '../../../components/OfflineIndicator';
-import { Toaster } from 'react-hot-toast';
+import { Link, useLocation } from '../../../lib/navigation';
+import { MessageCircle, ShieldCheck, Truck, Zap } from 'lucide-react';
+import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '@/features/shared/layout/Layout';
+import PageTransition from '@/features/shared/animations/PageTransition';
+import { NotificationContainer, useNotification } from '@/features/shared/animations/NotificationContainer';
+import PWAInstallPrompt from '@/features/shared/pwa/PWAInstallPrompt';
+import OfflineIndicator from '@/features/shared/pwa/OfflineIndicator';
+import { Toaster } from '@/lib/toast';
 import { initOfflineStorage, offlineStorage } from '../../../utils/offlineStorage';
 import { useUser } from '../../../features/shared/state/UserContext';
-import SiteMotionEnhancer from '../../../components/animations/SiteMotionEnhancer';
-const ChatBot = dynamic(() => import('@/components/ai/ChatBot'), { ssr: false });
-const CartRecoveryTracker = dynamic(() => import('@/components/conversion/CartRecoveryTracker'), { ssr: false });
-const ExitIntentOffer = dynamic(() => import('@/components/conversion/ExitIntentOffer'), { ssr: false });
-const PerformanceMonitor = dynamic(() => import('@/components/analytics/PerformanceMonitor'), { ssr: false });
+import SiteMotionEnhancer from '@/features/shared/animations/SiteMotionEnhancer';
+const ChatBot = dynamic(() => import('@/features/ai/components/ChatBot'), { ssr: false });
+const CartRecoveryTracker = dynamic(() => import('@/features/shop/components/conversion/CartRecoveryTracker'), { ssr: false });
+const ExitIntentOffer = dynamic(() => import('@/features/shop/components/conversion/ExitIntentOffer'), { ssr: false });
+const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/PerformanceMonitor'), { ssr: false });
 
 function ChatBotWrapper() {
   const { user } = useUser();
   return <ChatBot userId={user?.id} userName={user?.name} initialOpen showLauncher={false} />;
+}
+
+function HomeAnnouncementBar() {
+  return (
+    <div className="relative z-50 border-b border-emerald-900/10 bg-slate-950 text-white">
+      <div className="page-shell flex min-h-10 items-center justify-between gap-3 py-2 text-xs font-semibold">
+        <div className="dashboard-chip-scroll flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-emerald-300">
+            <Zap size={14} />
+            Flash deals refresh daily
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-white/80">
+            <Truck size={14} />
+            Nationwide delivery
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-white/80">
+            <ShieldCheck size={14} />
+            Verified marketplace sellers
+          </span>
+        </div>
+        <Link to="/register?role=seller" className="hidden shrink-0 text-emerald-300 hover:text-white sm:inline-flex">
+          Sell on LofiMart
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
@@ -37,6 +63,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     location.pathname.startsWith('/reseller-dashboard') ||
     location.pathname.startsWith('/account');
   const showPublicChrome = !isOpsRoute;
+  const showHomeAnnouncement = showPublicChrome && location.pathname === '/';
 
   const shouldLoadGrowthLayer = !isOpsRoute && engagementReady && allowEnhancedGrowthLayer;
   const shouldLoadMotionLayer = !isOpsRoute && idleReady;
@@ -229,7 +256,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     }
 
     const reduceEnhancements = connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g';
-    setAllowEnhancedGrowthLayer(!reduceEnhancements);
+    const timerId = window.setTimeout(() => {
+      setAllowEnhancedGrowthLayer(!reduceEnhancements);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, []);
 
   React.useEffect(() => {
@@ -269,7 +300,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
 
   const mainClassName = isOpsRoute
     ? 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-slate-50'
-    : 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-[radial-gradient(circle_at_top,rgba(40,167,69,0.08),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,248,248,0.98)_22%,rgba(234,247,238,0.68)_100%)]';
+    : 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.06),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.98)_22%,rgba(240,244,254,0.6)_100%)]';
 
   const footerClassName = isOpsRoute
     ? ''
@@ -281,6 +312,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       {shouldLoadMotionLayer ? <SiteMotionEnhancer /> : null}
+      {showHomeAnnouncement ? <HomeAnnouncementBar /> : null}
       {showPublicChrome ? <Header /> : null}
       <main id="main-content" tabIndex={-1} className={mainClassName}>
         <PageTransition type="fade" duration={0.55}>
@@ -322,7 +354,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           ) : null}
         </>
       ) : null}
-      <Toaster position="top-center" />
+      <Toaster position="top-right" />
     </div>
   );
 }

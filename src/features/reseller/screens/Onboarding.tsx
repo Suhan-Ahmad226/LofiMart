@@ -2,10 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, Share2, Sparkles, Store, Wallet } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type ResellerStep = {
   id: string;
@@ -149,7 +149,7 @@ export const ResellerOnboardingPage = () => {
       <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(217,70,239,0.10),rgba(15,23,42,0.05))] p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-fuchsia-600/80">Reseller onboarding</p>
+            <p className="section-kicker text-fuchsia-600/80">Reseller onboarding</p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">Build your reseller shop and earning flow</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               Complete your reseller identity, activate link sharing, add products, and prepare payout from one guided workflow.

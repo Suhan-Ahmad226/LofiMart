@@ -1,7 +1,7 @@
 import React from 'react';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
-import toast from 'react-hot-toast';
-import { useInventoryActions } from '../../../hooks/useInventoryActions';
+import toast from '@/lib/toast';
+import { useInventoryActions } from '@/features/inventory/hooks/useInventoryActions';
 
 const PurchaseOrderList: React.FC = () => {
   const { purchaseOrders, warehouses, inventory, suppliers } = useInventoryState();

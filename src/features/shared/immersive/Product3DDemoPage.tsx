@@ -7,10 +7,10 @@ import { useWishlist } from '../../../features/shop/state/WishlistContext';
 import { copyText } from '../../../lib/browser-actions';
 import { formatPrice } from '../../../lib/utils';
 import type { Product } from '../../../types';
-import toast from 'react-hot-toast';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
-const ProductViewer3D = lazy(() => import('@/components/3d/ProductViewer3D'));
-const DemoPageLinks = dynamic(() => import('@/components/DemoPageLinks'), {
+import toast from '@/lib/toast';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+const ProductViewer3D = lazy(() => import('@/features/shared/immersive/components/3d/ProductViewer3D'));
+const DemoPageLinks = dynamic(() => import('@/features/shared/components/DemoPageLinks'), {
   loading: () => <div className="h-64 animate-pulse rounded-[2rem] bg-slate-100" />,
 });
 
@@ -138,8 +138,7 @@ export const Product3DDemoPage: React.FC = () => {
     setAddingToCart(true);
     try {
       addToCart(product, quantity);
-      toast.success(`${quantity} x ${product.name} added to your cart.`);
-    } catch (cartError) {
+    } catch {
       toast.error('Could not add this item right now. Please try again.');
     } finally {
       setAddingToCart(false);
@@ -149,9 +148,6 @@ export const Product3DDemoPage: React.FC = () => {
   const handleToggleWishlist = async () => {
     try {
       await toggleWishlist(product);
-      toast.success(
-        liked ? `${product.name} removed from your wishlist.` : `${product.name} saved to your wishlist.`,
-      );
     } catch {
       toast.error('Could not update your wishlist right now.');
     }

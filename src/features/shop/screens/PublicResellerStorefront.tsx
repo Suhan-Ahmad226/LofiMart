@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from '../../../lib/navigation';
 import { Copy, Loader2, ShoppingCart, Store } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { formatPrice } from '../../../lib/utils';
 import type { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { copyText } from '../../../lib/browser-actions';
 
 type StorefrontResponse = {

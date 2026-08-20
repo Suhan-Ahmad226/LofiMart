@@ -21,6 +21,8 @@ import {
 import { enqueueOrderProcessing } from "../../workers/queue.js";
 import { ensureRedis } from "../../features/shared/services/messaging/redis.js";
 
+const CHECKOUT_PLATFORM_FEE = 5;
+
 export function registerOrderRoutes(ctx: RouteContext): void {
   const {
     app,
@@ -570,7 +572,7 @@ export function registerOrderRoutes(ctx: RouteContext): void {
   }
 
   app.post("/api/orders", authenticateToken, async (req: any, res: any) => {
-    const { total, couponCode, paymentMethod, shippingAddress, items, refCode } = req.body;
+    const { total, couponCode, paymentMethod, shippingAddress, items, refCode, deliveryFee } = req.body;
     const userId = req.user.id;
 
     try {
@@ -688,7 +690,11 @@ export function registerOrderRoutes(ctx: RouteContext): void {
           ? (grossOrderTotal * Number(validatedCoupon.discount_value || 0)) / 100
           : Number(validatedCoupon.discount_value || 0)
         : 0;
-      const finalOrderTotal = Math.max(0, grossOrderTotal - Math.min(grossOrderTotal, couponDiscountAmount));
+      const orderDeliveryFee = Math.max(0, Number(deliveryFee) || 0);
+      const finalOrderTotal =
+        Math.max(0, grossOrderTotal - Math.min(grossOrderTotal, couponDiscountAmount)) +
+        CHECKOUT_PLATFORM_FEE +
+        orderDeliveryFee;
 
       for (const item of normalizedOrderItems) {
         const currentStock = stockById.get(String(item.id));
@@ -700,7 +706,7 @@ export function registerOrderRoutes(ctx: RouteContext): void {
           !product ||
           product.productStatus !== PRODUCT_STATUSES.published ||
           !isSellerApproved(product.seller?.sellerStatus) ||
-          !Boolean(product.seller?.storefrontPublished)
+          !product.seller?.storefrontPublished
         ) {
           return res.status(403).json({ error: "One or more products are not available for sale right now." });
         }
@@ -1385,7 +1391,7 @@ export function registerOrderRoutes(ctx: RouteContext): void {
     const html = buildInvoiceHtml(order, shippingAddress);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename=\"invoice-${order.id}.html\"`);
+    res.setHeader("Content-Disposition", `attachment; filename="invoice-${order.id}.html"`);
     res.send(html);
   });
 
@@ -1454,7 +1460,7 @@ export function registerOrderRoutes(ctx: RouteContext): void {
 
     const pdfBuffer = buildInvoicePdf(order, shippingAddress);
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=\"invoice-${order.id}.pdf\"`);
+    res.setHeader("Content-Disposition", `attachment; filename="invoice-${order.id}.pdf"`);
     res.setHeader("Content-Length", String(pdfBuffer.length));
     res.send(pdfBuffer);
   });

@@ -100,17 +100,17 @@ export function SiteMotionEnhancer() {
     <>
       <motion.div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-[70] h-1 origin-left bg-[linear-gradient(90deg,rgba(40,167,69,0.95),rgba(255,76,76,0.9),rgba(40,167,69,0.95))] shadow-[0_0_22px_rgba(40,167,69,0.35)]"
+        className="pointer-events-none fixed inset-x-0 top-0 z-[70] h-1 origin-left bg-[linear-gradient(90deg,rgba(37,99,235,0.95),rgba(245,158,11,0.9),rgba(37,99,235,0.95))] shadow-[0_0_22px_rgba(37,99,235,0.3)]"
         style={{ scaleX: progress }}
       />
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <motion.div
-          className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(40,167,69,0.2),rgba(40,167,69,0))] blur-3xl"
+          className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.15),rgba(37,99,235,0))] blur-3xl"
           animate={{ x: [0, 20, 0], y: [0, -24, 0], scale: [1, 1.08, 1] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
-          className="absolute right-[-6rem] top-1/3 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(255,76,76,0.14),rgba(255,76,76,0))] blur-3xl"
+          className="absolute right-[-6rem] top-1/3 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.12),rgba(245,158,11,0))] blur-3xl"
           animate={{ x: [0, -28, 0], y: [0, 18, 0], scale: [1, 0.94, 1] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
         />

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Download, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
 

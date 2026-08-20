@@ -1,11 +1,11 @@
 import React from 'react';
-import WarehouseList from '../../../components/Inventory/WarehouseList';
-import SupplierList from '../../../components/Inventory/SupplierList';
-import PurchaseOrderList from '../../../components/Inventory/PurchaseOrderList';
-import InventoryItemList from '../../../components/Inventory/InventoryItemList';
-import InventoryDashboard from '../../../components/Inventory/InventoryDashboard';
-import { useInventoryActions } from '../../../hooks/useInventoryActions';
-import { useInventorySync } from '../../../hooks/useInventorySync';
+import WarehouseList from '@/features/inventory/components/WarehouseList';
+import SupplierList from '@/features/inventory/components/SupplierList';
+import PurchaseOrderList from '@/features/inventory/components/PurchaseOrderList';
+import InventoryItemList from '@/features/inventory/components/InventoryItemList';
+import InventoryDashboard from '@/features/inventory/components/InventoryDashboard';
+import { useInventoryActions } from '@/features/inventory/hooks/useInventoryActions';
+import { useInventorySync } from '@/features/inventory/hooks/useInventorySync';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
 import { Link } from '../../../lib/navigation';
 

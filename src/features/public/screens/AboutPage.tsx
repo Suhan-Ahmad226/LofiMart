@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from '../../../lib/navigation';
 import { motion } from 'motion/react';
 import { Shield, Truck, Clock, Heart, ArrowRight, type LucideIcon } from 'lucide-react';
-import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
 type TrustCard = {
   icon: 'shield' | 'truck' | 'clock' | 'heart';

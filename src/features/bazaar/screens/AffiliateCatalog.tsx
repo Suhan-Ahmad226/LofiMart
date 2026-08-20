@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Copy, DollarSign, Filter, Search, Share2, Target, TrendingUp } from 'lucide-react';
 import { useNavigate } from '../../../lib/navigation';
-import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
 import type { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
-import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 import { copyText } from '../../../lib/browser-actions';
 
 const AffiliateCatalog: React.FC = () => {

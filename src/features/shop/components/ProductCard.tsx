@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Link } from '../../../lib/navigation';
 import { Star, ShoppingCart, Heart, Scale, Eye } from 'lucide-react';
 import { Product } from '../../../types';
@@ -6,29 +6,39 @@ import { formatPrice } from '../../../lib/utils';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
 import { useCompare } from '../../../features/shop/state/CompareContext';
-import toast from 'react-hot-toast';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
-export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: Product) => void }> = ({ product, onQuickView }) => {
+const ProductCardComponent: React.FC<{ product: Product; onQuickView?: (product: Product) => void }> = ({ product, onQuickView }) => {
   const { items, addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toggleCompare, isInCompare } = useCompare();
-  const discount = Math.round(((product.old_price - product.price) / product.old_price) * 100);
+  const discount = useMemo(
+    () => (product.old_price > product.price ? Math.round(((product.old_price - product.price) / product.old_price) * 100) : 0),
+    [product.old_price, product.price],
+  );
   const isWishlisted = isInWishlist(product.id);
   const compared = isInCompare(product.id);
-  const isAlreadyInCart = items.some(
-    (item) => item.id === product.id && (item.selected_variant_key || '') === (product.selected_variant_key || ''),
+  const isAlreadyInCart = useMemo(
+    () =>
+      items.some((item) => item.id === product.id && (item.selected_variant_key || '') === (product.selected_variant_key || '')),
+    [items, product.id, product.selected_variant_key],
   );
 
-  const handleCompareToggle = () => {
-    const result = toggleCompare(product);
-    if (result.reason) {
-      toast.error(result.reason);
-      return;
-    }
+  const handleCompareToggle = useCallback(() => {
+    toggleCompare(product);
+  }, [product, toggleCompare]);
 
-    toast.success(result.added ? 'Added to compare list' : 'Removed from compare list');
-  };
+  const handleWishlistToggle = useCallback(() => {
+    toggleWishlist(product);
+  }, [product, toggleWishlist]);
+
+  const handleQuickView = useCallback(() => {
+    onQuickView?.(product);
+  }, [onQuickView, product]);
+
+  const handleAddToCart = useCallback(() => {
+    addToCart(product);
+  }, [addToCart, product]);
 
   return (
     <div className="product-card group">
@@ -51,7 +61,7 @@ export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: P
         {onQuickView && (
           <button
             type="button"
-            onClick={() => onQuickView(product)}
+            onClick={handleQuickView}
             className="absolute left-3 top-3 inline-flex items-center justify-center rounded-full bg-white/85 p-2 text-sm shadow-sm backdrop-blur-sm transition-colors text-muted-foreground hover:text-primary"
             aria-label="Quick view"
             title="Quick view"
@@ -60,7 +70,7 @@ export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: P
           </button>
         )}
         <button 
-          onClick={() => toggleWishlist(product)}
+          onClick={handleWishlistToggle}
           className={`touch-target absolute top-3 right-3 inline-flex items-center justify-center rounded-full bg-white/85 p-2 text-sm shadow-sm backdrop-blur-sm transition-colors ${isWishlisted ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
@@ -77,13 +87,7 @@ export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: P
         
         {/* Quick Add Button */}
         <button
-          onClick={() => {
-            if (isAlreadyInCart) {
-              toast('This item is already in your cart.', { icon: 'ðŸ›’' });
-              return;
-            }
-            addToCart(product);
-          }}
+          onClick={handleAddToCart}
           className="absolute inset-x-0 bottom-0 flex translate-y-0 items-center justify-center gap-2 bg-primary px-3 py-3 text-sm font-semibold text-white transition-transform duration-300 sm:translate-y-full sm:group-hover:translate-y-0"
         >
           <ShoppingCart size={18} />
@@ -116,3 +120,5 @@ export const ProductCard: React.FC<{ product: Product; onQuickView?: (product: P
     </div>
   );
 };
+
+export const ProductCard = memo(ProductCardComponent);

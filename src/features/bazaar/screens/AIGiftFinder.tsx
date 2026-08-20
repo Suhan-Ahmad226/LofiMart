@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BrainCircuit, Heart, RefreshCw, Search, ShoppingCart, Sparkles } from 'lucide-react';
 import { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
-import { CenteredLoader, EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type GenAIResponse = {
   text: () => string;

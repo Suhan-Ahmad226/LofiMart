@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
 interface ProductLightboxProps {
   images: string[];
@@ -52,6 +52,13 @@ export const ProductLightbox: React.FC<ProductLightboxProps> = ({
     };
   }, [isOpen, initialIndex]);
 
+  const goTo = useCallback((index: number) => {
+    if (index < 0 || index >= images.length) return;
+    setCurrentIndex(index);
+    setScale(ZOOM_MIN);
+    setPosition({ x: 0, y: 0 });
+  }, [images.length]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,37 +68,7 @@ export const ProductLightbox: React.FC<ProductLightboxProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentIndex, onClose]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || !isOpen) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -ZOOM_STEP_WHEEL : ZOOM_STEP_WHEEL;
-      setScale((prev) => {
-        const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev + delta));
-        if (next <= ZOOM_MIN) setPosition({ x: 0, y: 0 });
-        return next;
-      });
-    };
-    const onTouchMoveNative = (e: TouchEvent) => {
-      if (e.touches.length === 2) e.preventDefault();
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    el.addEventListener('touchmove', onTouchMoveNative, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      el.removeEventListener('touchmove', onTouchMoveNative);
-    };
-  }, [isOpen]);
-
-  const goTo = useCallback((index: number) => {
-    if (index < 0 || index >= images.length) return;
-    setCurrentIndex(index);
-    setScale(ZOOM_MIN);
-    setPosition({ x: 0, y: 0 });
-  }, [images.length]);
+  }, [isOpen, currentIndex, onClose, goTo]);
 
   const resetZoom = useCallback(() => {
     setScale(ZOOM_MIN);

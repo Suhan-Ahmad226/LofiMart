@@ -3,7 +3,7 @@
 import React from 'react';
 import { Link } from '../../../lib/navigation';
 import { cn } from '../../../lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/features/shared/ui/tooltip';
 import {
   Bell,
   ChevronRight,

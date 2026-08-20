@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from '../../../lib/navigation';
+import { Link, useNavigate } from '@/lib/navigation';
 import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   CreditCard,
+  Home,
   Loader2,
   LockKeyhole,
   MapPin,
@@ -16,16 +17,18 @@ import {
   Truck,
   User,
 } from 'lucide-react';
-import { useCart } from '../../../features/shop/state/CartContext';
-import { useUser } from '../../../features/shared/state/UserContext';
+import { useCart } from '@/features/shop/state/CartContext';
+import { useUser } from '@/features/shared/state/UserContext';
 import {
   DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS,
   isKnownCheckoutPaymentMethod,
-} from '../../../lib/commerce-channels';
-import { formatPrice, cn } from '../../../lib/utils';
-import { Skeleton } from '../../../components/ui/Skeleton';
-import { FormNotice } from '../../../components/ui/FeedbackState';
-import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '../../../lib/bangladesh-address';
+} from '@/lib/commerce-channels';
+import { formatPrice, cn } from '@/lib/utils';
+import { Skeleton } from '@/features/shared/ui/Skeleton';
+import { FormNotice } from '@/features/shared/ui/FeedbackState';
+import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '@/lib/bangladesh-address';
+
+const CHECKOUT_PLATFORM_FEE = 5;
 
 type PaymentMethod = 'cod' | 'bkash' | 'bank' | 'gateway';
 type PaymentStep = 'number' | 'otp' | 'pin' | 'success';
@@ -36,6 +39,14 @@ type PaymentOption = {
   description: string;
   icon: React.ReactNode;
   accent: string;
+};
+
+type CheckoutCoupon = {
+  code: string;
+  discount_type: 'percentage' | 'flat';
+  discount_value: number;
+  seller_id?: string | null;
+  seller_name?: string | null;
 };
 
 type ShippingPreview = {
@@ -143,13 +154,27 @@ function CheckoutSkeleton() {
 }
 
 export const CheckoutPage = () => {
-  const { items, subtotal, totalPrice, discountAmount, appliedCoupon, clearCart, isReady: isCartReady } = useCart();
+  const {
+    items,
+    subtotal,
+    totalPrice,
+    discountAmount,
+    appliedCoupon,
+    applyCoupon,
+    removeCoupon,
+    clearCart,
+    isReady: isCartReady,
+  } = useCart();
   const { user, token, isAuthenticated, isReady } = useUser();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recoveryHint, setRecoveryHint] = useState('');
+  const [couponCodeInput, setCouponCodeInput] = useState<string | null>(null);
+  const [couponStatus, setCouponStatus] = useState('');
+  const [couponStatusTone, setCouponStatusTone] = useState<'success' | 'error' | 'info'>('info');
+  const [couponLoading, setCouponLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('number');
   const [paymentData, setPaymentData] = useState({ number: '', otp: '', pin: '' });
@@ -283,6 +308,9 @@ export const CheckoutPage = () => {
     [formData.city, formData.district, formData.division],
   );
   const selectedPayment = paymentOptions.find((option) => option.value === formData.paymentMethod) ?? paymentOptions[0];
+  const couponCode = couponCodeInput ?? appliedCoupon?.code ?? '';
+  const deliveryFee = shippingPreview?.estimated_fee_payable ?? 0;
+  const checkoutTotal = totalPrice + CHECKOUT_PLATFORM_FEE + deliveryFee;
   const hasShippingPreviewInputs = useMemo(() => {
     const normalizedPhone = formData.phone.replace(/\D/g, '');
     const composedAddress = buildCheckoutAddressSummary({
@@ -382,6 +410,58 @@ export const CheckoutPage = () => {
     await processOrder();
   };
 
+  const handleApplyCoupon = async () => {
+    const nextCode = couponCode.trim();
+    setCouponStatus('');
+
+    if (!nextCode) {
+      setCouponStatusTone('error');
+      setCouponStatus('Enter a promo or coupon code.');
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: nextCode,
+          orderValue: subtotal,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Coupon could not be applied.');
+      }
+
+      applyCoupon({
+        code: String(payload.code || nextCode).toUpperCase(),
+        discount_type: payload.discount_type === 'percentage' ? 'percentage' : 'flat',
+        discount_value: Number(payload.discount_value || 0),
+        seller_id: payload.seller_id ?? null,
+        seller_name: payload.seller_name ?? null,
+      } satisfies CheckoutCoupon);
+      setCouponStatusTone('success');
+      setCouponStatus('Coupon applied successfully.');
+    } catch (couponError) {
+      removeCoupon();
+      setCouponStatusTone('error');
+      setCouponStatus(couponError instanceof Error ? couponError.message : 'Coupon could not be applied.');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCoupon();
+    setCouponCodeInput('');
+    setCouponStatusTone('info');
+    setCouponStatus('Coupon removed.');
+  };
+
   const processOrder = async () => {
     setLoading(true);
     try {
@@ -433,9 +513,10 @@ export const CheckoutPage = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          total: totalPrice,
+          total: checkoutTotal,
           couponCode: appliedCoupon?.code || undefined,
           paymentMethod: formData.paymentMethod,
+          deliveryFee,
           fullAddressSummary: buildCheckoutAddressSummary({
             upazila: formData.upazila,
             district: formData.district || formData.city,
@@ -481,8 +562,8 @@ export const CheckoutPage = () => {
         window.sessionStorage.setItem(
           'amarshop_recent_order',
           JSON.stringify({
-            orderId: String(data.orderId || ''),
-            total: totalPrice,
+            orderId: data.orderId,
+            total: checkoutTotal,
             placedAt: new Date().toISOString(),
           }),
         );
@@ -536,109 +617,17 @@ export const CheckoutPage = () => {
 
   return (
     <div className="bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)]">
+      <nav className="flex h-[56px] items-center gap-3 border-b border-[#e5e7eb] bg-[#f7f8fa] px-3 text-sm" aria-label="Breadcrumb">
+        <Link to="/" aria-label="Home" className="text-[#344054] transition hover:text-[#2563EB]">
+          <Home size={18} aria-hidden="true" />
+        </Link>
+        <ChevronRight size={17} className="text-[#111827]" aria-hidden="true" />
+        <span className="font-medium text-black">Checkout</span>
+      </nav>
+
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-12">
         <div className="space-y-8">
-          <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/45">
-            <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-              <div className="space-y-5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-                  <LockKeyhole size={14} />
-                  Secure checkout
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <span>Cart</span>
-                    <ChevronRight size={14} />
-                    <span className="font-semibold text-slate-900">Checkout</span>
-                    <ChevronRight size={14} />
-                    <span>Confirmation</span>
-                  </div>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl font-display">
-                    Complete your order with confidence
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                    Review your delivery details, choose the payment method that fits best, and place your order through a smoother production-ready checkout flow.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                    <Truck size={16} className="text-primary" />
-                    {shippingPreview?.estimated_eta ? `Delivery in ${shippingPreview.estimated_eta}` : 'Delivery in 2-4 business days'}
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                    <ShieldCheck size={16} className="text-primary" />
-                    Protected payment flow
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 sm:p-6">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Items</p>
-                    <p className="mt-2 text-xl font-bold text-slate-950">{itemCount}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Subtotal</p>
-                    <p className="mt-2 text-xl font-bold text-slate-950">{formatPrice(subtotal)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white p-4 shadow-sm">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Pay now</p>
-                    <p className="mt-2 text-xl font-bold text-primary">{formatPrice(totalPrice)}</p>
-                  </div>
-                </div>
-                <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4">
-                  <div className="flex items-start gap-3">
-                    <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${selectedPayment.accent} text-slate-700 ring-1 ring-black/5`}>
-                      {selectedPayment.icon}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Selected payment</p>
-                      <p className="mt-1 text-sm text-slate-600">{selectedPayment.title}</p>
-                      <p className="mt-1 text-xs text-slate-500">{selectedPayment.description}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 rounded-[1.5rem] border border-slate-200 bg-white p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      {shippingPreviewLoading ? <Loader2 size={18} className="animate-spin" /> : <Truck size={18} />}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">Estimated delivery preview</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {shippingPreview
-                          ? shippingPreview.qualifies_for_free_shipping
-                            ? `Free delivery unlocked for ${formData.city}. Estimated arrival: ${shippingPreview.estimated_eta}.`
-                            : `Estimated fee ${formatPrice(shippingPreview.estimated_fee_payable)} for ${formData.city}. Estimated arrival: ${shippingPreview.estimated_eta}.`
-                          : 'Choose your city to preview delivery fee and ETA.'}
-                      </p>
-                      {shippingPreview?.checkout_note ? (
-                        <p className="mt-1 text-xs text-slate-500">{shippingPreview.checkout_note}</p>
-                      ) : null}
-                      {shippingPreview?.shipment_breakdown && shippingPreview.shipment_breakdown.length > 1 ? (
-                        <div className="mt-3 space-y-2">
-                          {shippingPreview.shipment_breakdown.map((shipment, index) => (
-                            <div key={`${shipment.warehouse_id || 'warehouse'}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-semibold text-slate-800">{shipment.warehouse_name}</span>
-                                <span>{shipment.item_count} item{shipment.item_count > 1 ? 's' : ''}</span>
-                              </div>
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                <span>ETA: {shipment.estimated_eta}</span>
-                                <span>Fee: {formatPrice(shipment.estimated_fee_payable)}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
+        
           {error ? (
             <div className="space-y-3">
               <FormNotice tone="error">{error}</FormNotice>
@@ -668,7 +657,7 @@ export const CheckoutPage = () => {
                     <MapPin size={20} />
                   </span>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-950">Shipping information</h2>
+                    <h2 className="text-xl font-bold text-slate-950">Delivery Information</h2>
                     <p className="mt-1 text-sm text-slate-500">Use accurate contact and delivery details for faster confirmation.</p>
                   </div>
                 </div>
@@ -962,36 +951,57 @@ export const CheckoutPage = () => {
                   ))}
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <Truck size={18} className="mt-0.5 shrink-0 text-primary" />
-                    <div className="text-sm text-slate-600">
-                      <p className="font-semibold text-slate-900">Delivery preview</p>
-                      <p className="mt-1 leading-6">
-                        {shippingPreview
-                          ? shippingPreview.qualifies_for_free_shipping
-                            ? `Free delivery unlocked. Expected arrival in ${shippingPreview.estimated_eta}.`
-                            : `Estimated delivery fee ${formatPrice(shippingPreview.estimated_fee_payable)} with arrival in ${shippingPreview.estimated_eta}.`
-                          : 'Enter a city to preview delivery fee and timing.'}
-                      </p>
-                      {shippingPreview?.shipment_breakdown && shippingPreview.shipment_breakdown.length > 1 ? (
-                        <div className="mt-3 space-y-2">
-                          {shippingPreview.shipment_breakdown.map((shipment, index) => (
-                            <div key={`${shipment.warehouse_id || 'summary'}-${index}`} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-semibold text-slate-800">{shipment.warehouse_name}</span>
-                                <span>{shipment.item_count} item{shipment.item_count > 1 ? 's' : ''}</span>
-                              </div>
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                <span>ETA: {shipment.estimated_eta}</span>
-                                <span>Fee: {formatPrice(shipment.estimated_fee_payable)}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
+                <div className="mt-5">
+                  <label htmlFor="checkout-coupon" className="text-[24px] font-medium leading-8 text-[#24272f]">
+                    Have a coupon?
+                  </label>
+                  <div className="mt-4 flex gap-3">
+                    <input
+                      id="checkout-coupon"
+                      type="text"
+                      value={couponCode}
+                      onChange={(event) => {
+                        setCouponCodeInput(event.target.value);
+                        if (couponStatus) setCouponStatus('');
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void handleApplyCoupon();
+                        }
+                      }}
+                      placeholder="Enter code"
+                      className="min-w-0 flex-1 rounded-xl border border-[#d8dde6] bg-white px-5 py-4 text-[20px] text-[#24272f] outline-none transition placeholder:text-[#667085] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleApplyCoupon()}
+                      disabled={couponLoading}
+                      className="inline-flex min-w-[105px] items-center justify-center rounded-md bg-[#2563EB] px-6 py-4 text-[22px] font-semibold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {couponLoading ? <Loader2 size={22} className="animate-spin" aria-hidden="true" /> : 'Apply'}
+                    </button>
                   </div>
+                  {couponStatus ? (
+                    <p
+                      className={cn(
+                        'mt-2 text-sm font-medium',
+                        couponStatusTone === 'success' && 'text-emerald-600',
+                        couponStatusTone === 'error' && 'text-red-600',
+                        couponStatusTone === 'info' && 'text-slate-500',
+                      )}
+                    >
+                      {couponStatus}
+                    </p>
+                  ) : null}
+                  {appliedCoupon ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      <span className="font-semibold">{appliedCoupon.code} applied</span>
+                      <button type="button" onClick={handleRemoveCoupon} className="font-semibold text-emerald-800 underline-offset-4 hover:underline">
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-6 space-y-3 border-t border-slate-100 pt-4">
@@ -1006,7 +1016,7 @@ export const CheckoutPage = () => {
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-slate-600">
-                    <span>Estimated shipping</span>
+                    <span>Delivery Fee</span>
                     <span className="font-medium text-primary">
                       {shippingPreview
                         ? shippingPreview.qualifies_for_free_shipping
@@ -1015,13 +1025,18 @@ export const CheckoutPage = () => {
                         : 'Add city'}
                     </span>
                   </div>
+                  <div className="flex justify-between text-sm text-slate-600">
+                    <span>Platform fee:</span>
+                    <span className="font-semibold text-slate-900">{formatPrice(CHECKOUT_PLATFORM_FEE)}</span>
+                  </div>
+
                   <div className="flex justify-between pt-4 text-slate-950">
                     <span className="text-lg font-bold">Total</span>
-                    <span className="text-2xl font-bold text-primary">{formatPrice(totalPrice)}</span>
+                    <span className="text-2xl font-bold text-primary">{formatPrice(checkoutTotal)}</span>
                   </div>
                   {shippingPreview && !shippingPreview.qualifies_for_free_shipping ? (
                     <p className="text-xs leading-5 text-slate-500">
-                      Checkout total stays {formatPrice(totalPrice)} for now. The estimated delivery fee is shown for planning and courier assignment.
+                      Delivery fee is included in the checkout total.
                     </p>
                   ) : null}
                 </div>
@@ -1085,7 +1100,7 @@ export const CheckoutPage = () => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Pay now</p>
-              <p className="text-lg font-bold text-slate-950">{formatPrice(totalPrice)}</p>
+              <p className="text-lg font-bold text-slate-950">{formatPrice(checkoutTotal)}</p>
             </div>
             <button
               type="button"
@@ -1105,7 +1120,7 @@ export const CheckoutPage = () => {
 
       {showPaymentModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-[#D12053] shadow-2xl">
+          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-[#DC2626] shadow-2xl">
             <div className="space-y-6 p-8 text-center text-white">
               <div className="flex justify-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white p-4">
@@ -1130,7 +1145,7 @@ export const CheckoutPage = () => {
                     value={paymentData.number}
                     onChange={(e) => setPaymentData({ ...paymentData, number: e.target.value })}
                   />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#D12053] transition hover:bg-gray-100">
+                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
                     Next
                   </button>
                 </div>
@@ -1147,7 +1162,7 @@ export const CheckoutPage = () => {
                     value={paymentData.otp}
                     onChange={(e) => setPaymentData({ ...paymentData, otp: e.target.value })}
                   />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#D12053] transition hover:bg-gray-100">
+                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
                     Verify OTP
                   </button>
                 </div>
@@ -1163,7 +1178,7 @@ export const CheckoutPage = () => {
                     value={paymentData.pin}
                     onChange={(e) => setPaymentData({ ...paymentData, pin: e.target.value })}
                   />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#D12053] transition hover:bg-gray-100">
+                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
                     Confirm payment
                   </button>
                 </div>

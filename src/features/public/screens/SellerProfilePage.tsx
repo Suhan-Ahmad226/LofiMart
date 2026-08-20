@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from '../../../lib/navigation';
 import { Store, MapPin, Star, Package, Loader2, ShieldCheck, Clock3 } from 'lucide-react';
-import { ProductCard } from '../../../components/ProductCard';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
 export const SellerProfilePage = () => {
   const { id } = useParams();

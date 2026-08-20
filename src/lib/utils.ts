@@ -6,9 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number) {
-  return new Intl.NumberFormat("en-BD", {
-    style: "currency",
-    currency: "BDT",
+  const amount = new Intl.NumberFormat("en-BD", {
     minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(price);
+
+  return `৳ ${amount}`;
 }

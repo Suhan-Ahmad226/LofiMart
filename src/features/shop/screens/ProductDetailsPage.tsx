@@ -4,35 +4,34 @@ import { useParams, useNavigate, Link, useSearchParams } from '../../../lib/navi
 import { Star, ShieldCheck, Truck, RefreshCw, ShoppingCart, Heart, Share2, Loader2, Box, Maximize2, View, X, CreditCard, BadgeCheck, Clock3, Scale, ChevronRight, Sparkles, ScanSearch, Store } from 'lucide-react';
 import { Product, ProductVariantValue } from '../../../types';
 import { formatPrice } from '../../../lib/utils';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useCompare } from '../../../features/shop/state/CompareContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 import { getCachedClientValue } from '../../../lib/client-cache';
-import toast from 'react-hot-toast';
-import { ProductCard } from '../../../components/ProductCard';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import { renderProductDescription } from '../../../lib/product-description';
 import { ProductLightbox } from '../../../features/shop/components/ProductLightbox';
 
-const ProductViewer3D = lazy(() => import('@/components/3d/ProductViewer3D'));
-const ARTryOn = lazy(() => import('@/components/ar/ARTryOn'));
+const ProductViewer3D = lazy(() => import('@/features/shared/immersive/components/3d/ProductViewer3D'));
+const ARTryOn = lazy(() => import('@/features/shared/immersive/components/ar/ARTryOn'));
 const AIRecommendation = dynamic(
-  () => import('@/components/AIRecommendation').then((module) => module.AIRecommendation),
+  () => import('@/features/ai/components/AIRecommendation').then((module) => module.AIRecommendation),
   {
     loading: () => <div className="mt-12 h-80 animate-pulse rounded-[2rem] bg-slate-100" />,
   },
 );
 const SocialShare = dynamic(
-  () => import('@/components/SocialShare').then((module) => module.SocialShare),
+  () => import('@/features/shared/components/SocialShare').then((module) => module.SocialShare),
   {
     ssr: false,
     loading: () => <div className="h-10 w-full animate-pulse rounded-2xl bg-slate-100" />,
   },
 );
 const FrequentlyBoughtTogether = dynamic(
-  () => import('@/components/FrequentlyBoughtTogether').then((module) => module.FrequentlyBoughtTogether),
+  () => import('@/features/shop/components/FrequentlyBoughtTogether').then((module) => module.FrequentlyBoughtTogether),
   {
     loading: () => <div className="h-72 animate-pulse rounded-[2rem] bg-slate-100" />,
   },
@@ -604,21 +603,11 @@ export const ProductDetailsPage = () => {
       return;
     }
 
-    if (isAlreadyInCart) {
-      toast('This item is already in your cart.', { icon: '??' });
-      return;
-    }
-
     addToCart(productForCart, Math.min(quantity, maxSelectableQuantity || quantity));
   };
 
   const handleCompareToggle = () => {
-    const result = toggleCompare(product);
-    if (result.reason) {
-      toast.error(result.reason);
-      return;
-    }
-    toast.success(result.added ? 'Added to compare list' : 'Removed from compare list');
+    toggleCompare(product);
   };
 
   const handleImagePointerMove = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -830,32 +819,9 @@ export const ProductDetailsPage = () => {
               ) : null}
             </div>
           )}
+
           <div className="hidden space-y-4 rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm lg:block">
-            <div className="rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-primary/70">Delivery estimator</p>
-                  <h3 className="mt-2 text-xl font-bold text-slate-900">{deliveryEstimateLabel}</h3>
-                  <p className="mt-1 text-sm text-slate-500">Pick your delivery zone to get a quick timing estimate before checkout.</p>
-                </div>
-                <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryZone('dhaka')}
-                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${deliveryZone === 'dhaka' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Inside Dhaka
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryZone('outside')}
-                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${deliveryZone === 'outside' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Outside Dhaka
-                  </button>
-                </div>
-              </div>
-            </div>
+           
 
             <div className="grid gap-4 rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm sm:grid-cols-2 2xl:grid-cols-4">
               {serviceTiles.map((item) => (
@@ -880,6 +846,7 @@ export const ProductDetailsPage = () => {
               dangerouslySetInnerHTML={{ __html: renderedDescription }}
             />
           </div>
+        
         </div>
 
         {/* Product Info */}
@@ -948,16 +915,16 @@ export const ProductDetailsPage = () => {
 
           <div className="rounded-2xl border border-[#fbd8c4] bg-[#fff7f2] p-5 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-end gap-3">
-              <span className="text-4xl font-bold text-[#f57224]">{formatPrice(effectivePrice)}</span>
+              <span className="text-4xl font-bold text-[#F59E0B]">{formatPrice(effectivePrice)}</span>
               {effectiveOldPrice > effectivePrice && (
                 <>
                   <span className="text-xl text-gray-400 line-through">{formatPrice(effectiveOldPrice)}</span>
-                  <span className="rounded bg-[#f57224] px-2 py-1 text-xs font-bold text-white">-{discount}% OFF</span>
+                  <span className="rounded bg-[#F59E0B] px-2 py-1 text-xs font-bold text-white">-{discount}% OFF</span>
                 </>
               )}
             </div>
             <div className="mt-3 grid gap-2 text-sm text-slate-600">
-              <p>Inclusive of VAT where applicable.</p>
+              
               <p>
               {discount > 0
                 ? `You save ${formatPrice(effectiveOldPrice - effectivePrice)} on this order.`
@@ -1066,7 +1033,7 @@ export const ProductDetailsPage = () => {
                   <button
                     onClick={handleAddToCart}
                     disabled={isOutOfStock}
-                    className="rounded-2xl bg-[#ffd814] px-5 py-3.5 text-sm font-bold text-slate-900 transition hover:bg-[#f7ca00] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-2xl bg-[#F59E0B] px-5 py-3.5 text-sm font-bold text-slate-900 transition hover:bg-[#D97706] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="inline-flex items-center justify-center space-x-2">
                       <AnimatedIcon loop="none"><ShoppingCart size={20} /></AnimatedIcon>
@@ -1076,7 +1043,7 @@ export const ProductDetailsPage = () => {
                   <button
                     onClick={handleBuyNow}
                     disabled={isOutOfStock}
-                    className="rounded-2xl bg-[#f57224] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#e26418] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-2xl bg-[#F59E0B] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#D97706] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isOutOfStock ? 'Unavailable' : 'Buy now'}
                   </button>
@@ -1262,25 +1229,7 @@ export const ProductDetailsPage = () => {
               </div>
             </div>
 
-            {product.reseller_enabled ? (
-              <div className="rounded-[2rem] border border-emerald-100 bg-[linear-gradient(180deg,#ecfdf5_0%,#ffffff_100%)] p-5 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-bold uppercase tracking-[0.22em] text-emerald-700/80">Reseller ready</p>
-                    <h3 className="mt-2 text-xl font-bold text-slate-950">This product is available for reseller growth</h3>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Marketplace-ready pricing and seller approval settings are already configured for reseller workflows.
-                    </p>
-                  </div>
-                  {product.reseller_base_price || product.reseller_suggested_price ? (
-                    <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-                      Base {formatPrice(product.reseller_base_price || effectivePrice)}
-                      {product.reseller_suggested_price ? ` • Suggest ${formatPrice(product.reseller_suggested_price)}` : ''}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
+           
 
         </div>
       </div>

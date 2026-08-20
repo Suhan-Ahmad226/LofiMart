@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, Download, FileSpreadsheet, Loader2, UploadCloud, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 
@@ -130,6 +130,7 @@ export const SellerBulkUploadPage = () => {
   const [rows, setRows] = useState<UploadRow[]>([]);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [validationError, setValidationError] = useState('');
   const [results, setResults] = useState<RowResult[]>([]);
 
   const summary = useMemo(
@@ -181,55 +182,69 @@ export const SellerBulkUploadPage = () => {
 
   const handleUpload = async () => {
     if (!token) {
-      toast.error('Log in as a seller to upload products.');
+      setValidationError('Log in as a seller to upload products.');
       return;
     }
     if (rows.length === 0) {
-      toast.error('Paste a valid CSV before uploading.');
+      setValidationError('Paste a valid CSV before uploading.');
       return;
     }
 
+    setValidationError('');
     setUploading(true);
     setResults([]);
     const nextResults: RowResult[] = [];
 
-    for (let index = 0; index < rows.length; index += 1) {
-      const row = rows[index];
-      try {
-        const response = await fetch('/api/products', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+    try {
+      await toast.promise(
+        (async () => {
+          for (let index = 0; index < rows.length; index += 1) {
+            const row = rows[index];
+            try {
+              const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(row),
+              });
+              const payload = await response.json().catch(() => null);
+              if (!response.ok) {
+                throw new Error(payload?.error || 'Upload failed');
+              }
+              nextResults.push({
+                index,
+                name: row.name,
+                status: 'success',
+                message: payload?.sku ? `Created with SKU ${payload.sku}` : 'Created successfully',
+              });
+            } catch (requestError: unknown) {
+              nextResults.push({
+                index,
+                name: row.name,
+                status: 'error',
+                message: requestError instanceof Error ? requestError.message : 'Upload failed',
+              });
+            }
+            setResults([...nextResults]);
+          }
+        })(),
+        {
+          loading: 'Uploading products…',
+          success: () => {
+            const successCount = nextResults.filter((item) => item.status === 'success').length;
+            const errorCount = nextResults.length - successCount;
+            return successCount > 0
+              ? `${successCount} product${successCount > 1 ? 's' : ''} uploaded.${errorCount > 0 ? ` ${errorCount} row${errorCount > 1 ? 's' : ''} need review.` : ''}`
+              : `${errorCount} row${errorCount > 1 ? 's' : ''} need review.`;
           },
-          body: JSON.stringify(row),
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.error || 'Upload failed');
-        }
-        nextResults.push({
-          index,
-          name: row.name,
-          status: 'success',
-          message: payload?.sku ? `Created with SKU ${payload.sku}` : 'Created successfully',
-        });
-      } catch (requestError: unknown) {
-        nextResults.push({
-          index,
-          name: row.name,
-          status: 'error',
-          message: requestError instanceof Error ? requestError.message : 'Upload failed',
-        });
-      }
-      setResults([...nextResults]);
+          error: 'One or more uploads failed.',
+        },
+      );
+    } finally {
+      setUploading(false);
     }
-
-    setUploading(false);
-    const successCount = nextResults.filter((item) => item.status === 'success').length;
-    const errorCount = nextResults.length - successCount;
-    if (successCount > 0) toast.success(`${successCount} product${successCount > 1 ? 's' : ''} uploaded.`);
-    if (errorCount > 0) toast.error(`${errorCount} row${errorCount > 1 ? 's' : ''} need review.`);
   };
 
   return (
@@ -254,6 +269,7 @@ export const SellerBulkUploadPage = () => {
                 Add single product
               </Link>
             </div>
+            {validationError ? <p className="mt-3 text-sm text-red-600">{validationError}</p> : null}
           </div>
         </div>
       </section>

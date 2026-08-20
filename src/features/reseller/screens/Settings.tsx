@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Settings, Store } from 'lucide-react';
-import ProfileManager from '../../../components/profile/ProfileManager';
-import ResellerStorefrontSettingsPanel from '../../../components/reseller/StorefrontSettingsPanel';
+import ProfileManager from '@/features/shared/profile/ProfileManager';
+import ResellerStorefrontSettingsPanel from '@/features/reseller/components/StorefrontSettingsPanel';
 
 export const ResellerSettings = () => {
   const [openSection, setOpenSection] = useState<'storefront' | 'account'>('storefront');

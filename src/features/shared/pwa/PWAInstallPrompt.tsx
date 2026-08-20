@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X } from 'lucide-react';
-import { usePWAInstall } from '../../../hooks/usePWAInstall';
+import { usePWAInstall } from '@/features/shared/pwa/hooks/usePWAInstall';
 
 export const PWAInstallPrompt: React.FC = () => {
   const { isInstallable, install, dismiss } = usePWAInstall();

@@ -2,10 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, Loader2, MapPin, ShieldCheck, Store, Wallet } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { CenteredLoader, FormNotice } from '../../../components/ui/FeedbackState';
+import { CenteredLoader, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type OnboardingStep = {
   id: string;
@@ -287,10 +287,10 @@ export const SellerOnboardingPage = () => {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(40,167,69,0.10),rgba(15,23,42,0.05))] p-6 shadow-sm sm:p-8">
+      <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(15,23,42,0.05))] p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Seller onboarding</p>
+            <p className="section-kicker text-primary/70">Seller onboarding</p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight">Set up your store the smart way</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               Complete your store identity, pickup readiness, verification, and payout setup from one guided workflow.
@@ -333,7 +333,7 @@ export const SellerOnboardingPage = () => {
       <div className="surface-card p-6 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Approval workflow</p>
+            <p className="section-kicker text-primary/70">Approval workflow</p>
             <h2 className="mt-2 text-xl font-bold tracking-tight">Seller approval status</h2>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               Finish the required onboarding items, then submit your account for admin review. You can keep creating draft products while you wait.

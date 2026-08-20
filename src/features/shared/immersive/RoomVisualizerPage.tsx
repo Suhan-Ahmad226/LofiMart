@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, RotateCcw, Save, Share2, Upload } from 'lucide-react';
 import { Link, useNavigate } from '../../../lib/navigation';
-import { RoomVisualizer } from '../../../components/3d/RoomVisualizer';
-import DemoPageLinks from '../../../components/DemoPageLinks';
+import { RoomVisualizer } from '@/features/shared/immersive/components/3d/RoomVisualizer';
+import DemoPageLinks from '@/features/shared/components/DemoPageLinks';
 import { copyText } from '../../../lib/browser-actions';
 
 interface FurnitureItem {

@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useNavigate } from '../../../lib/navigation';
-import { FormNotice } from '../../../components/ui/FeedbackState';
+import { FormNotice } from '@/features/shared/ui/FeedbackState';
 
 export const ContactPage = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -19,6 +20,7 @@ export const ContactPage = () => {
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setValidationErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   useEffect(() => {
@@ -48,32 +50,50 @@ export const ContactPage = () => {
     setSubmitError('');
     setSubmitSuccess('');
 
+    const nextErrors: Record<string, string> = {};
     const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-    if (!fullName || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()) {
-      toast.error('Please complete all required fields.');
+
+    if (!formData.firstName.trim()) nextErrors.firstName = 'First name is required.';
+    if (!formData.lastName.trim()) nextErrors.lastName = 'Last name is required.';
+    if (!formData.email.trim()) nextErrors.email = 'Email is required.';
+    if (!formData.subject.trim()) nextErrors.subject = 'Subject is required.';
+    if (!formData.message.trim()) nextErrors.message = 'Message is required.';
+
+    setValidationErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
       setSubmitError('Please complete all required fields before sending your message.');
       return;
     }
 
     setSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess('');
+
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: fullName,
-          email: formData.email.trim(),
-          subject: formData.subject.trim(),
-          message: formData.message.trim(),
+      const response = await toast.promise(
+        fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fullName,
+            email: formData.email.trim(),
+            subject: formData.subject.trim(),
+            message: formData.message.trim(),
+          }),
+        }).then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || 'Failed to send your message');
+          }
+          return data;
         }),
-      });
+        {
+          loading: 'Sending your message…',
+          success: 'Message sent. Our support team will get back to you soon.',
+          error: (error) => (error instanceof Error ? error.message : 'Could not send your message'),
+        },
+      );
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send your message');
-      }
-
-      toast.success('Message sent. Our support team will get back to you soon.');
       setSubmitSuccess('Message sent successfully. Our support team will get back to you soon.');
       setFormData({
         firstName: '',
@@ -82,9 +102,9 @@ export const ContactPage = () => {
         subject: 'General Inquiry',
         message: '',
       });
-    } catch (error: any) {
-      toast.error(error.message || 'Could not send your message');
-      setSubmitError(error.message || 'Could not send your message');
+      setValidationErrors({});
+    } catch (error: unknown) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not send your message');
     } finally {
       setSubmitting(false);
     }
@@ -170,29 +190,34 @@ export const ContactPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">First Name</label>
-                <input type="text" value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="John" />
+                <input type="text" value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} aria-invalid={Boolean(validationErrors.firstName)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="John" />
+                {validationErrors.firstName ? <p className="text-sm text-red-600">{validationErrors.firstName}</p> : null}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Last Name</label>
-                <input type="text" value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="Doe" />
+                <input type="text" value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} aria-invalid={Boolean(validationErrors.lastName)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="Doe" />
+                {validationErrors.lastName ? <p className="text-sm text-red-600">{validationErrors.lastName}</p> : null}
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Email Address</label>
-              <input type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="john@example.com" />
+              <input type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} aria-invalid={Boolean(validationErrors.email)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="john@example.com" />
+              {validationErrors.email ? <p className="text-sm text-red-600">{validationErrors.email}</p> : null}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Subject</label>
-              <select value={formData.subject} onChange={(e) => handleChange('subject', e.target.value)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20">
+              <select value={formData.subject} onChange={(e) => handleChange('subject', e.target.value)} aria-invalid={Boolean(validationErrors.subject)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20">
                 <option>General Inquiry</option>
                 <option>Order Support</option>
                 <option>Seller Partnership</option>
                 <option>Technical Issue</option>
               </select>
+              {validationErrors.subject ? <p className="text-sm text-red-600">{validationErrors.subject}</p> : null}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Message</label>
-              <textarea rows={5} value={formData.message} onChange={(e) => handleChange('message', e.target.value)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="How can we help you?" />
+              <textarea rows={5} value={formData.message} onChange={(e) => handleChange('message', e.target.value)} aria-invalid={Boolean(validationErrors.message)} className="w-full bg-bg-light border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="How can we help you?" />
+              {validationErrors.message ? <p className="text-sm text-red-600">{validationErrors.message}</p> : null}
             </div>
             <button type="submit" disabled={submitting} className="w-full btn-primary py-4 flex items-center justify-center space-x-2 disabled:opacity-60">
               {submitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}

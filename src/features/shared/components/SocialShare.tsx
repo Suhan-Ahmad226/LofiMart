@@ -1,7 +1,7 @@
 import React from 'react';
 import { Facebook, Twitter, Linkedin, Link2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { copyText } from '../../../lib/browser-actions';
 
 interface SocialShareProps {

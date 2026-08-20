@@ -7,7 +7,7 @@ import {
   InventoryItem,
   PurchaseOrder,
 } from '../../../types/inventory';
-import { inventoryApi } from '../../../services/inventoryApi';
+import { inventoryApi } from '@/features/inventory/services/inventoryApi';
 import { useEffect } from 'react';
 import { useUser } from '../../../features/shared/state/UserContext';
 

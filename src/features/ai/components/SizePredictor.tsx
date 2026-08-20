@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle, Loader2, Ruler, ShieldCheck } from 'lucide-react';
 import { useNavigate } from '../../../lib/navigation';
-import { useSizePredictor } from '../../../hooks/useSizePredictor';
-import { ProductCard } from '../../../components/ProductCard';
+import { useSizePredictor } from '@/features/ai/hooks/useSizePredictor';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import type { Product } from '../../../types';
 
 const measurementFields = [

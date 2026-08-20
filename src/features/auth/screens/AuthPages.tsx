@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import {
   ArrowRight,
   BadgeCheck,
@@ -15,7 +15,7 @@ import {
   User,
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { AuthAlert, AuthShell, InputField, PasswordVisibilityButton } from '../../../components/auth/AuthUI';
+import { AuthAlert, AuthShell, InputField, PasswordVisibilityButton } from '@/features/auth/components/AuthUI';
 import {
   buildAuthCallbackUrl,
   exchangeSupabaseSession,
@@ -28,6 +28,24 @@ import {
   resolvePostAuthDestination,
   type AccountRole,
 } from '../../../lib/auth-ui';
+
+const bdPhoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
+
+function formatBangladeshPhone(input: string) {
+  const digits = String(input || '').replace(/[^0-9]/g, '');
+  if (!digits) return input;
+  // remove leading country code if present
+  let local = digits;
+  if (local.startsWith('88')) local = local.slice(2);
+  if (local.startsWith('0')) local = local.slice(1);
+  // ensure we have 10 or 11 digits remaining starting with 1
+  if (!local || !local.startsWith('1')) return input;
+  // local now like 1XXXXXXXXX (10 digits after removing leading 0?)
+  // Pad if necessary
+  const part1 = local.slice(0, 4);
+  const part2 = local.slice(4);
+  return `+880 ${part1}${part2 ? '-' + part2 : ''}`;
+}
 
 type RoleConfig = {
   title: string;
@@ -151,13 +169,13 @@ export const LoginPage = () => {
       asideTitle="Your account stays ready for"
     >
       <div className="space-y-7">
-        <div className="space-y-4 text-center sm:text-left">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/30 sm:mx-0">
+        <div className="space-y-4 text-center md:text-left">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/30 md:mx-0">
             <Fingerprint size={26} strokeWidth={2.2} />
           </div>
 
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
                 <BadgeCheck size={14} />
                 Secure login
@@ -167,8 +185,8 @@ export const LoginPage = () => {
                 Fast access
               </span>
             </div>
-            <h2 className="text-3xl font-bold tracking-normal text-white font-display sm:text-4xl">Sign in</h2>
-            <p className="mx-auto max-w-md text-sm leading-6 text-slate-300 sm:mx-0">
+            <h2 className="text-3xl font-bold tracking-normal text-white font-display md:text-4xl">Sign in</h2>
+            <p className="mx-auto max-w-md text-sm leading-6 text-slate-300 md:mx-0">
               Use your verified email, Google, or Facebook account to open your LofiMart workspace.
             </p>
           </div>
@@ -219,7 +237,7 @@ export const LoginPage = () => {
             </InputField>
           </div>
 
-          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center md:justify-between">
             <p className="text-slate-400">Protected session for every device.</p>
             <Link to="/forgot-password" className="font-semibold text-fuchsia-300 transition hover:text-fuchsia-200">
               Forgot password?
@@ -255,7 +273,7 @@ export const LoginPage = () => {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <button
               type="button"
               onClick={async () => {
@@ -319,7 +337,7 @@ export const LoginPage = () => {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm text-slate-300 sm:text-left">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm text-slate-300 md:text-left">
           Don&apos;t have an account?{' '}
           <Link to={redirectTarget ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : '/register'} className="font-bold text-fuchsia-300 hover:underline">
             Create one now
@@ -340,11 +358,10 @@ export const RegisterPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role, setRole] = useState<AccountRole | null>(null);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -382,18 +399,14 @@ export const RegisterPage = () => {
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    const normalizedPhone = String(phone || '').replace(/[^0-9+]/g, '');
+    if (!normalizedPhone || !bdPhoneRegex.test(normalizedPhone)) {
+      setError('Enter a valid Bangladesh phone number (e.g. +8801234567890).');
       return;
     }
 
     if (!role) {
       setError('Please choose whether you are registering as a customer, seller, or reseller.');
-      return;
-    }
-
-    if (!acceptedTerms) {
-      setError('Please accept the terms and privacy policy to continue.');
       return;
     }
 
@@ -406,15 +419,16 @@ export const RegisterPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
-          password,
-          role,
-          name,
-          referralCode,
-          redirectTo: redirectTarget
-            ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirectTarget)}`
-            : `${window.location.origin}/login`,
-        }),
+            email,
+            phone,
+            password,
+            role,
+            name,
+            referralCode,
+            redirectTo: redirectTarget
+              ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirectTarget)}`
+              : `${window.location.origin}/login`,
+          }),
       });
       const registerPayload = await registerResponse.json().catch(() => null);
 
@@ -466,13 +480,13 @@ export const RegisterPage = () => {
       asideTitle="New accounts are ready for"
     >
       <div className="space-y-7">
-        <div className="space-y-4 text-center sm:text-left">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/30 sm:mx-0">
+        <div className="space-y-4 text-center md:text-left">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/30 md:mx-0">
             <User size={26} strokeWidth={2.2} />
           </div>
 
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
                 <BadgeCheck size={14} />
                 Verified account
@@ -482,8 +496,8 @@ export const RegisterPage = () => {
                 Role based
               </span>
             </div>
-            <h2 className="text-3xl font-bold tracking-normal text-white font-display sm:text-4xl">Create account</h2>
-            <p className="mx-auto max-w-md text-sm leading-6 text-slate-300 sm:mx-0">
+            <h2 className="text-3xl font-bold tracking-normal text-white font-display md:text-4xl">Create account</h2>
+            <p className="mx-auto max-w-md text-sm leading-6 text-slate-300 md:mx-0">
               Pick the account type that matches your goal. We will open the right dashboard after signup.
             </p>
           </div>
@@ -522,43 +536,33 @@ export const RegisterPage = () => {
               placeholder="Email address"
               autoComplete="email"
             />
-            <div className="grid items-start gap-4 lg:grid-cols-2">
-              <div className="space-y-3">
-                <InputField
-                  icon={<Lock size={18} />}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create password"
-                  autoComplete="new-password"
-                >
-                  <PasswordVisibilityButton
-                    visible={showPassword}
-                    onClick={() => setShowPassword((value) => !value)}
-                    label={showPassword ? 'Hide password' : 'Show password'}
-                  />
-                </InputField>
-                <div className="space-y-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className={`h-full rounded-full transition-all ${strength.tone} ${strength.width}`} />
-                  </div>
-                  <p className="text-xs text-slate-400">{strength.label}. Use uppercase, numbers, and symbols for stronger protection.</p>
-                </div>
+            <InputField
+              icon={<User size={18} />}
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+880 1234-567890"
+              autoComplete="tel"
+            />
+            <InputField
+              icon={<Lock size={18} />}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create password"
+              autoComplete="new-password"
+            >
+              <PasswordVisibilityButton
+                visible={showPassword}
+                onClick={() => setShowPassword((value) => !value)}
+                label={showPassword ? 'Hide password' : 'Show password'}
+              />
+            </InputField>
+            <div className="space-y-2">
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div className={`h-full rounded-full transition-all ${strength.tone} ${strength.width}`} />
               </div>
-              <InputField
-                icon={<Lock size={18} />}
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                autoComplete="new-password"
-              >
-                <PasswordVisibilityButton
-                  visible={showConfirmPassword}
-                  onClick={() => setShowConfirmPassword((value) => !value)}
-                  label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
-                />
-              </InputField>
+              <p className="text-xs text-slate-400">{strength.label}. Use uppercase, numbers, and symbols for stronger protection.</p>
             </div>
           </div>
 
@@ -583,14 +587,14 @@ export const RegisterPage = () => {
                         : 'border-white/10 bg-white/[0.04] hover:border-violet-400/40 hover:bg-white/[0.08]'
                     }`}
                   >
-                    <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 md:gap-4">
                       <span
                         className={`inline-flex h-11 w-11 shrink-0 items-center justify-center self-center rounded-2xl bg-gradient-to-br ${config.accent} text-white ring-1 ring-white/10`}
                       >
                         {config.icon}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                           <p className="leading-none font-semibold text-white">{config.title}</p>
                           {active && (
                             <span className="inline-flex w-fit items-center rounded-full bg-fuchsia-400/15 px-2.5 py-1 text-[11px] font-semibold text-fuchsia-200">
@@ -613,22 +617,7 @@ export const RegisterPage = () => {
             </div>
           )}
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-            <span className="font-semibold text-white">After signup:</span> verify your email, then we will route you to the correct dashboard for your selected role.
-          </div>
-
-          <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-1 rounded border-white/20 bg-white/10 text-violet-500 focus:ring-violet-400"
-            />
-            <span>
-              I agree to the <Link to="/terms" className="font-semibold text-fuchsia-300 hover:underline">Terms</Link> and{' '}
-              <Link to="/privacy" className="font-semibold text-fuchsia-300 hover:underline">Privacy Policy</Link>.
-            </span>
-          </label>
+          
 
           <button
             type="submit"
@@ -658,7 +647,7 @@ export const RegisterPage = () => {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               <button
                 type="button"
                 onClick={async () => {
@@ -671,9 +660,6 @@ export const RegisterPage = () => {
                     }
                     if (!role) {
                       throw new Error('Select your account type before continuing with Google.');
-                    }
-                    if (!acceptedTerms) {
-                      throw new Error('Please accept the terms and privacy policy before continuing with Google.');
                     }
                     rememberPendingOAuthRedirect({ redirectTarget, role, referralCode, mode: 'register' });
                     const supabase = await getSupabaseBrowserClient();
@@ -713,9 +699,6 @@ export const RegisterPage = () => {
                     if (!role) {
                       throw new Error('Select your account type before continuing with Facebook.');
                     }
-                    if (!acceptedTerms) {
-                      throw new Error('Please accept the terms and privacy policy before continuing with Facebook.');
-                    }
                     rememberPendingOAuthRedirect({ redirectTarget, role, referralCode, mode: 'register' });
                     const supabase = await getSupabaseBrowserClient();
                     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -744,12 +727,17 @@ export const RegisterPage = () => {
           </div>
         </form>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm text-slate-300 sm:text-left">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm text-slate-300 md:text-left">
           Already have an account?{' '}
           <Link to={redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'} className="font-bold text-fuchsia-300 hover:underline">
             Sign in
           </Link>
         </div>
+
+        <p className="mt-4 text-center text-xs text-slate-400">
+          By continuing, you agree to our <Link to="/terms" className="font-semibold text-fuchsia-300 hover:underline">Terms of Service</Link> and{' '}
+          <Link to="/privacy" className="font-semibold text-fuchsia-300 hover:underline">Privacy Policy</Link>.
+        </p>
       </div>
     </AuthShell>
   );

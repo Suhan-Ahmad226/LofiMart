@@ -79,7 +79,7 @@ export default function ExplorePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
-      <section className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(40,167,69,0.08),rgba(255,76,76,0.06))] p-8 md:p-12">
+      <section className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(37,99,235,0.06),rgba(245,158,11,0.05))] p-8 md:p-12">
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-3">Site Explorer</p>
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Open every important page from one navigation hub</h1>
         <p className="text-muted-foreground max-w-2xl">

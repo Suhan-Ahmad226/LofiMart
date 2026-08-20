@@ -4,7 +4,7 @@ import { Download, Eye, RotateCw, Share2, ZoomIn, ZoomOut } from 'lucide-react';
 
 import ModelLoader, { ModelProgress } from './ModelLoader';
 import SceneSetup from './SceneSetup';
-import use3DModel from '../../../../../hooks/use3DModel';
+import use3DModel from '@/features/shared/immersive/hooks/use3DModel';
 
 interface ProductViewer3DProps {
   modelUrl: string;

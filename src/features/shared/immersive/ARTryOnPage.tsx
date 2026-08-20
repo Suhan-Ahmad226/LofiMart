@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Camera, CheckCircle2, Download, RotateCcw, Share2, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from '../../../lib/navigation';
-import ARTryOn from '../../../components/ar/ARTryOn';
-import DemoPageLinks from '../../../components/DemoPageLinks';
-import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import ARTryOn from '@/features/shared/immersive/components/ar/ARTryOn';
+import DemoPageLinks from '@/features/shared/components/DemoPageLinks';
+import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { copyText } from '../../../lib/browser-actions';
 
 type ARTryOnLocationState = {

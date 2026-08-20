@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Poppins } from 'next/font/google';
+import { Inter, Poppins, Noto_Sans_Bengali } from 'next/font/google';
 import Script from 'next/script';
 import '../index.css';
-import { AppProviders } from '../components/AppProviders';
-import { AppChrome } from '../components/AppChrome';
+import { AppProviders } from '../features/shared/app/AppProviders';
+import { AppChrome } from '../features/shared/app/AppChrome';
 import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
-  weight: ['400', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   fallback: ['system-ui', 'sans-serif'],
 });
 
@@ -20,9 +20,18 @@ const poppins = Poppins({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-poppins',
-  weight: ['600', '700'],
+  weight: ['500', '600', '700'],
   preload: false,
   fallback: ['Arial', 'sans-serif'],
+});
+
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ['bengali'],
+  display: 'swap',
+  variable: '--font-bengali',
+  weight: ['400', '500', '600', '700'],
+  preload: false,
+  fallback: ['Inter', 'system-ui', 'sans-serif'],
 });
 
 export const viewport: Viewport = {
@@ -30,7 +39,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover',
-  themeColor: '#1f2937',
+  themeColor: '#2563EB',
 };
 
 export const metadata: Metadata = {
@@ -144,7 +153,7 @@ export default function RootLayout({
   const structuredData = getStructuredData();
 
   return (
-    <html lang="en-BD" data-scroll-behavior="smooth" className={cn(inter.variable, poppins.variable, "font-sans")}>
+    <html lang="en-BD" data-scroll-behavior="smooth" className={cn(inter.variable, poppins.variable, notoSansBengali.variable, "font-sans")}>
       <head>
         <Script
           id="lofimart-structured-data"

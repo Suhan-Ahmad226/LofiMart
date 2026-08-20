@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, BarChart3, Eye, FileText, Loader2, Plus, Save, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useUser } from '../../../features/shared/state/UserContext';
-import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
 type LocalizedStat = {
   value: string;

@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
-import toast from 'react-hot-toast';
-import { TableSkeleton } from '../../../components/ui/DataSkeletons';
+import toast from '@/lib/toast';
+import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
 
 type AdminOrder = {
   id: string;
@@ -489,7 +489,7 @@ export const AdminOrdersPage = () => {
                         {order.shipments.slice(0, 3).map((shipment) => (
                           <span
                             key={shipment.id}
-                            className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                            className="dashboard-stat-chip bg-white text-slate-600"
                           >
                             {shipment.warehouse_name || 'Pickup point'} /{' '}
                             {shipment.status.replaceAll('_', ' ')}
@@ -502,7 +502,7 @@ export const AdminOrdersPage = () => {
                         {order.items.slice(0, 2).map((item) => (
                           <span
                             key={item.id}
-                            className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                            className="dashboard-stat-chip bg-white text-slate-600"
                           >
                             {item.sku || 'SKU pending'}
                           </span>
@@ -661,7 +661,7 @@ export const AdminOrdersPage = () => {
                               {order.shipments.slice(0, 3).map((shipment) => (
                                 <span
                                   key={shipment.id}
-                                  className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                                  className="dashboard-stat-chip bg-slate-100 text-slate-600"
                                 >
                                   {shipment.warehouse_name || 'Pickup point'} /{' '}
                                   {shipment.status.replaceAll('_', ' ')}
@@ -675,7 +675,7 @@ export const AdminOrdersPage = () => {
                             {order.items.slice(0, 2).map((item) => (
                               <span
                                 key={item.id}
-                                className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+                                className="dashboard-stat-chip bg-white text-slate-600"
                               >
                                 {item.sku || 'SKU pending'}
                               </span>

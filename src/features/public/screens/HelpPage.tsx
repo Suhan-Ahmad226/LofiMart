@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, MessageCircle, Package, RefreshCcw, CreditCard, Truck } from 'lucide-react';
 import { useNavigate } from '../../../lib/navigation';
-import { AnimatedIcon } from '../../../components/ui/AnimatedIcon';
+import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 
 export const HelpPage = () => {
   const navigate = useNavigate();

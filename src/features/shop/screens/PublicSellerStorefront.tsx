@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { Link, useParams } from '../../../lib/navigation';
 import {
   ArrowRight,
@@ -19,8 +19,8 @@ import {
   Truck,
   Zap,
 } from 'lucide-react';
-import { ProductCard } from '../../../components/ProductCard';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import { ProductCard } from '@/features/shop/components/ProductCard';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { Product } from '../../../types';
 import { copyText } from '../../../lib/browser-actions';
 import { formatPrice } from '../../../lib/utils';
@@ -249,7 +249,7 @@ export function PublicSellerStorefront() {
 
           <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 section-kicker">
                 <Sparkles size={14} />
                 Official brand site
               </div>

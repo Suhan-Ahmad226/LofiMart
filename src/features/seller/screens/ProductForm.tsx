@@ -20,9 +20,10 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
-import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
+import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
 import type { ProductSpecification, ProductVariantOption, ProductVariantValue } from '../../../types';
 import { insertAroundSelection, renderProductDescription } from '../../../lib/product-description';
+import toast from '@/lib/toast';
 
 const CATEGORY_SPEC_TEMPLATES: Record<string, string[]> = {
   Fashion: ['Color', 'Size', 'Fabric', 'Fit'],
@@ -188,9 +189,11 @@ export const SellerProductForm = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save product');
 
+      toast.success(isEdit ? 'Product updated' : 'Product created');
       navigate('/seller/products');
     } catch (err: any) {
       setError(err.message);
+      toast.error(err instanceof Error ? err.message : 'Failed to save product');
     } finally {
       setLoading(false);
     }

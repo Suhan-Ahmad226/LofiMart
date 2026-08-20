@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Loader2, Tag, Layers, ListTree } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 interface Category { id: string; name: string; icon?: string }
 interface Subcategory { id: string; category_id: string; name: string; icon?: string }
@@ -18,6 +18,7 @@ export const AdminCategoriesPage = () => {
   const [newCategory, setNewCategory] = useState({ name: '', icon: '' });
   const [newSub, setNewSub] = useState({ category_id: '', name: '', icon: '' });
   const [newSubSub, setNewSubSub] = useState({ subcategory_id: '', name: '' });
+  const [categoryErrors, setCategoryErrors] = useState({ category: '', sub: '', subSub: '' });
 
   const fetchAll = async () => {
     setLoading(true);
@@ -60,10 +61,9 @@ export const AdminCategoriesPage = () => {
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCategory.name.trim()) {
-      toast.error('Category name is required');
-      return;
-    }
+    const nextError = !newCategory.name.trim() ? 'Category name is required.' : '';
+    setCategoryErrors((current) => ({ ...current, category: nextError }));
+    if (nextError) return;
 
     const response = await fetch('/api/admin/categories', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -82,15 +82,9 @@ export const AdminCategoriesPage = () => {
 
   const handleAddSub = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSub.category_id) {
-      toast.error('Select a parent category first');
-      return;
-    }
-
-    if (!newSub.name.trim()) {
-      toast.error('Subcategory name is required');
-      return;
-    }
+    const nextError = !newSub.category_id ? 'Select a parent category first.' : !newSub.name.trim() ? 'Subcategory name is required.' : '';
+    setCategoryErrors((current) => ({ ...current, sub: nextError }));
+    if (nextError) return;
 
     const response = await fetch('/api/admin/subcategories', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -109,15 +103,9 @@ export const AdminCategoriesPage = () => {
 
   const handleAddSubSub = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubSub.subcategory_id) {
-      toast.error('Select a parent subcategory first');
-      return;
-    }
-
-    if (!newSubSub.name.trim()) {
-      toast.error('Sub-subcategory name is required');
-      return;
-    }
+    const nextError = !newSubSub.subcategory_id ? 'Select a parent subcategory first.' : !newSubSub.name.trim() ? 'Sub-subcategory name is required.' : '';
+    setCategoryErrors((current) => ({ ...current, subSub: nextError }));
+    if (nextError) return;
 
     const response = await fetch('/api/admin/subsubcategories', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -175,7 +163,8 @@ export const AdminCategoriesPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <form onSubmit={handleAddCategory} className="bg-white p-6 rounded-2xl border border-black/5 shadow-sm space-y-4">
           <h3 className="font-bold flex items-center gap-2"><Tag size={16}/> Root Category</h3>
-          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newCategory.name} onChange={e=>setNewCategory({...newCategory,name:e.target.value})}/>
+          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newCategory.name} onChange={e=>{setNewCategory({...newCategory,name:e.target.value}); setCategoryErrors((current) => ({ ...current, category: '' }));}}/>
+          {categoryErrors.category ? <p className="text-sm text-red-600">{categoryErrors.category}</p> : null}
           <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Icon (optional)" value={newCategory.icon} onChange={e=>setNewCategory({...newCategory,icon:e.target.value})}/>
           <button type="submit" className="w-full btn-primary flex items-center justify-center gap-2 py-2"><Plus size={16}/>Add</button>
         </form>
@@ -186,7 +175,8 @@ export const AdminCategoriesPage = () => {
             <option value="">Select parent category</option>
             {categories.map(c=> <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newSub.name} onChange={e=>setNewSub({...newSub,name:e.target.value})}/>
+          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newSub.name} onChange={e=>{setNewSub({...newSub,name:e.target.value}); setCategoryErrors((current) => ({ ...current, sub: '' }));}}/>
+          {categoryErrors.sub ? <p className="text-sm text-red-600">{categoryErrors.sub}</p> : null}
           <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Icon (optional)" value={newSub.icon} onChange={e=>setNewSub({...newSub,icon:e.target.value})}/>
           <button type="submit" className="w-full btn-primary flex items-center justify-center gap-2 py-2"><Plus size={16}/>Add</button>
         </form>
@@ -197,7 +187,8 @@ export const AdminCategoriesPage = () => {
             <option value="">Select subcategory</option>
             {subcategories.map(s=> <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newSubSub.name} onChange={e=>setNewSubSub({...newSubSub,name:e.target.value})}/>
+          <input className="w-full bg-bg-light border-none rounded-xl py-2 px-4 text-sm" placeholder="Name" value={newSubSub.name} onChange={e=>{setNewSubSub({...newSubSub,name:e.target.value}); setCategoryErrors((current) => ({ ...current, subSub: '' }));}}/>
+          {categoryErrors.subSub ? <p className="text-sm text-red-600">{categoryErrors.subSub}</p> : null}
           <button type="submit" className="w-full btn-primary flex items-center justify-center gap-2 py-2"><Plus size={16}/>Add</button>
         </form>
       </div>

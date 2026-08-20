@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
-import toast from 'react-hot-toast';
-import { EmptyState } from '../../../components/ui/FeedbackState';
+import toast from '@/lib/toast';
+import { EmptyState } from '@/features/shared/ui/FeedbackState';
 
 type WalletTransaction = {
   id: string;

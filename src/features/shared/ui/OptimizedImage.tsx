@@ -13,6 +13,21 @@ type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   showPlaceholder?: boolean;
 };
 
+function getResponsiveWidths(widthHint?: number) {
+  if (!widthHint) return [];
+
+  const baseWidth = Math.max(160, Math.round(widthHint));
+  const candidates = [320, 480, 640, 768, 960, 1280, 1536, 1920].filter(
+    (width) => width <= baseWidth * 1.5,
+  );
+
+  if (!candidates.includes(baseWidth)) {
+    candidates.push(baseWidth);
+  }
+
+  return Array.from(new Set(candidates)).sort((a, b) => a - b);
+}
+
 export function OptimizedImage({
   src,
   widthHint,
@@ -55,10 +70,38 @@ export function OptimizedImage({
     [normalizedSrc, showPlaceholder],
   );
 
+  const responsiveSrcSet = useMemo(() => {
+    if (!normalizedSrc || useRawSrc) return undefined;
+
+    const widths = getResponsiveWidths(widthHint);
+    if (widths.length === 0) return undefined;
+
+    return widths
+      .map((width) => {
+        const url = getOptimizedCloudinaryImage(normalizedSrc, {
+          width,
+          height: heightHint && widthHint ? Math.round((heightHint / widthHint) * width) : undefined,
+          quality,
+          fit,
+        });
+        return `${url} ${width}w`;
+      })
+      .join(', ');
+  }, [fit, heightHint, normalizedSrc, quality, useRawSrc, widthHint]);
+
   useEffect(() => {
-    setIsLoaded(false);
-    setUseRawSrc(false);
-    setIsBroken(false);
+    let active = true;
+
+    queueMicrotask(() => {
+      if (!active) return;
+      setIsLoaded(false);
+      setUseRawSrc(false);
+      setIsBroken(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [optimizedSrc]);
 
   useEffect(() => {
@@ -106,6 +149,8 @@ export function OptimizedImage({
       ) : null}
       <img
         src={actualSrc}
+        srcSet={actualSrc ? responsiveSrcSet : undefined}
+        sizes={rest.sizes || (widthHint ? `(max-width: 640px) 92vw, ${widthHint}px` : undefined)}
         alt={alt}
         referrerPolicy={referrerPolicy || 'no-referrer'}
         decoding={decoding || 'async'}

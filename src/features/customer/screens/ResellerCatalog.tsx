@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Info, Loader2, Plus, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
 import type { Product } from '../../../types';

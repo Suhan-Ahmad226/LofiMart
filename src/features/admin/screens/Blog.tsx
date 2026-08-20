@@ -10,9 +10,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
-import toast from 'react-hot-toast';
-import CloudinaryUpload from '../../../components/media/CloudinaryUpload';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import toast from '@/lib/toast';
+import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { Link } from '../../../lib/navigation';
 
 type AdminBlogPost = {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Camera, Download, RefreshCcw, Share2, Volume2, X } from 'lucide-react';
-import { useCamera } from '../../../../../hooks/useCamera';
+import { useCamera } from '@/features/shared/immersive/hooks/useCamera';
 import { copyText } from '../../../../../lib/browser-actions';
 
 interface ARTryOnProps {

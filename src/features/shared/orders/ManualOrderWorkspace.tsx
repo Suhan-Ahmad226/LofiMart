@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, Package2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import {
   DEFAULT_ENABLED_MANUAL_ORDER_PAYMENT_METHODS,
   isKnownManualOrderPaymentMethod,

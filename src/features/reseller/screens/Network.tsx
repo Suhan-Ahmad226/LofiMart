@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Mail, MessageSquare, Search, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { copyText, openMailto } from '../../../lib/browser-actions';

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams, Link } from '../../../lib/navigation';
 import { ArrowRight, CheckCircle, Loader2, Lock } from 'lucide-react';
-import { AuthAlert, AuthShell, PasswordVisibilityButton } from '../../../components/auth/AuthUI';
+import { AuthAlert, AuthShell, PasswordVisibilityButton } from '@/features/auth/components/AuthUI';
 import { getPasswordStrength, getSupabaseBrowserClient, hasSupabaseBrowserEnv, mapAuthMessage } from '../../../lib/auth-ui';
 
 export const ResetPasswordPage = () => {

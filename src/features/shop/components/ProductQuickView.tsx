@@ -12,12 +12,11 @@ import {
   Eye,
 } from 'lucide-react';
 import { Link } from '../../../lib/navigation';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { Product } from '../../../types';
 import { formatPrice } from '../../../lib/utils';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
-import toast from 'react-hot-toast';
 
 interface ProductQuickViewProps {
   product: Product;
@@ -47,13 +46,8 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
       : 0;
 
   const handleAddToCart = useCallback(() => {
-    if (isAlreadyInCart) {
-      toast('This item is already in your cart.', { icon: '🛒' });
-      return;
-    }
     addToCart(product, quantity);
-    toast.success('Added to cart');
-  }, [isAlreadyInCart, addToCart, product, quantity]);
+  }, [addToCart, product, quantity]);
 
   const handleWishlist = useCallback(() => {
     toggleWishlist(product);

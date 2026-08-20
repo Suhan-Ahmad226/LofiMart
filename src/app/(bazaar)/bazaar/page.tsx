@@ -70,7 +70,7 @@ export default function BazaarIndexPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
-      <section className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(255,76,76,0.08),rgba(40,167,69,0.10))] p-8 md:p-12">
+      <section className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(245,158,11,0.06),rgba(37,99,235,0.08))] p-8 md:p-12">
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-accent mb-3">Bazaar Hub</p>
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Explore every Bazaar experience from one place</h1>
         <p className="text-muted-foreground max-w-2xl">

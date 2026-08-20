@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Loader2, MessageSquareWarning } from 'lucide-react';
 import { Link } from '../../../lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 import { useUser } from '../../../features/shared/state/UserContext';
 
 type UserNotification = {

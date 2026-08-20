@@ -24,18 +24,18 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from '../../../lib/navigation';
-import { Skeleton } from '../../../components/ui/Skeleton';
+import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { getCachedClientValue } from '../../../lib/client-cache';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 const SocialShare = dynamic(
-  () => import('@/components/SocialShare').then((module) => module.SocialShare),
+  () => import('@/features/shared/components/SocialShare').then((module) => module.SocialShare),
   {
     ssr: false,
     loading: () => <div className="h-10 w-full animate-pulse rounded-2xl bg-slate-100" />,
   },
 );
-const CloudinaryUpload = dynamic(() => import('@/components/media/CloudinaryUpload'), {
+const CloudinaryUpload = dynamic(() => import('@/features/shared/media/CloudinaryUpload'), {
   ssr: false,
   loading: () => <div className="h-28 animate-pulse rounded-[1.5rem] bg-slate-100" />,
 });
@@ -681,7 +681,7 @@ export const CommunityFeedPage = () => {
           ) : null}
           <section className="grid gap-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 shadow-[0_28px_80px_-48px_rgba(15,23,42,0.55)] xl:grid-cols-[1.15fr_0.85fr]">
             <div className="relative overflow-hidden p-6 sm:p-8 lg:p-10">
-              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,rgba(40,167,69,0.14),transparent_60%)]" />
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.1),transparent_60%)]" />
               <div className="relative space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
                   <Sparkles size={14} />
@@ -982,7 +982,7 @@ export const CommunityFeedPage = () => {
                                 ) : (
                                   <h3 className="truncate font-bold text-slate-950">{item.user.name}</h3>
                                 )}
-                                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                <span className="dashboard-stat-chip bg-emerald-50 text-emerald-700 uppercase tracking-wide">
                                   {item.user.badge}
                                 </span>
                               </div>

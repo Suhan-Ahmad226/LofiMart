@@ -24,8 +24,8 @@ export function AuthShell({
     <div className="relative min-h-[calc(100vh-5rem)] overflow-hidden bg-[#070816] px-4 py-6 text-white sm:py-10">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(124,58,237,0.34),transparent_30%),radial-gradient(circle_at_82%_70%,rgba(217,70,239,0.28),transparent_34%),radial-gradient(circle_at_55%_20%,rgba(14,165,233,0.16),transparent_28%),linear-gradient(135deg,#070816_0%,#111137_48%,#170a2c_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-fuchsia-500/20 to-transparent" />
-      <div className="relative mx-auto grid max-w-6xl items-stretch gap-6 lg:min-h-[720px] lg:grid-cols-[1fr_0.92fr]">
-        <div className="relative hidden overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl lg:flex lg:flex-col lg:justify-between">
+      <div className="relative mx-auto grid max-w-6xl items-stretch gap-6 md:min-h-[720px] md:grid-cols-[1fr_0.92fr]">
+        <div className="relative hidden overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl md:flex md:flex-col md:justify-between">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_85%,rgba(124,58,237,0.32),transparent_30%),radial-gradient(circle_at_82%_42%,rgba(56,189,248,0.12),transparent_32%)]" />
           <div className="space-y-6">
             <div className="relative flex items-center gap-2 text-lg font-bold">
@@ -73,7 +73,7 @@ export function AuthShell({
           </div>
         </div>
 
-        <div className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 text-white shadow-2xl shadow-black/40 backdrop-blur-2xl sm:p-8">
+        <div className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 text-white shadow-2xl shadow-black/40 backdrop-blur-2xl md:p-8 md:max-w-[420px] md:mx-auto">
           {children}
         </div>
       </div>

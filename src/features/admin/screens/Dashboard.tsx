@@ -5,14 +5,14 @@ import { Activity, DollarSign, Loader2, ShieldCheck, ShoppingBag, Store, Users }
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 
-const SalesChart = dynamic(() => import('@/components/analytics/SalesChart'), {
+const SalesChart = dynamic(() => import('@/features/shared/analytics/SalesChart'), {
   ssr: false,
   loading: () => (
     <div className="h-64 w-full animate-pulse rounded-2xl border border-black/5 bg-white p-4 shadow-sm" />
   ),
 });
 
-const ActivityHeatmap = dynamic(() => import('@/components/analytics/ActivityHeatmap'), {
+const ActivityHeatmap = dynamic(() => import('@/features/shared/analytics/ActivityHeatmap'), {
   ssr: false,
   loading: () => (
     <div className="h-64 w-full animate-pulse rounded-2xl border border-black/5 bg-white p-4 shadow-sm" />

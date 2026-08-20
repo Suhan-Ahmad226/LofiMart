@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Download, Filter, Loader2, MapPin, Search, Truck, Undo2, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
-import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
 
 interface SellerShipment {
   id: string;

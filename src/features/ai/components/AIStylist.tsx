@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Heart, Loader2, Palette, Share2, ShoppingBag, Sparkles, Wand2 } from 'lucide-react';
 import { useNavigate } from '../../../lib/navigation';
-import { useAIStylist, type OutfitRecommendation, type StyleProfile } from '../../../hooks/useAIStylist';
-import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
-import { ProductCard } from '../../../components/ProductCard';
+import { useAIStylist, type OutfitRecommendation, type StyleProfile } from '@/features/ai/hooks/useAIStylist';
+import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import type { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { copyText } from '../../../lib/browser-actions';
 
 interface AIStylistProps {

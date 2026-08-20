@@ -3,7 +3,7 @@ import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
 import { formatPrice } from '../../../lib/utils';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { useWishlist } from '../../../features/shop/state/WishlistContext';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 
 export const CustomerWishlistPage = () => {
   const { addToCart } = useCart();

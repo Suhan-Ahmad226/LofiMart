@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from '../../../lib/navigation';
 import { ArrowRight, CheckCircle, Loader2, Mail } from 'lucide-react';
-import { AuthAlert, AuthShell } from '../../../components/auth/AuthUI';
+import { AuthAlert, AuthShell } from '@/features/auth/components/AuthUI';
 import { getSupabaseBrowserClient, hasSupabaseBrowserEnv, mapAuthMessage } from '../../../lib/auth-ui';
 
 export const ForgotPasswordPage = () => {

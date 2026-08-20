@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Coins, Gift, Loader2, RotateCcw, Settings2 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { EmptyState, FormNotice } from '../../../components/ui/FeedbackState';
+import toast from '@/lib/toast';
+import { EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 import { useUser } from '../../../features/shared/state/UserContext';
 
 type ConfigResponse = {

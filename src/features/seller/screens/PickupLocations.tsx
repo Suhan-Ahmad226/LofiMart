@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, MapPin, Phone, Plus, RefreshCw, Save, Store, Trash2, Truck } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { inventoryApi } from '../../../services/inventoryApi';
+import toast from '@/lib/toast';
+import { inventoryApi } from '@/features/inventory/services/inventoryApi';
 import { Warehouse } from '../../../types/inventory';
 
 type PathaoOption = {

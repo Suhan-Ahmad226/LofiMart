@@ -18,17 +18,17 @@ import {
   Zap,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { copyText } from '../../../lib/browser-actions';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
 import { Product } from '../../../types';
-import OptimizedImage from '../../../components/ui/OptimizedImage';
-import { ProductCard } from '../../../components/ProductCard';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { ProductCard } from '@/features/shop/components/ProductCard';
 import { buildSellerDashboardIntelligence } from '../../../features/seller/lib/dashboard-intelligence';
 
-const SalesPerformanceChart = dynamic(() => import('@/components/seller/SalesPerformanceChart'), {
+const SalesPerformanceChart = dynamic(() => import('@/features/seller/components/SalesPerformanceChart'), {
   ssr: false,
   loading: () => <div className="h-[300px] w-full animate-pulse rounded-xl bg-secondary" />,
 });
@@ -157,7 +157,7 @@ function SectionHeading({
   return (
     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">{eyebrow}</p>
+        <p className="section-kicker text-primary/70">{eyebrow}</p>
         <h2 className="mt-1.5 text-xl font-bold tracking-tight text-slate-950">{title}</h2>
         {description ? <p className="mt-1.5 text-sm text-muted-foreground">{description}</p> : null}
       </div>
@@ -478,7 +478,7 @@ function SellerStorefrontMiniCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white shadow-none">
-      <div className="bg-[linear-gradient(135deg,rgba(40,167,69,0.14),rgba(15,23,42,0.05))] px-5 py-5">
+      <div className="bg-[linear-gradient(135deg,rgba(37,99,235,0.1),rgba(15,23,42,0.05))] px-5 py-5">
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary/70">Live storefront</p>
         <h3 className="mt-2 text-lg font-bold text-slate-950">{storeName}</h3>
         <p className="mt-2 text-sm text-slate-600">
@@ -586,7 +586,7 @@ function SellerStorefrontPreview({
           ) : null}
           <div className="relative flex min-h-[260px] flex-col justify-between gap-5 px-5 py-5 text-white sm:px-6 sm:py-6">
             <div className="flex items-start justify-between gap-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] backdrop-blur">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 section-kicker backdrop-blur">
                 <Store size={14} />
                 Uploaded storefront banner
               </span>
@@ -634,7 +634,7 @@ function SellerStorefrontPreview({
         <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Store promotions</p>
+              <p className="section-kicker text-primary/70">Store promotions</p>
               <h2 className="mt-2 text-2xl font-bold text-slate-950">Coupons customers can use now</h2>
             </div>
             <Link to="/seller/marketing" className="text-sm font-semibold text-primary hover:text-primary-dark">
@@ -688,7 +688,7 @@ function SellerStorefrontPreview({
         <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-accent/80">
+              <p className="inline-flex items-center gap-2 section-kicker text-accent/80">
                 <Zap size={14} className="fill-accent text-accent" />
                 Flash sale
               </p>
@@ -709,7 +709,7 @@ function SellerStorefrontPreview({
       <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Featured products</p>
+            <p className="section-kicker text-primary/70">Featured products</p>
             <h2 className="mt-2 text-2xl font-bold text-slate-950">Storefront highlights</h2>
           </div>
           <Link to="/seller/products" className="text-sm font-semibold text-primary hover:text-primary-dark">
@@ -730,7 +730,7 @@ function SellerStorefrontPreview({
       <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Latest products</p>
+            <p className="section-kicker text-primary/70">Latest products</p>
             <h2 className="mt-2 text-2xl font-bold text-slate-950">Newest catalog entries</h2>
           </div>
           <Link to="/seller/products/add" className="text-sm font-semibold text-primary hover:text-primary-dark">
@@ -1069,7 +1069,7 @@ function SellerDashboardManageView({
             style={{
               background: overviewBannerUrl
                 ? 'linear-gradient(135deg, rgba(248,250,252,0.92), rgba(244,247,250,0.84))'
-                : 'radial-gradient(circle_at_top_left,rgba(40,167,69,0.16),transparent 28%),linear-gradient(135deg,rgba(248,250,252,0.98),rgba(244,247,250,0.94))',
+                : 'radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent 28%),linear-gradient(135deg,rgba(248,250,252,0.98),rgba(240,244,254,0.94))',
             }}
           />
           <div className="absolute inset-y-0 right-0 hidden w-[32%] bg-[linear-gradient(180deg,rgba(15,23,42,0.02),rgba(15,23,42,0.06))] xl:block" />
@@ -1084,7 +1084,7 @@ function SellerDashboardManageView({
                   {storeIdentityInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Operational control center</p>
+                  <p className="section-kicker text-primary/70">Operational control center</p>
                   <h1 className="mt-2 max-w-3xl text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
                     {storeName}, here is your business pulse for today
                   </h1>
@@ -1684,7 +1684,7 @@ export const SellerDashboard = () => {
         <div className="rounded-xl border border-border bg-white p-5 shadow-none">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Approval status</p>
+              <p className="section-kicker text-primary/70">Approval status</p>
               <h2 className="mt-1.5 text-lg font-bold text-slate-950">
                 {String(onboarding.approval.status || 'draft').replaceAll('_', ' ')}
               </h2>

@@ -82,7 +82,7 @@ export const ResellerOverview = () => {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(255,76,76,0.08),rgba(40,167,69,0.08))] p-8 shadow-sm">
+      <div className="rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(245,158,11,0.06),rgba(37,99,235,0.06))] p-8 shadow-sm">
         <h1 className="text-2xl font-bold tracking-tight">Reseller Dashboard</h1>
         <p className="text-muted-foreground">Welcome back, {user?.name}. Here&apos;s what&apos;s happening with your network.</p>
       </div>
@@ -97,7 +97,7 @@ export const ResellerOverview = () => {
         <div className="rounded-3xl border border-border bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-fuchsia-600/80">Reseller onboarding</p>
+              <p className="section-kicker text-fuchsia-600/80">Reseller onboarding</p>
               <h2 className="mt-2 text-xl font-bold">Complete the setup that makes your reseller shop earn-ready</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {onboarding.summary?.completed_steps || 0}/{onboarding.summary?.total_steps || 0} onboarding steps complete.

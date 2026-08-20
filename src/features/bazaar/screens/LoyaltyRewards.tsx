@@ -1,7 +1,7 @@
 import React from 'react';
 import { Award, Lock, Star, TrendingUp, Zap } from 'lucide-react';
 import { useNavigate } from '../../../lib/navigation';
-import NotificationContainer, { useNotification } from '../../../components/animations/NotificationContainer';
+import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
 
 const LoyaltyRewards: React.FC = () => {
   const navigate = useNavigate();

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Download, Wifi, Bell, HardDrive } from 'lucide-react';
-import PWAStatus from '../../../components/PWAStatus';
-import { usePWAInstall } from '../../../hooks/usePWAInstall';
-import { usePushNotifications } from '../../../hooks/usePushNotifications';
+import PWAStatus from '@/features/shared/pwa/PWAStatus';
+import { usePWAInstall } from '@/features/shared/pwa/hooks/usePWAInstall';
+import { usePushNotifications } from '@/features/shared/pwa/hooks/usePushNotifications';
 import { offlineStorage } from '../../../utils/offlineStorage';
 
 export const PWAPage: React.FC = () => {

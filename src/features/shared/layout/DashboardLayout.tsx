@@ -41,7 +41,7 @@ import {
   ChevronsUpDown,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { SellerDashboardShell } from '../../../components/seller/SellerDashboardShell';
+import { SellerDashboardShell } from '@/features/seller/components/SellerDashboardShell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, MessageSquareText, Star } from 'lucide-react';
 import { Link } from '../../../lib/navigation';
-import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '../../../components/seller/SellerPageHeader';
+import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { Product } from '../../../types';
 

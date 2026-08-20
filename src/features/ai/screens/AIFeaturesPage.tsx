@@ -13,11 +13,11 @@ import {
   Zap,
 } from 'lucide-react';
 import { Link, useNavigate } from '../../../lib/navigation';
-import AIStylist from '../../../components/ai/AIStylist';
-import SizePredictor from '../../../components/ai/SizePredictor';
-import VoiceSearch from '../../../components/ai/VoiceSearch';
-import VoiceCommerce from '../../../components/ai/VoiceCommerce';
-import DemoPageLinks from '../../../components/DemoPageLinks';
+import AIStylist from '@/features/ai/components/AIStylist';
+import SizePredictor from '@/features/ai/components/SizePredictor';
+import VoiceSearch from '@/features/ai/components/VoiceSearch';
+import VoiceCommerce from '@/features/ai/components/VoiceCommerce';
+import DemoPageLinks from '@/features/shared/components/DemoPageLinks';
 
 type FeatureTab = 'overview' | 'stylist' | 'size' | 'voice-search' | 'voice-commerce';
 
