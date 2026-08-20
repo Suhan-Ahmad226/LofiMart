@@ -35,14 +35,13 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems
-    .map((item: { id?: string | number; productId?: string | number; quantity?: number; qty?: number; price?: number }) => ({
+    .map((item: { id?: string | number; productId?: string | number; quantity?: number; qty?: number }) => ({
       productId: String(item.id || item.productId || ''),
       quantity: Math.max(1, Number(item.quantity || item.qty || 1)),
-      price: Number(item.price || 0),
     }))
     .filter(
-      (item: { productId: string; quantity: number; price: number }) =>
-        item.productId && Number.isFinite(item.price) && item.price >= 0,
+      (item: { productId: string; quantity: number }) =>
+        item.productId && Number.isFinite(item.quantity),
     );
 
   if (items.length === 0) {
@@ -56,6 +55,8 @@ export async function POST(request: NextRequest) {
       paymentMethod: body.paymentMethod ? String(body.paymentMethod) : 'cod',
       refCode: body.refCode ? String(body.refCode) : undefined,
       shippingAddress: body.shippingAddress || body.fullAddressSummary || null,
+      couponCode: body.couponCode ? String(body.couponCode) : undefined,
+      deliveryFee: Number(body.deliveryFee || 0),
       items,
     });
 
