@@ -296,17 +296,15 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         throw new Error(`Insufficient stock for ${product?.name || item.productId}`);
       }
 
-      const inventoryRows = await tx.inventoryItem.findMany({
-        where: { productId: item.productId },
+      const inventoryItem = await tx.inventoryItem.findFirst({
+        where: {
+          productId: item.productId,
+          quantity: { gte: item.quantity },
+        },
         orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
-        take: 2,
       });
 
-      const inventoryItem =
-        inventoryRows.find((row) => row.quantity >= item.quantity) ??
-        (inventoryRows.length === 0 ? null : undefined);
-
-      if (inventoryItem === undefined) {
+      if (!inventoryItem) {
         throw new Error(
           `Insufficient warehouse inventory for ${productById.get(item.productId)?.name || item.productId}`,
         );
