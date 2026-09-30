@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import { isAuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail } from '@/features/auth/server/auth-service';
+import { isAuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail, OTP_MAX_ATTEMPTS } from '@/features/auth/server/auth-service';
 import { attachPasswordResetSessionCookie, createPasswordResetSession } from '@/features/auth/server/reset-session';
 
 export const runtime = 'nodejs';
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const clientIp = getClientIp(request);
     const rateLimitKey = `otp:verify:${purpose}:${classified.value}:${clientIp}`;
-    const { allowed } = await takeRateLimit(rateLimitKey, { limit: 5, windowMs: 5 * 60 * 1000 });
+    const { allowed } = await takeRateLimit(rateLimitKey, { limit: OTP_MAX_ATTEMPTS, windowMs: 5 * 60 * 1000 });
 
     if (!allowed) {
       return NextResponse.json(
