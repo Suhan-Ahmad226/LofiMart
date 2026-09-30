@@ -4,6 +4,7 @@ import { getShippingQuote } from '@/features/courier/services/quoteService';
 import { restoreStockForOrder } from './inventoryService';
 import { ensureTelegramInvoice, sendInvoiceToTelegram } from './invoiceService';
 import { sendLowStockAlert, sendNewOrderNotification, sendOrderStatusNotification } from './notificationService';
+import { isKnownCheckoutPaymentMethod } from '@/lib/commerce-channels';
 
 type CreateOrderLine = {
   productId: string;
@@ -126,8 +127,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   let couponSnapshot: Record<string, unknown> | null = null;
 
   const paymentMethod = String(input.paymentMethod || 'cod').trim().toLowerCase();
-  const allowedPaymentMethods = new Set(['cod', 'bkash', 'bank', 'gateway']);
-  if (!allowedPaymentMethods.has(paymentMethod)) {
+  if (!isKnownCheckoutPaymentMethod(paymentMethod)) {
     throw new Error('Unsupported payment method');
   }
 
