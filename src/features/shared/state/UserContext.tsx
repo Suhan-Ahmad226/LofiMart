@@ -34,17 +34,20 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-function applySessionState(
-  setUserState: React.Dispatch<React.SetStateAction<User | null>>,
-  setToken: React.Dispatch<React.SetStateAction<string | null>>,
-  setRefreshToken: React.Dispatch<React.SetStateAction<string | null>>,
-  nextUser: User | null,
-  session: Session | null = null,
-) {
-  setUserState(nextUser);
-  setToken(nextUser ? session?.access_token ?? null : null);
-  setRefreshToken(nextUser ? session?.refresh_token ?? null : null);
-}
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUserState] = useState<User | null>(null);
+  // Tokens are held only in React memory. Supabase remains the session authority
+  // and persists/refreshes its own SSR-compatible session storage.
+  const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+
+  const setInternalUser = useCallback((nextUser: User | null, session: Session | null = null) => {
+    setUserState(nextUser);
+    setToken(nextUser ? session?.access_token ?? null : null);
+    setRefreshToken(nextUser ? session?.refresh_token ?? null : null);
+  }, []);
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', {
@@ -61,6 +64,7 @@ function applySessionState(
     } catch {
       // ignore
     }
+
     setInternalUser(null);
   }, [setInternalUser]);
 
@@ -88,6 +92,9 @@ function applySessionState(
         supabase = createClient();
         supabaseRef.current = supabase;
 
+        // getUser() is the verified identity check. getSession() is used only
+        // to expose the current raw token to legacy client API callers; server
+        // authorization never trusts this React state.
         const { data: userData } = await supabase.auth.getUser();
         const { data: sessionData } = await supabase.auth.getSession();
 
@@ -98,6 +105,7 @@ function applySessionState(
             const response = await fetch('/api/users/profile', {
               credentials: 'include',
             });
+
             if (response.ok) {
               const payload = await response.json().catch(() => null);
               if (payload?.user) {
@@ -141,7 +149,7 @@ function applySessionState(
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const active = true;
+    let active = true;
 
     const setupListener = async () => {
       try {
@@ -160,13 +168,19 @@ function applySessionState(
             const response = await fetch('/api/users/profile', {
               credentials: 'include',
             });
+
             if (response.ok) {
               const payload = (await response.json().catch(() => null)) as { user?: User } | null;
               if (payload?.user) {
-                setInternalUser({
-                  ...payload.user,
-                  name: payload.user.name || '',
-                });
+                setInternalUser(
+                  {
+                    ...payload.user,
+                    name: payload.user.name || '',
+                  },
+                  session,
+                );
+              } else {
+                setInternalUser(null);
               }
             } else {
               setInternalUser(null);
@@ -185,6 +199,7 @@ function applySessionState(
     };
 
     const cleanup = setupListener();
+
     return () => {
       void cleanup;
     };
