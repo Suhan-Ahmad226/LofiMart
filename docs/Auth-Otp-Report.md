@@ -1,6 +1,6 @@
 # LofiMart Auth & OTP — Root-Cause Audit & Fix Report
 
-Status: repo corrections applied + all tests green; OTP **delivery** requires a manual Supabase Dashboard SMTP setup (Section 12).
+Status: repository OTP/auth hardening is applied; the latest changes require CI/Vercel verification. OTP **delivery** requires the Supabase Dashboard SMTP configuration described in Section 12.
 
 ---
 
@@ -75,11 +75,9 @@ No schema change required for these fixes. The resume bug was a query-semantics 
 
 ---
 
-## 11. Tests Executed + Results
+## 11. Verification status
 
-- `npm test` → **16 files, 224 tests passing** (34s; includes auth-phase1 13, auth-phase2 12, auth-phase3 8, login/reset/rate-limit, inventory 13, orders 9, courier, oauth, social-automation suites, cod, rbac 36).
-- `npm run lint:types` (tsc --noEmit) → **passes**.
-- Verified via tests: resumed-account email now resolves to the stored account email; OR-null phone no longer matches unrelated accounts.
+The latest auth hardening was applied directly to the `development` branch. CI/Vercel verification is still pending for the latest commit, so this document does not claim a fresh test run.
 
 ---
 
