@@ -61,6 +61,7 @@ const UNCERTAIN_ESCALATION_MS = 48 * 60 * 60 * 1000;
 
 /** A poll failure backs off, so a courier outage does not turn into a hot loop. */
 const MAX_POLL_BACKOFF_MS = 8 * 60 * 60 * 1000;
+const RECONCILIATION_CLAIM_LEASE_MS = 10 * 60 * 1000;
 
 export type ReconciliationOutcome =
   | 'advanced'
@@ -482,6 +483,21 @@ export async function reconcileDueShipments(limit = 25): Promise<ReconciliationR
   const results: ReconciliationResult[] = [];
 
   for (const shipment of due) {
+    // Claim the cursor before polling. Multiple worker processes may wake up at
+    // the same time; only one is allowed to perform the courier API request.
+    const claimed = await prismaDirect.orderShipment.updateMany({
+      where: {
+        id: shipment.id,
+        nextReconcileAt: { lte: new Date() },
+        bookingState: { in: ['booked', 'uncertain'] },
+      },
+      data: {
+        nextReconcileAt: new Date(Date.now() + RECONCILIATION_CLAIM_LEASE_MS),
+      },
+    });
+
+    if (claimed.count !== 1) continue;
+
     try {
       results.push(await reconcileShipment(shipment.id));
     } catch (error) {
