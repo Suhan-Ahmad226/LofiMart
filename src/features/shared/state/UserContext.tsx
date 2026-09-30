@@ -27,6 +27,8 @@ interface UserContextType {
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
   isReady: boolean;
+  /** Supabase access token for legacy API transport. Supabase remains the auth authority. */
+  token: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
   const setInternalUser = useCallback((nextUser: User | null) => {
@@ -57,6 +60,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setInternalUser(null);
+    setToken(null);
   }, [setInternalUser]);
 
   useEffect(() => {
@@ -83,13 +87,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase = createClient();
         supabaseRef.current = supabase;
 
-        // getUser() is the verified identity check. Supabase owns the session
-        // and token lifecycle; this context only mirrors the application profile.
-        const { data: userData } = await supabase.auth.getUser();
+        // Supabase owns the session/token lifecycle. getSession() is used here
+        // only to obtain the short-lived access token required by legacy client
+        // API calls; it is never used as the authorization source on the server.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        const userData = session?.user ?? null;
+        if (session?.access_token) setToken(session.access_token);
 
         if (!active) return;
 
-        if (userData.user) {
+        if (userData) {
           try {
             const response = await fetch('/api/users/profile', {
               credentials: 'include',
@@ -115,10 +123,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else {
           setInternalUser(null);
+          setToken(null);
         }
       } catch {
         if (active) {
           setInternalUser(null);
+          setToken(null);
         }
       } finally {
         if (active) {
@@ -149,8 +159,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (!session?.user) {
             setInternalUser(null);
+            setToken(null);
             return;
           }
+
+          setToken(session.access_token ?? null);
 
           try {
             const response = await fetch('/api/users/profile', {
@@ -165,7 +178,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     ...payload.user,
                     name: payload.user.name || '',
                   },
-                  session,
                 );
               } else {
                 setInternalUser(null);
@@ -216,6 +228,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser,
         isAuthenticated: !!user,
         isReady,
+        token,
       }}
     >
       {children}
