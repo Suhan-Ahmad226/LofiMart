@@ -7,17 +7,35 @@ import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 
+interface Banner {
+  id: number;
+  title: string;
+  subtitle: string;
+  image: string;
+  link: string;
+  button_text: string;
+  is_active: boolean;
+}
+
+interface FormData {
+  title: string;
+  subtitle: string;
+  image: string;
+  link: string;
+  button_text: string;
+}
+
 export const AdminBannersPage = () => {
   const { token } = useUser();
-  const [banners, setBanners] = useState<any[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [editingBanner, setEditingBanner] = useState<any>(null);
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     subtitle: '',
     image: '',
@@ -32,11 +50,12 @@ export const AdminBannersPage = () => {
       const response = await fetch('/api/admin/banners', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await response.json().catch(() => null);
+      const data = await response.json().catch(() => null) as (Banner[] | { error?: string }) | null;
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load banners');
+        const message = Array.isArray(data) ? null : data?.error;
+        throw new Error(message || 'Failed to load banners');
       }
-      setBanners(data);
+      setBanners(Array.isArray(data) ? data : []);
     } catch (err) {
       const nextError = err instanceof Error ? err.message : 'Failed to load banners';
       toast.error(nextError);
@@ -87,7 +106,7 @@ export const AdminBannersPage = () => {
     }
   };
 
-  const handleToggleActive = async (banner: any) => {
+  const handleToggleActive = async (banner: Banner) => {
     try {
       const response = await fetch(`/api/admin/banners/${banner.id}`, {
         method: 'PATCH',
@@ -126,7 +145,7 @@ export const AdminBannersPage = () => {
     }
   };
 
-  const handleEdit = (banner: any) => {
+  const handleEdit = (banner: Banner) => {
     setEditingBanner(banner);
     setFormData({
       title: banner.title,

@@ -1,45 +1,28 @@
-import React, { Suspense, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../../lib/navigation';
 import {
   ArrowRight,
-  Award,
-  BadgeCheck,
   ChevronLeft,
   ChevronRight,
   Clock3,
   CreditCard,
   Gift,
-  Headphones,
   Mail,
-  PackageCheck,
   Percent,
   RefreshCcw,
-  Search,
   ShieldCheck,
-  Sparkles,
-  Star,
-  Store,
   Truck,
   Zap,
 } from 'lucide-react';
-import { ProductCard } from '@/features/shop/components/ProductCard';
+import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
-import { useCart } from '../../../features/shop/state/CartContext';
 import { getCachedClientValue } from '../../../lib/client-cache';
-import { formatPrice } from '../../../lib/utils';
 import type { Product } from '../../../types';
 
 type Category = {
   id: string | number;
   name: string;
   icon?: string | null;
-};
-
-type SellerShowcase = {
-  id: string | number;
-  name: string;
-  rating: number;
-  products: Product[];
 };
 
 type HomepageProductGroups = {
@@ -93,33 +76,11 @@ const categoryImages = [
   'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=720&q=80',
 ];
 
-const brandNames = ['Northline', 'Aura Beauty', 'VoltEdge', 'Maison Home', 'Urban Thread', 'DailyFresh', 'KidzNest', 'FitCore'];
-
-const reviews = [
-  {
-    name: 'Nadia Rahman',
-    title: 'Verified fashion buyer',
-    quote: 'The store badges, delivery updates, and easy checkout made the whole order feel very polished.',
-  },
-  {
-    name: 'Arif Hossain',
-    title: 'Electronics shopper',
-    quote: 'I compared prices, checked seller ratings, and received the item the next day in Dhaka.',
-  },
-  {
-    name: 'Samira Chowdhury',
-    title: 'Home essentials buyer',
-    quote: 'The product pages were clear, and the return policy was easy to understand before purchase.',
-  },
-];
-
 const serviceHighlights = [
   { title: 'Verified sellers', detail: 'Curated stores with approval checks', icon: ShieldCheck },
   { title: 'Fast delivery', detail: 'City and nationwide courier options', icon: Truck },
   { title: 'Secure payments', detail: 'Cards, wallets, COD, and gateways', icon: CreditCard },
   { title: 'Easy returns', detail: 'Clear support for refund requests', icon: RefreshCcw },
-  { title: 'Live support', detail: 'Help before and after checkout', icon: Headphones },
-  { title: 'Quality picks', detail: 'Featured items from trusted catalogs', icon: PackageCheck },
 ];
 
 const sectionKickerClass = 'section-kicker text-primary/80';
@@ -215,31 +176,6 @@ function getHomepageProductGroups(payload: unknown, fallbackProducts: Product[])
   };
 }
 
-function getSellerShowcases(products: Product[] = []): SellerShowcase[] {
-  const grouped = new Map<string, SellerShowcase>();
-  const productList = Array.isArray(products) ? products : [];
-
-  productList.forEach((product) => {
-    const id = String(product.seller_id || product.store_name || product.seller_name || product.category || 'featured');
-    const existing = grouped.get(id);
-
-    if (existing) {
-      existing.products.push(product);
-      existing.rating = Math.max(existing.rating, Number(product.seller_rating || product.rating || 4.8));
-      return;
-    }
-
-    grouped.set(id, {
-      id,
-      name: product.store_name || product.seller_name || `${product.category || 'Featured'} Store`,
-      rating: Number(product.seller_rating || product.rating || 4.8),
-      products: [product],
-    });
-  });
-
-  return takeFirst(Array.from(grouped.values()), 6);
-}
-
 function getCountdown(target: number) {
   const distance = Math.max(0, target - Date.now());
   const hours = Math.floor(distance / (1000 * 60 * 60));
@@ -251,7 +187,11 @@ function getCountdown(target: number) {
 
 async function fetchJsonWithTimeout(url: string, signal: AbortSignal, timeoutMs = 6500) {
   const timeoutController = new AbortController();
-  const timeoutId = window.setTimeout(() => timeoutController.abort(), timeoutMs);
+  let didTimeout = false;
+  const timeoutId = window.setTimeout(() => {
+    didTimeout = true;
+    timeoutController.abort();
+  }, timeoutMs);
 
   const abortForwarder = () => timeoutController.abort();
   signal.addEventListener('abort', abortForwarder, { once: true });
@@ -259,7 +199,6 @@ async function fetchJsonWithTimeout(url: string, signal: AbortSignal, timeoutMs 
   try {
     const response = await fetch(url, {
       signal: timeoutController.signal,
-      cache: 'force-cache',
     });
     const payload = await response.json().catch(() => null);
 
@@ -268,6 +207,16 @@ async function fetchJsonWithTimeout(url: string, signal: AbortSignal, timeoutMs 
     }
 
     return payload;
+  } catch (error) {
+    if (didTimeout) {
+      throw new Error('The storefront took too long to respond. Please try again.');
+    }
+    if (signal.aborted) {
+      const abortError = new Error('Request aborted.');
+      abortError.name = 'AbortError';
+      throw abortError;
+    }
+    throw error;
   } finally {
     window.clearTimeout(timeoutId);
     signal.removeEventListener('abort', abortForwarder);
@@ -282,99 +231,6 @@ async function fetchHomepageData(signal: AbortSignal) {
     return fetchJsonWithTimeout('/api/home', signal, 9000);
   }
 }
-
-const ProductRail = memo(function ProductRail({
-  products,
-  loading,
-  emptyTitle,
-  compact = false,
-}: {
-  products: Product[];
-  loading: boolean;
-  emptyTitle: string;
-  compact?: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="dashboard-chip-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-6">
-        {Array.from({ length: compact ? 6 : 8 }).map((_, index) => (
-          <div key={index} className="h-72 min-w-[10.75rem] animate-pulse rounded-xl border border-slate-200 bg-white p-2 md:min-w-0">
-            <div className="aspect-square rounded-lg bg-slate-100" />
-            <div className="mt-3 h-3 w-5/6 rounded bg-slate-100" />
-            <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
-            <div className="mt-5 h-9 rounded-lg bg-slate-100" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-        <p className="font-bold text-slate-900">{emptyTitle}</p>
-        <p className="mt-2 text-sm text-slate-500">Publish more products to fill this marketplace row.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="dashboard-chip-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-6">
-      {products.map((product) => (
-        <div key={product.id} className="min-w-[10.75rem] md:min-w-0">
-          <ProductCard product={product} />
-        </div>
-      ))}
-    </div>
-  );
-});
-
-const FlashSaleCard = memo(function FlashSaleCard({ product }: { product: Product }) {
-  const { addToCart } = useCart();
-  const discount = useMemo(
-    () => (product.old_price > product.price ? Math.max(1, Math.round(((product.old_price - product.price) / product.old_price) * 100)) : 12),
-    [product.old_price, product.price],
-  );
-  const handleAddToCart = useCallback(() => addToCart(product), [addToCart, product]);
-
-  return (
-    <article className="group min-w-[11rem] overflow-hidden rounded-xl border border-rose-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg md:min-w-0">
-      <Link to={`/product/${product.slug}`} className="relative block aspect-square bg-slate-100">
-        <OptimizedImage
-          src={product.image}
-          alt={product.name}
-          widthHint={420}
-          heightHint={420}
-          fit="fill"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-        <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-white">
-          -{discount}%
-        </span>
-      </Link>
-      <div className="p-3">
-        <Link to={`/product/${product.slug}`}>
-          <h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-bold leading-tight text-slate-950 hover:text-primary">
-            {product.name}
-          </h3>
-        </Link>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-base font-bold text-accent">{formatPrice(product.price)}</span>
-          {product.old_price > product.price ? (
-            <span className="text-xs text-slate-400 line-through">{formatPrice(product.old_price)}</span>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-slate-950 text-xs font-bold text-white hover:bg-primary"
-        >
-          Grab deal
-        </button>
-      </div>
-    </article>
-  );
-});
 
 const SectionHeader = memo(function SectionHeader({
   kicker,
@@ -425,34 +281,63 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
   );
 });
 
-const CountdownTimer = memo(function CountdownTimer({ initialTarget }: { initialTarget: number }) {
-  const [target, setTarget] = useState(initialTarget);
-  const [countdown, setCountdown] = useState(() => getCountdown(initialTarget));
+const CountdownTimer = memo(function CountdownTimer() {
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
+    let target = Date.now() + 7 * 60 * 60 * 1000 + 45 * 60 * 1000;
+    setCountdown(getCountdown(target));
+
     const intervalId = window.setInterval(() => {
-      setCountdown((current) => {
-        const next = getCountdown(target);
-        if (next.hours === 0 && next.minutes === 0 && next.seconds === 0) {
-          const refreshedTarget = Date.now() + 8 * 60 * 60 * 1000;
-          setTarget(refreshedTarget);
-          return getCountdown(refreshedTarget);
-        }
-        return current.hours === next.hours && current.minutes === next.minutes && current.seconds === next.seconds ? current : next;
-      });
+      const remaining = target - Date.now();
+
+      if (remaining <= 0) {
+        target = Date.now() + 8 * 60 * 60 * 1000;
+      }
+
+      setCountdown(getCountdown(target));
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [target]);
+  }, []);
+
+  const totalMinutes = countdown.hours * 60 + countdown.minutes;
+
+  useEffect(() => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    setAnnouncement(
+      hours > 0
+        ? `${hours} hour${hours === 1 ? '' : 's'} and ${minutes} minute${minutes === 1 ? '' : 's'} remaining in the flash sale`
+        : `${minutes} minute${minutes === 1 ? '' : 's'} and ${countdown.seconds} second${countdown.seconds === 1 ? '' : 's'} remaining in the flash sale`,
+    );
+  }, [totalMinutes, countdown.seconds]);
+
+  const pad = (value: number) => String(value).padStart(2, '0');
 
   return (
-    <div className="flex items-center gap-2" aria-live="polite">
-      <Clock3 size={18} className="text-accent" />
-      {[countdown.hours, countdown.minutes, countdown.seconds].map((value, index) => (
-        <span key={index} className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold tabular-nums text-white">
-          {String(value).padStart(2, '0')}
-        </span>
-      ))}
+    <div role="timer" aria-label="Time remaining in the flash sale" className="flex items-center gap-1.5">
+      <Clock3 size={18} className="text-accent" aria-hidden="true" />
+      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
+        {pad(countdown.hours)}
+      </span>
+      <span aria-hidden="true" className="font-bold text-slate-950">
+        :
+      </span>
+      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
+        {pad(countdown.minutes)}
+      </span>
+      <span aria-hidden="true" className="font-bold text-slate-950">
+        :
+      </span>
+      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
+        {pad(countdown.seconds)}
+      </span>
+      <span className="sr-only" aria-live="polite">
+        {announcement}
+      </span>
     </div>
   );
 });
@@ -525,190 +410,135 @@ function DeferredSection({
 
   return (
     <div ref={ref}>
-      <HomePageSectionBoundary>
-        <Suspense fallback={fallback}>{shouldMount ? children : fallback}</Suspense>
-      </HomePageSectionBoundary>
+      <HomePageSectionBoundary>{shouldMount ? children : fallback}</HomePageSectionBoundary>
     </div>
   );
 }
 
-const FeaturedProductsSection = memo(function FeaturedProductsSection({
+const DealsSection = memo(function DealsSection({
   products,
   loading,
 }: {
   products: Product[];
   loading: boolean;
 }) {
-  return (
-    <section className="page-shell pb-9" data-reveal>
-      <SectionHeader kicker="Featured products" title="Editor's picks from live catalogs" action={{ label: 'See all', href: '/shop' }} />
-      <ProductRail products={products} loading={loading} emptyTitle="Featured products will appear here." />
-    </section>
-  );
-});
+  const [visibleCount, setVisibleCount] = useState(12);
 
-const FeaturedSellerCard = memo(function FeaturedSellerCard({ seller }: { seller: SellerShowcase }) {
-  return (
-    <Link
-      to="/shop"
-      className="min-w-[min(22rem,84vw)] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:-translate-y-1 hover:shadow-lg lg:min-w-0"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-950 text-white">
-            {seller.products[0]?.image ? (
-              <OptimizedImage
-                src={seller.products[0].image}
-                alt={seller.name}
-                widthHint={120}
-                heightHint={120}
-                fit="fill"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <Store size={24} />
-            )}
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold text-slate-950">{seller.name}</h3>
-            <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-primary">
-              <BadgeCheck size={14} />
-              Verified marketplace store
-            </p>
-          </div>
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [products]);
+
+  const visibleProducts = useMemo(
+    () => products.slice(0, visibleCount),
+    [products, visibleCount],
+  );
+
+  const hasMoreProducts = visibleCount < products.length;
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((current) =>
+      Math.min(current + 12, products.length),
+    );
+  }, [products.length]);
+
+  if (loading) {
+    return (
+      <section className="page-shell pb-9" data-reveal>
+        <SectionHeader
+          kicker="Recommended for you"
+          title="Just For You"
+          action={{
+            label: 'View All Products',
+            href: '/shop',
+          }}
+        />
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-72 animate-pulse rounded-xl border border-slate-200 bg-white"
+            >
+              <div className="aspect-square rounded-t-xl bg-slate-100" />
+
+              <div className="p-3">
+                <div className="h-3 w-5/6 rounded bg-slate-100" />
+                <div className="mt-2 h-3 w-2/3 rounded bg-slate-100" />
+                <div className="mt-4 h-4 w-1/2 rounded bg-slate-100" />
+                <div className="mt-4 h-9 rounded-lg bg-slate-100" />
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-          <Star size={14} fill="currentColor" />
-          {seller.rating.toFixed(1)}
+      </section>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <section className="page-shell pb-9" data-reveal>
+        <SectionHeader
+          kicker="Recommended for you"
+          title="Just For You"
+          action={{
+            label: 'View All Products',
+            href: '/shop',
+          }}
+        />
+
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
+          <p className="font-bold text-slate-900">
+            No products available right now.
+          </p>
+
+          <p className="mt-2 text-sm text-slate-500">
+            New products will appear here as sellers publish their items.
+          </p>
         </div>
-      </div>
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        {takeFirst(seller.products, 4).map((product) => (
-          <div key={product.id} className="aspect-square overflow-hidden rounded-lg bg-slate-100">
-            <OptimizedImage
-              src={product.image}
-              alt={product.name}
-              widthHint={160}
-              heightHint={160}
-              fit="fill"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
-        <span>{seller.products.length} listed items</span>
-        <span className="font-bold text-slate-950">Visit store</span>
-      </div>
-    </Link>
-  );
-});
+      </section>
+    );
+  }
 
-const FeaturedSellersSection = memo(function FeaturedSellersSection({
-  sellers,
-  loading,
-}: {
-  sellers: SellerShowcase[];
-  loading: boolean;
-}) {
   return (
     <section className="page-shell pb-9" data-reveal>
-      <SectionHeader kicker="Featured sellers" title="Stores worth following" action={{ label: 'Browse stores', href: '/shop' }} />
-      <div className="dashboard-chip-scroll -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:px-0">
-        {loading ? (
-          Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-48 min-w-[min(22rem,82vw)] animate-pulse rounded-2xl border border-slate-200 bg-white lg:min-w-0" />
-          ))
-        ) : sellers.length > 0 ? (
-          sellers.map((seller) => <FeaturedSellerCard key={seller.id} seller={seller} />)
-        ) : (
-          <div className="w-full rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-            <p className="font-bold text-slate-900">Seller showcases will appear after products are published.</p>
-            <p className="mt-2 text-sm text-slate-500">The home page is connected to the existing product API.</p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-});
+      <SectionHeader
+        kicker="Recommended for you"
+        title="Just For You"
+        action={{
+          label: 'View All Products',
+          href: '/shop',
+        }}
+      />
 
-const ProductRailSection = memo(function ProductRailSection({
-  kicker,
-  title,
-  action,
-  products,
-  loading,
-  emptyTitle,
-}: {
-  kicker: string;
-  title: string;
-  action: { label: string; href: string };
-  products: Product[];
-  loading: boolean;
-  emptyTitle: string;
-}) {
-  return (
-    <section className="page-shell pb-9" data-reveal>
-      <SectionHeader kicker={kicker} title={title} action={action} />
-      <ProductRail products={products} loading={loading} emptyTitle={emptyTitle} compact />
-    </section>
-  );
-});
-
-const BrandCard = memo(function BrandCard({ brand, index }: { brand: string; index: number }) {
-  return (
-    <Link
-      to={`/shop?q=${encodeURIComponent(brand)}`}
-      className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg"
-    >
-      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-950 text-white">
-        {index % 3 === 0 ? <Award size={22} /> : index % 3 === 1 ? <Sparkles size={22} /> : <Store size={22} />}
-      </span>
-      <span className="mt-3 block text-sm font-bold text-slate-950">{brand}</span>
-      <span className="mt-1 block text-xs text-slate-500">Official store</span>
-    </Link>
-  );
-});
-
-const BrandsSection = memo(function BrandsSection() {
-  return (
-    <section className="page-shell pb-9" data-reveal>
-      <SectionHeader kicker="Official brands" title="Brand storefronts and flagship picks" action={{ label: 'Shop brands', href: '/shop' }} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
-        {brandNames.map((brand, index) => (
-          <BrandCard key={brand} brand={brand} index={index} />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+        {visibleProducts.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            variant="default"
+          />
         ))}
       </div>
-    </section>
-  );
-});
 
-const ReviewCard = memo(function ReviewCard({ review }: { review: (typeof reviews)[number] }) {
-  return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex gap-1 text-amber-400">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Star key={index} size={16} fill="currentColor" />
-        ))}
-      </div>
-      <p className="text-sm leading-6 text-slate-700">"{review.quote}"</p>
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <h3 className="text-sm font-bold text-slate-950">{review.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">{review.title}</p>
-      </div>
-    </article>
-  );
-});
+      {hasMoreProducts && (
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            className="inline-flex items-center justify-center rounded-full border-2 border-primary/20 bg-white px-8 py-3 text-sm font-bold text-primary transition-all duration-200 hover:border-primary hover:bg-primary hover:text-white"
+          >
+            Load More Products
+          </button>
+        </div>
+      )}
 
-const ReviewsSection = memo(function ReviewsSection() {
-  return (
-    <section className="page-shell pb-9" data-reveal>
-      <SectionHeader kicker="Customer reviews" title="Trusted by everyday shoppers" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {reviews.map((review) => (
-          <ReviewCard key={review.name} review={review} />
-        ))}
-      </div>
+      {!hasMoreProducts && products.length > 12 && (
+        <div className="mt-8 text-center">
+          <p className="text-sm font-medium text-slate-500">
+            You&apos;ve reached the end of the products.
+          </p>
+        </div>
+      )}
     </section>
   );
 });
@@ -759,7 +589,8 @@ const NewsletterSection = memo(function NewsletterSection({
                   placeholder="Enter your email"
                   autoComplete="email"
                   aria-label="Email address"
-                  className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  disabled={submitting}
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
               <button
@@ -782,13 +613,6 @@ const NewsletterSection = memo(function NewsletterSection({
   );
 });
 
-const LazyFeaturedProductsSection = React.lazy(() => Promise.resolve({ default: FeaturedProductsSection }));
-const LazyFeaturedSellersSection = React.lazy(() => Promise.resolve({ default: FeaturedSellersSection }));
-const LazyProductRailSection = React.lazy(() => Promise.resolve({ default: ProductRailSection }));
-const LazyBrandsSection = React.lazy(() => Promise.resolve({ default: BrandsSection }));
-const LazyReviewsSection = React.lazy(() => Promise.resolve({ default: ReviewsSection }));
-const LazyNewsletterSection = React.lazy(() => Promise.resolve({ default: NewsletterSection }));
-
 export const HomePage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productGroups, setProductGroups] = useState<HomepageProductGroups>(emptyProductGroups);
@@ -798,7 +622,6 @@ export const HomePage = () => {
   const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [countdownTarget] = useState(() => Date.now() + 7 * 60 * 60 * 1000 + 45 * 60 * 1000);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterMessage, setNewsletterMessage] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
@@ -816,7 +639,7 @@ export const HomePage = () => {
         setProducts(nextProducts);
         setProductGroups(getHomepageProductGroups(payload, nextProducts));
         setCategories(nextCategories.length > 0 ? nextCategories : fallbackCategories);
-        setBanners(nextBanners.filter((banner: HomeBanner) => banner?.image && banner?.title));
+        setBanners(nextBanners.filter((banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title)));
         setActiveBannerIndex(0);
       })
       .catch((fetchError) => {
@@ -836,27 +659,20 @@ export const HomePage = () => {
     return () => controller.abort();
   }, []);
 
-  const safeProducts = useMemo(() => getProductList(products), [products]);
-  const safeCategories = useMemo(() => getCategoryList(categories), [categories]);
-  const safeBanners = useMemo(() => getBannerList(banners), [banners]);
-
   useEffect(() => {
-    if (isBannerPaused || safeBanners.length < 2) return undefined;
+    if (isBannerPaused || banners.length < 2) return undefined;
 
     const intervalId = window.setInterval(() => {
-      setActiveBannerIndex((current) => (current + 1) % safeBanners.length);
+      setActiveBannerIndex((current) => (current + 1) % banners.length);
     }, 5000);
 
     return () => window.clearInterval(intervalId);
-  }, [isBannerPaused, safeBanners.length]);
+  }, [isBannerPaused, banners.length]);
 
-  const heroBanners = safeBanners.length > 0 ? safeBanners : [fallbackBanner];
+  const heroBanners = banners.length > 0 ? banners : [fallbackBanner];
   const activeHeroIndex = activeBannerIndex < heroBanners.length ? activeBannerIndex : 0;
-  const sellerShowcases = useMemo(() => getSellerShowcases(safeProducts), [safeProducts]);
-  const visibleCategories = useMemo(
-    () => takeFirst(safeCategories.length > 0 ? safeCategories : fallbackCategories, 8),
-    [safeCategories],
-  );
+  const activeBanner = heroBanners[activeHeroIndex] ?? fallbackBanner;
+  const visibleCategories = takeFirst(categories.length > 0 ? categories : fallbackCategories, 8);
 
   const submitNewsletter = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -898,130 +714,131 @@ export const HomePage = () => {
   const pauseBanner = useCallback(() => setIsBannerPaused(true), []);
   const resumeBanner = useCallback(() => setIsBannerPaused(false), []);
   const goToPreviousBanner = useCallback(() => {
-    setActiveBannerIndex((current) => (heroBanners.length > 0 ? (current - 1 + heroBanners.length) % heroBanners.length : 0));
+    setActiveBannerIndex((current) => (heroBanners.length > 1 ? (current - 1 + heroBanners.length) % heroBanners.length : 0));
   }, [heroBanners.length]);
   const goToNextBanner = useCallback(() => {
-    setActiveBannerIndex((current) => (heroBanners.length > 0 ? (current + 1) % heroBanners.length : 0));
+    setActiveBannerIndex((current) => (heroBanners.length > 1 ? (current + 1) % heroBanners.length : 0));
   }, [heroBanners.length]);
+  const goToBanner = useCallback((index: number) => {
+    setActiveBannerIndex(index);
+  }, []);
 
   return (
     <div className="bg-[#f7fbf8] pb-8">
       <section className="page-shell pt-5" data-reveal>
         <div
+          role="region"
+          aria-roledescription="carousel"
+          aria-label="Promotions"
           className="responsive-hero relative overflow-hidden rounded-2xl bg-slate-950 shadow-sm"
           onMouseEnter={pauseBanner}
           onMouseLeave={resumeBanner}
           onFocusCapture={pauseBanner}
           onBlurCapture={resumeBanner}
         >
-          <div className="absolute inset-0">
-            {heroBanners.map((banner, index) => (
-              <div
-                key={banner.id}
-                className={`absolute inset-0 transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none ${
-                  index === activeHeroIndex ? 'scale-100 opacity-100' : 'scale-[1.025] opacity-0'
-                }`}
-                aria-hidden={index !== activeHeroIndex}
-              >
-                <OptimizedImage
-                  src={banner.image}
-                  alt={banner.title}
-                  widthHint={1920}
-                  heightHint={760}
-                  quality="auto:best"
-                  fit="fill"
-                  eager={index === 0 || index === activeBannerIndex}
-                  showPlaceholder={false}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            ))}
+          <div className="absolute inset-0" key={activeBanner.id}>
+            <OptimizedImage
+              src={activeBanner.image}
+              alt={activeBanner.title}
+              widthHint={1920}
+              heightHint={760}
+              quality="auto:best"
+              fit="fill"
+              eager
+              showPlaceholder={false}
+              className="h-full w-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/32 to-slate-950/10 md:bg-gradient-to-r md:from-slate-950/84 md:via-slate-950/38 md:to-transparent" />
           </div>
 
-          {heroBanners.map((banner, index) => {
-            const buttonText = banner.button_text || banner.buttonText || 'Shop now';
-            const link = banner.link || '/shop';
-            const isActive = index === activeHeroIndex;
-
-            return (
-              <div
-                key={`${banner.id}-content`}
-                className={`absolute inset-y-0 left-0 z-10 flex w-full flex-col justify-center px-5 py-7 transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none sm:px-8 md:w-[58%] md:px-12 ${
-                  isActive ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
-                }`}
-                aria-hidden={!isActive}
+          <div className="absolute inset-y-0 left-0 z-10 flex w-full flex-col justify-center px-5 py-8 sm:px-8 md:w-[58%] md:px-12">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-300 sm:text-[11px]">
+              Multi-vendor marketplace
+            </p>
+            <h1 className="responsive-hero-title max-w-2xl font-bold text-white">{activeBanner.title}</h1>
+            {activeBanner.subtitle ? <p className="mt-4 max-w-md text-sm leading-6 text-white/76">{activeBanner.subtitle}</p> : null}
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                to={activeBanner.link || '/shop'}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/25 hover:bg-primary-dark"
               >
-                <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-300 sm:text-[11px]">
-                  Multi-vendor marketplace
-                </p>
-                <h1 className="responsive-hero-title max-w-2xl font-bold text-white">{banner.title}</h1>
-                {banner.subtitle ? <p className="mt-4 max-w-md text-sm leading-6 text-white/76">{banner.subtitle}</p> : null}
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Link
-                    to={link}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/25 hover:bg-primary-dark"
-                    tabIndex={isActive ? 0 : -1}
-                  >
-                    {buttonText}
-                    <ArrowRight size={16} />
-                  </Link>
-                  <Link
-                    to="/flash-sale"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-5 py-3 text-sm font-bold text-white backdrop-blur hover:bg-white/18"
-                    tabIndex={isActive ? 0 : -1}
-                  >
-                    Today's deals
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+                {activeBanner.button_text || activeBanner.buttonText || 'Shop now'}
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                to="/flash-sale"
+                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-5 py-3 text-sm font-bold text-white backdrop-blur hover:bg-white/18"
+              >
+                Today&apos;s deals
+              </Link>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            aria-label="Previous promotion"
-            onClick={goToPreviousBanner}
-            disabled={heroBanners.length < 2}
-            className="absolute left-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur hover:bg-white/20 md:flex"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            aria-label="Next promotion"
-            onClick={goToNextBanner}
-            disabled={heroBanners.length < 2}
-            className="absolute right-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/20 text-white backdrop-blur hover:bg-white/30 md:flex"
-          >
-            <ChevronRight size={18} />
-          </button>
+          {heroBanners.length > 1 ? (
+            <>
+              <button
+                type="button"
+                aria-label="Previous promotion"
+                onClick={goToPreviousBanner}
+                className="absolute left-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur hover:bg-white/20 md:flex"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                aria-label="Next promotion"
+                onClick={goToNextBanner}
+                className="absolute right-4 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/20 text-white backdrop-blur hover:bg-white/30 md:flex"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 md:bottom-4">
+                {heroBanners.map((banner, index) => (
+                  <button
+                    key={banner.id}
+                    type="button"
+                    onClick={() => goToBanner(index)}
+                    aria-label={`Go to promotion ${index + 1}: ${banner.title}`}
+                    aria-current={index === activeHeroIndex ? 'true' : undefined}
+                    className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                      index === activeHeroIndex ? 'text-white' : 'text-white/45 hover:text-white/80'
+                    }`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-current" />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </section>
 
       <section className="page-shell py-8" data-reveal>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4">
           {serviceHighlights.map((item) => {
             const Icon = item.icon;
+
             return (
-              <div key={item.title} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div
+                key={item.title}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon size={20} />
                 </span>
-                <h3 className="text-sm font-bold text-slate-950">{item.title}</h3>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.detail}</p>
+
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-slate-950">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                    {item.detail}
+                  </p>
+                </div>
               </div>
             );
           })}
-        </div>
-      </section>
-
-      <section className="page-shell pb-9" data-reveal>
-        <SectionHeader kicker="Shop by categories" title="Explore popular departments" action={{ label: 'All categories', href: '/categories' }} />
-        <div className="dashboard-chip-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-8">
-          {visibleCategories.map((category, index) => (
-            <CategoryCard key={category.id} category={category} image={categoryImages[index % categoryImages.length]} />
-          ))}
         </div>
       </section>
 
@@ -1033,10 +850,10 @@ export const HomePage = () => {
               <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">Limited-time marketplace deals</h2>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <CountdownTimer initialTarget={countdownTarget} />
+              <CountdownTimer />
               <Link
                 to="/flash-sale"
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-bold text-white shadow-sm hover:bg-rose-600"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-rose-600"
               >
                 View all
                 <ArrowRight size={16} />
@@ -1049,69 +866,47 @@ export const HomePage = () => {
               <p className="font-bold text-rose-900">Storefront data is unavailable</p>
               <p className="mt-2 text-sm text-rose-700">{error}</p>
             </div>
+          ) : loading ? (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-72 animate-pulse rounded-lg bg-white" />
+              ))}
+            </div>
+          ) : productGroups.flashSale.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+              {productGroups.flashSale.map((product) => (
+                <div key={product.id} className="min-w-0">
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="dashboard-chip-scroll -mx-2 flex gap-3 overflow-x-auto px-2 pb-2 md:grid md:grid-cols-4 md:overflow-visible">
-              {loading
-                ? Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="h-72 min-w-[11rem] animate-pulse rounded-xl bg-white md:min-w-0" />
-                  ))
-                : productGroups.flashSale.map((product) => <FlashSaleCard key={product.id} product={product} />)}
+            <div className="rounded-xl border border-dashed border-rose-200 bg-white/70 px-6 py-8 text-center">
+              <p className="text-sm font-bold text-rose-900">Flash sale deals are being prepared.</p>
+              <p className="mt-1 text-xs text-slate-500">New limited-time offers will appear here soon.</p>
             </div>
           )}
         </div>
       </section>
 
-      <DeferredSection fallback={<SectionSkeleton />}>
-        <LazyFeaturedProductsSection products={productGroups.featured} loading={loading} />
-      </DeferredSection>
+      <section className="page-shell pb-9" data-reveal>
+        <SectionHeader kicker="Shop by categories" title="Explore popular departments" action={{ label: 'All categories', href: '/categories' }} />
+        <div className="dashboard-chip-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-8">
+          {visibleCategories.map((category, index) => (
+            <CategoryCard key={category.id} category={category} image={categoryImages[index % categoryImages.length]} />
+          ))}
+        </div>
+      </section>
 
-      <DeferredSection fallback={<SectionSkeleton heightClass="h-56" />}>
-        <LazyFeaturedSellersSection sellers={sellerShowcases} loading={loading} />
-      </DeferredSection>
-
       <DeferredSection fallback={<SectionSkeleton />}>
-        <LazyProductRailSection
-          kicker="Top selling products"
-          title="Best movers this week"
-          action={{ label: 'Shop bestsellers', href: '/shop?sort=popular' }}
-          products={productGroups.bestSelling}
+        <DealsSection
+          products={products}
           loading={loading}
-          emptyTitle="Top selling products will appear here."
         />
-      </DeferredSection>
-
-      <DeferredSection fallback={<SectionSkeleton />}>
-        <LazyProductRailSection
-          kicker="New arrivals"
-          title="Fresh listings from sellers"
-          action={{ label: 'View new', href: '/shop?sort=newest' }}
-          products={productGroups.newArrivals}
-          loading={loading}
-          emptyTitle="New arrivals will appear here."
-        />
-      </DeferredSection>
-
-      <DeferredSection fallback={<SectionSkeleton />}>
-        <LazyProductRailSection
-          kicker="Trending products"
-          title="Popular searches and fast-rising picks"
-          action={{ label: 'Explore trends', href: '/search' }}
-          products={productGroups.trending}
-          loading={loading}
-          emptyTitle="Trending products will appear here."
-        />
-      </DeferredSection>
-
-      <DeferredSection fallback={<SectionSkeleton heightClass="h-36" />}>
-        <LazyBrandsSection />
       </DeferredSection>
 
       <DeferredSection fallback={<SectionSkeleton heightClass="h-52" />}>
-        <LazyReviewsSection />
-      </DeferredSection>
-
-      <DeferredSection fallback={<SectionSkeleton heightClass="h-52" />}>
-        <LazyNewsletterSection
+        <NewsletterSection
           email={newsletterEmail}
           message={newsletterMessage}
           submitting={newsletterSubmitting}
@@ -1119,18 +914,6 @@ export const HomePage = () => {
           onSubmit={submitNewsletter}
         />
       </DeferredSection>
-
-      {error && !loading ? (
-        <section className="page-shell pb-8" data-reveal>
-          <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-            <div>
-              <Search className="mx-auto text-primary" size={26} />
-              <p className="mt-3 font-bold text-slate-900">Storefront data is unavailable</p>
-              <p className="mt-1 text-sm text-slate-500">{error}</p>
-            </div>
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 };

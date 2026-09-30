@@ -3,30 +3,57 @@ import { CreditCard, AlertTriangle, CheckCircle2, Download, Search } from 'lucid
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
-import { useNavigate } from '../../../lib/navigation';
+import { useNavigate, useSearchParams } from '../../../lib/navigation';
 
 export const AdminPaymentsPage = () => {
   const { token } = useUser();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlPayout = searchParams.get('payout') || '';
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [focusedPayoutId, setFocusedPayoutId] = useState('');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const nextSearch = params.get('search');
-      const nextPayout = params.get('payout');
-      if (nextSearch) {
-        setSearch(nextSearch);
-      }
-      if (nextPayout) {
-        setFocusedPayoutId(nextPayout);
-      }
-    }
+  const handleFinancialReportExport = () => {
+    const rows = filteredPayouts.map((txn: any) => ({
+      id: txn.id,
+      seller_name: txn.seller_name || '',
+      amount: txn.amount,
+      status: txn.status || '',
+      date: txn.date ? new Date(txn.date).toISOString() : '',
+    }));
+    const headers = ['payout_id', 'seller', 'amount', 'status', 'date'];
+    const csv = [
+      headers.join(','),
+      ...rows.map((row: Record<string, unknown>) =>
+        headers.map((header) => `"${String(row[header] ?? '').replaceAll('"', '""')}"`).join(','),
+      ),
+    ].join('\n');
 
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `admin-financial-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearch(urlSearch);
+    }
+    if (urlPayout) {
+      setFocusedPayoutId(urlPayout);
+    }
+  }, [urlPayout, urlSearch]);
+
+  useEffect(() => {
     const loadPayments = async () => {
       if (!token) {
         setError('Please log in as an admin to view payment activity.');
@@ -97,7 +124,10 @@ export const AdminPaymentsPage = () => {
           <h1 className="text-2xl font-bold">Payments & Payouts</h1>
           <p className="text-sm text-gray-500">Monitor marketplace financial transactions</p>
         </div>
-        <button className="flex items-center justify-center space-x-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50">
+        <button
+          onClick={handleFinancialReportExport}
+          className="flex items-center justify-center space-x-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50"
+        >
           <Download size={20} />
           <span>Financial Report</span>
         </button>
@@ -243,9 +273,6 @@ export const AdminPaymentsPage = () => {
                   <p className="font-bold text-primary">{formatPrice(txn.amount)}</p>
                   <p className="mt-1">{new Date(txn.date).toLocaleDateString()}</p>
                 </div>
-                <button className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-gray-50">
-                  View Details
-                </button>
               </div>
             ))
           )}
@@ -258,13 +285,12 @@ export const AdminPaymentsPage = () => {
               <th className="px-6 py-4">Amount</th>
               <th className="px-6 py-4">Date</th>
               <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredPayouts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-10">
+                <td colSpan={5} className="px-6 py-10">
                   <EmptyState
                     icon={<CreditCard size={24} />}
                     title={search ? 'No payouts match this search' : 'No payouts found'}
@@ -293,9 +319,6 @@ export const AdminPaymentsPage = () => {
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${txn.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                       {txn.status}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-primary font-bold text-xs hover:underline">View Details</button>
                   </td>
                 </tr>
               ))

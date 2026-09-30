@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export type ApiSuccess<T> = {
-  ok: true;
+  success: true;
   data: T;
   meta?: Record<string, unknown>;
 };
 
 export type ApiFailure = {
-  ok: false;
+  success: false;
   error: {
     code: string;
     message: string;
@@ -18,7 +18,7 @@ export type ApiFailure = {
 export function apiSuccess<T>(data: T, init?: ResponseInit, meta?: Record<string, unknown>) {
   return NextResponse.json<ApiSuccess<T>>(
     {
-      ok: true,
+      success: true,
       data,
       ...(meta ? { meta } : {}),
     },
@@ -26,10 +26,13 @@ export function apiSuccess<T>(data: T, init?: ResponseInit, meta?: Record<string
   );
 }
 
+/**
+ * @deprecated Use `apiFailure` (standardized `success:false` contract).
+ */
 export function apiError(code: string, message: string, status = 400, details?: unknown, init?: ResponseInit) {
   return NextResponse.json<ApiFailure>(
     {
-      ok: false,
+      success: false,
       error: {
         code,
         message,
@@ -41,4 +44,8 @@ export function apiError(code: string, message: string, status = 400, details?: 
       ...init,
     },
   );
+}
+
+export function apiFailure(code: string, message: string, status = 400, details?: unknown, init?: ResponseInit) {
+  return apiError(code, message, status, details, init);
 }

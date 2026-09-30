@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { requireAdminRole, requireApiUser } from '../../_compat/shared';
+import { associateEntityMedia } from '@/lib/media';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,14 @@ export async function POST(request: NextRequest) {
       buttonText,
       isActive: body.is_active ?? body.isActive ?? true,
     },
+  });
+
+  await associateEntityMedia({
+    ownerId: String(admin.id),
+    entityType: 'Banner',
+    entityId: banner.id,
+    fieldName: 'image',
+    urls: [banner.image],
   });
 
   return NextResponse.json(serializeBanner(banner), { status: 201 });

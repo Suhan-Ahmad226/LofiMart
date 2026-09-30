@@ -104,7 +104,7 @@ export async function getInvoiceOrderById(id: string) {
   });
 }
 
-export function canReadOrder(user: AuthenticatedUser, order: { userId: string; shipments?: Array<{ sellerId: string }> }) {
+export function canReadOrder(user: AuthenticatedUser, order: { userId: string | null; shipments?: Array<{ sellerId: string }> }) {
   const userId = String(user.id);
   const role = String(user.role || '');
 
@@ -159,8 +159,8 @@ export async function ensureInvoiceRecord(order: InvoiceOrder) {
   return prisma.invoice.upsert({
     where: { orderId: order.id },
     create: {
-      orderId: order.id,
-      userId: order.userId,
+      order: { connect: { id: order.id } },
+      ...(order.userId ? { user: { connect: { id: order.userId } } } : {}),
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
@@ -194,7 +194,6 @@ export function serializeOrderDetail(order: InvoiceOrder) {
     tracking_id: order.trackingId ?? null,
     payment_method: order.paymentMethod ?? null,
     payment_provider: order.paymentProvider ?? null,
-    payment_intent_id: order.paymentIntentId ?? null,
     payment_status: order.paymentStatus ?? null,
     paid_at: iso(order.paidAt),
     pickup_requested_at: iso(order.pickupRequestedAt),

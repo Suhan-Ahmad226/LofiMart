@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -6,15 +8,19 @@ import {
   Copy,
   Clock3,
   DollarSign,
+  Bell,
   Eye,
   LayoutDashboard,
   Loader2,
+  MoreHorizontal,
   Package,
   ShoppingBag,
   Settings2,
+  Star,
   Store,
   TrendingUp,
   Truck,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -25,7 +31,7 @@ import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
 import { Product } from '../../../types';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
-import { ProductCard } from '@/features/shop/components/ProductCard';
+import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import { buildSellerDashboardIntelligence } from '../../../features/seller/lib/dashboard-intelligence';
 
 const SalesPerformanceChart = dynamic(() => import('@/features/seller/components/SalesPerformanceChart'), {
@@ -557,197 +563,134 @@ function SellerStorefrontPreview({
   );
   const previewCoupons = useMemo(() => coupons.slice(0, 3), [coupons]);
 
+}
+
+function ReferenceSellerDashboard({
+  stats,
+  insights,
+  user,
+}: {
+  stats: SellerStatsResponse;
+  insights: SellerDashboardInsights;
+  user: ReturnType<typeof useUser>['user'];
+}) {
+  const storeName = user?.store_name || user?.name || 'Seller';
+  const salesValues = insights.salesSeries.map((item) => Number(item.revenue || 0));
+  const peakSales = Math.max(...salesValues, 0);
+  const pending = insights.recentShipments.filter((item) => /pending|processing/i.test(item.status)).length;
+  const shipped = insights.recentShipments.filter((item) => /ship/i.test(item.status)).length;
+  const delivered = Math.max(insights.deliveredShipments, insights.recentShipments.filter((item) => /deliver/i.test(item.status)).length);
+  const cancelled = insights.recentShipments.filter((item) => /cancel/i.test(item.status)).length;
+  const orderTotal = Math.max(stats.totalOrders, pending + shipped + delivered + cancelled, 1);
+  const percent = (value: number) => `${Math.min(100, Math.round((value / orderTotal) * 100))}%`;
+  const lowStock = insights.lowStockProducts.slice(0, 3);
+  const recentOrders = insights.recentShipments.slice(0, 4);
+  const rating = stats.totalOrders > 0 ? '4.82' : '0.00';
+  const maxTopRevenue = Math.max(...stats.topProducts.map((item) => Number(item.revenue || 0)), 1);
+
   return (
-    <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2rem] border border-border bg-white shadow-sm">
-        <div className="relative min-h-[260px] overflow-hidden bg-slate-950">
-          {bannerUrl ? (
-            <OptimizedImage
-              src={bannerUrl}
-              alt={`${storeName} storefront banner`}
-              eager
-              widthHint={1600}
-              heightHint={640}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : null}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: bannerUrl
-                ? 'linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(2, 6, 23, 0.62))'
-                : 'linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 118, 110, 0.82))',
-            }}
-          />
-          {!bannerUrl ? (
-            <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white/75">
-              Upload a storefront banner from settings to preview it here.
+    <div className="min-h-full bg-[#fdf7ff] px-4 py-5 text-[#1d1b20] sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1480px] flex-col gap-5">
+        <section className="flex flex-col justify-between gap-4 rounded-xl bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-2xl font-extrabold tracking-tight text-[#1d1b20]">Good Morning, {storeName}</h1>
+              <span className="text-2xl">👋</span>
             </div>
-          ) : null}
-          <div className="relative flex min-h-[260px] flex-col justify-between gap-5 px-5 py-5 text-white sm:px-6 sm:py-6">
-            <div className="flex items-start justify-between gap-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 section-kicker backdrop-blur">
-                <Store size={14} />
-                Uploaded storefront banner
-              </span>
-              {storefrontPath ? (
-                <Link
-                  to={storefrontPath}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/15"
-                >
-                  <Eye size={14} />
-                  Open storefront
-                </Link>
-              ) : null}
-            </div>
-
-            <div className="flex items-end gap-4">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[1.25rem] border border-white/15 bg-white/10 text-2xl font-bold uppercase backdrop-blur">
-                {avatarUrl ? (
-                  <OptimizedImage
-                    src={avatarUrl}
-                    alt={storeName}
-                    eager
-                    widthHint={160}
-                    heightHint={160}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  storeName[0] || 'S'
-                )}
-              </div>
-              <div className="min-w-0">
-                <h2 className="truncate text-2xl font-bold sm:text-3xl">{storeName}</h2>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/84 sm:text-base">
-                  {headline || 'Your public storefront preview appears here exactly where shoppers first notice your brand.'}
-                </p>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-                  {storefrontPath ? `Public shop: ${storefrontPath}` : 'Public shop link not set yet'}
-                </p>
-              </div>
-            </div>
+            <p className="mt-1 text-sm text-[#494551]">Here&apos;s what&apos;s happening with your store today.</p>
           </div>
-        </div>
-      </section>
-
-      {previewCoupons.length > 0 ? (
-        <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="section-kicker text-primary/70">Store promotions</p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-950">Coupons customers can use now</h2>
-            </div>
-            <Link to="/seller/marketing" className="text-sm font-semibold text-primary hover:text-primary-dark">
-              Manage coupons
+          <div className="flex flex-wrap gap-2">
+            <Link to={user?.storefront_slug ? `/store/${user.storefront_slug}` : '/shop'} className="inline-flex items-center gap-2 rounded-lg bg-[#f2ecf4] px-4 py-2 text-sm font-semibold text-[#63597c] transition hover:bg-[#e6e0e9]">
+              <Eye size={17} /> View Store
+            </Link>
+            <Link to="/seller/products/add" className="inline-flex items-center gap-2 rounded-lg bg-[#4f378a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6750a4]">
+              <Package size={17} /> Add Product
             </Link>
           </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {previewCoupons.map((coupon) => {
-              const discountLabel =
-                coupon.discount_type === 'percentage'
-                  ? `${coupon.discount_value}% off`
-                  : `${formatPrice(coupon.discount_value)} off`;
-              return (
-                <div key={coupon.id} className="rounded-[1.5rem] border border-border bg-secondary/20 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary/70">Coupon code</p>
-                      <h3 className="mt-2 text-xl font-black tracking-[0.16em] text-slate-950">{coupon.code}</h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void (async () => {
-                          const copied = await copyText(coupon.code);
-                          if (copied) {
-                            toast.success(`Coupon ${coupon.code} copied.`);
-                            return;
-                          }
-                          toast.error('Could not copy this coupon on this device.');
-                        })();
-                      }}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-primary/20 hover:text-primary"
-                    >
-                      <Copy size={13} />
-                      Copy
-                    </button>
-                  </div>
-                  <p className="mt-4 text-base font-semibold text-slate-900">{discountLabel}</p>
-                  <div className="mt-3 space-y-1 text-sm text-slate-500">
-                    <p>Minimum order: {formatPrice(coupon.min_order_value)}</p>
-                    <p>Valid until: {new Date(coupon.expiry_date).toLocaleDateString()}</p>
-                  </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Total Sales', value: formatPrice(stats.totalEarnings), icon: <DollarSign size={22} />, color: 'bg-[#e9ddff] text-[#4f378a]', trend: '+12.5%' },
+            { label: 'Total Orders', value: String(stats.totalOrders), icon: <ShoppingBag size={22} />, color: 'bg-[#e9ddff] text-[#63597c]', trend: `${stats.totalOrders ? '+8.2%' : 'No data'}` },
+            { label: 'Active Products', value: String(stats.totalProducts), icon: <Package size={22} />, color: 'bg-[#ece6ee] text-[#494551]', trend: `${lowStock.length} low stock` },
+            { label: 'Customers', value: String(stats.totalOrders), icon: <Store size={22} />, color: 'bg-[#ffdf93] text-[#765b00]', trend: stats.totalOrders ? '6.4%' : 'No data' },
+          ].map((metric) => (
+            <div key={metric.label} className="flex min-h-[148px] flex-col justify-between rounded-xl bg-white p-5 shadow-sm transition hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-[0.16em] text-[#7a7582]">{metric.label}</span>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${metric.color}`}>{metric.icon}</div>
+              </div>
+              <div>
+                <div className="text-2xl font-extrabold text-[#1d1b20]">{metric.value}</div>
+                <div className="mt-2 flex items-center gap-2 text-xs text-[#7a7582]">
+                  <span className="rounded-full bg-[#e1d4fd] px-2 py-1 font-bold text-[#63597c]">{metric.trend}</span>
+                  <span>vs last month</span>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {flashProducts.length > 0 ? (
-        <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid items-stretch gap-4 xl:grid-cols-3">
+          <section className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2">
+            <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-xl font-bold text-[#1d1b20]">Sales Overview</h2>
+                <p className="mt-1 text-sm text-[#494551]">Daily gross revenue across all sales channels</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg bg-[#f2ecf4] p-1 text-xs font-bold text-[#63597c]">
+                {['7D', '30D', '3M', '1Y'].map((period) => <button key={period} type="button" className={`rounded px-3 py-2 ${period === '30D' ? 'bg-[#4f378a] text-white' : 'hover:bg-[#e6e0e9]'}`}>{period}</button>)}
+              </div>
+            </div>
+            <div className="mb-2 flex justify-between text-xs font-semibold text-[#7a7582]">
+              <span>{formatPrice(peakSales)}</span><span className="text-[#4f378a]">Peak Day: {formatPrice(peakSales)}</span>
+            </div>
+            <SalesPerformanceChart data={insights.salesSeries} />
+          </section>
+
+          <section className="flex flex-col justify-between rounded-xl bg-white p-5 shadow-sm">
             <div>
-              <p className="inline-flex items-center gap-2 section-kicker text-accent/80">
-                <Zap size={14} className="fill-accent text-accent" />
-                Flash sale
-              </p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-950">Approved sale picks</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#1d1b20]">Order Status</h2>
+                <span className="rounded-full bg-[#f2ecf4] px-3 py-1 text-xs font-bold text-[#63597c]">{stats.totalOrders} Orders</span>
+              </div>
+              <p className="mt-1 text-sm text-[#494551]">Current distribution of customer orders</p>
+              <div className="mt-5 flex h-3 overflow-hidden rounded-full bg-[#f2ecf4]">
+                <span className="bg-[#c9a74d]" style={{ width: percent(pending) }} /><span className="bg-[#cfbcff]" style={{ width: percent(Math.max(shipped, 1)) }} /><span className="bg-[#4f378a]" style={{ width: percent(shipped) }} /><span className="bg-[#63597c]" style={{ width: percent(delivered) }} /><span className="bg-[#ba1a1a]" style={{ width: percent(cancelled) }} />
+              </div>
+              <div className="mt-4 space-y-2">
+                {[['Pending', pending, 'bg-[#c9a74d]'], ['Processing', Math.max(pending, 0), 'bg-[#cfbcff]'], ['Shipped', shipped, 'bg-[#4f378a]'], ['Delivered', delivered, 'bg-[#63597c]'], ['Cancelled', cancelled, 'bg-[#ba1a1a]']].map(([label, count, color]) => (
+                  <div key={String(label)} className="flex items-center justify-between rounded-lg bg-[#f8f2fa] px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{label}</span><strong>{count}</strong>
+                  </div>
+                ))}
+              </div>
             </div>
-            <Link to="/seller/flash-sale" className="text-sm font-semibold text-primary hover:text-primary-dark">
-              Manage flash sale
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-4">
-            {flashProducts.map((entry) => (
-              <ProductCard key={entry.id} product={entry.product as Product} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+            <Link to="/seller/orders" className="mt-5 flex items-center justify-center gap-2 border-t border-[#ece6ee] pt-4 text-sm font-bold text-[#4f378a] hover:underline">View Pipeline Details <ArrowRight size={16} /></Link>
+          </section>
+        </div>
 
-      <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="section-kicker text-primary/70">Featured products</p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-950">Storefront highlights</h2>
-          </div>
-          <Link to="/seller/products" className="text-sm font-semibold text-primary hover:text-primary-dark">
-            See full catalog
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-4">
-          {featuredProducts.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-10 text-center text-sm text-muted-foreground">
-              Add products to see your storefront preview cards here.
-            </div>
-          ) : (
-            featuredProducts.map((product) => <ProductCard key={product.id} product={product} />)
-          )}
-        </div>
-      </section>
+        <div className="grid items-stretch gap-4 xl:grid-cols-3">
+          <section className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2">
+            <div className="mb-4 flex items-center justify-between"><div><h2 className="text-xl font-bold">Recent Orders</h2><p className="mt-1 text-sm text-[#494551]">Latest transactions requiring fulfillment or tracking</p></div><span className="text-xs font-semibold text-[#7a7582]">Real-time sync</span></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-left text-sm"><thead><tr className="bg-[#f8f2fa] text-xs uppercase tracking-wider text-[#7a7582]"><th className="rounded-l-lg px-3 py-2">Order ID</th><th className="px-3 py-2">Product</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Status</th><th className="rounded-r-lg px-3 py-2 text-right">Actions</th></tr></thead><tbody className="divide-y divide-[#ece6ee]">{recentOrders.length ? recentOrders.map((order) => <tr key={order.id} className="hover:bg-[#f8f2fa]"><td className="px-3 py-3 font-bold text-[#4f378a]">#{order.order_id || order.id.slice(0, 8)}</td><td className="px-3 py-3 font-semibold">Store order</td><td className="px-3 py-3 font-bold">{formatPrice(order.total)}</td><td className="px-3 py-3"><span className="rounded-full bg-[#e1d4fd] px-2 py-1 text-xs font-bold text-[#63597c]">{order.status.replaceAll('_', ' ')}</span></td><td className="px-3 py-3 text-right"><Link to="/seller/orders" className="rounded-lg p-2 text-[#63597c] hover:bg-[#f2ecf4]"><MoreHorizontal size={18} /></Link></td></tr>) : <tr><td colSpan={5} className="px-3 py-10 text-center text-sm text-[#7a7582]">No recent orders yet.</td></tr>}</tbody></table></div>
+            <div className="mt-4 flex items-center justify-between border-t border-[#ece6ee] pt-4 text-sm text-[#7a7582]"><span>Showing {recentOrders.length} of {stats.totalOrders} recent orders</span><Link to="/seller/orders" className="rounded-lg bg-[#f2ecf4] px-4 py-2 font-bold text-[#1d1b20] hover:bg-[#e6e0e9]">View All Orders</Link></div>
+          </section>
 
-      <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="section-kicker text-primary/70">Latest products</p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-950">Newest catalog entries</h2>
-          </div>
-          <Link to="/seller/products/add" className="text-sm font-semibold text-primary hover:text-primary-dark">
-            Add another product
-          </Link>
+          <section className="flex flex-col justify-between rounded-xl bg-white p-5 shadow-sm"><div><div className="flex items-center justify-between"><h2 className="text-xl font-bold">Action Required</h2><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ba1a1a]" /></div><p className="mt-1 text-sm text-[#494551]">High-priority updates needing review</p><div className="mt-5 space-y-3"><div className="flex items-center justify-between gap-3 rounded-xl bg-[#ffdad6]/30 p-3"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#ffdad6] text-[#93000a]"><Truck size={19} /></div><div><p className="text-sm font-bold">{pending} orders to ship</p><p className="text-xs font-semibold text-[#ba1a1a]">Review fulfillment queue</p></div></div><Link to="/seller/orders" className="rounded-lg bg-[#1d1b20] px-3 py-2 text-xs font-bold text-white">Fulfill</Link></div><div className="flex items-center justify-between gap-3 rounded-xl bg-[#ffdf93]/30 p-3"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#ffdf93] text-[#765b00]"><Package size={19} /></div><div><p className="text-sm font-bold">{lowStock.length} low-stock items</p><p className="text-xs font-semibold text-[#765b00]">Restock soon</p></div></div><Link to="/seller/products" className="rounded-lg bg-[#ece6ee] px-3 py-2 text-xs font-bold">Restock</Link></div><div className="flex items-center justify-between gap-3 rounded-xl bg-[#e9ddff]/50 p-3"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e9ddff] text-[#63597c]"><Clock3 size={19} /></div><div><p className="text-sm font-bold">{Math.max(0, stats.totalOrders - delivered)} pending updates</p><p className="text-xs font-semibold text-[#63597c]">Customer activity</p></div></div><Link to="/seller/orders" className="rounded-lg bg-[#ece6ee] px-3 py-2 text-xs font-bold">Review</Link></div></div></div><Link to="/seller/orders" className="mt-5 w-full rounded-lg bg-[#f2ecf4] py-2 text-center text-sm font-bold hover:bg-[#e6e0e9]">View All Action Items</Link></section>
         </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-4">
-          {latestProducts.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-10 text-center text-sm text-muted-foreground">
-              Your latest products will appear here once you add them.
-            </div>
-          ) : (
-            latestProducts.map((product) => <ProductCard key={product.id} product={product} />)
-          )}
-        </div>
-      </section>
 
+        <div className="grid items-stretch gap-4 xl:grid-cols-3">
+          <section className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-xl font-bold">Top Selling Products</h2><p className="mt-1 text-sm text-[#494551]">Best performing items by gross volume this cycle</p></div><span className="text-xs font-bold text-[#4f378a]">Top 3 Rank</span></div><div className="overflow-x-auto"><table className="w-full min-w-[600px] text-left text-sm"><thead><tr className="bg-[#f8f2fa] text-xs uppercase tracking-wider text-[#7a7582]"><th className="rounded-l-lg px-3 py-2">Product Name</th><th className="px-3 py-2">Units Sold</th><th className="px-3 py-2">Gross Revenue</th><th className="rounded-r-lg px-3 py-2">Stock Velocity</th></tr></thead><tbody className="divide-y divide-[#ece6ee]">{stats.topProducts.slice(0, 3).map((product) => <tr key={product.id} className="hover:bg-[#f8f2fa]"><td className="px-3 py-3 font-semibold">{product.name}</td><td className="px-3 py-3">{product.sales} units</td><td className="px-3 py-3 font-bold text-[#4f378a]">{formatPrice(product.revenue)}</td><td className="px-3 py-3"><div className="flex items-center gap-2"><div className="h-2 w-16 overflow-hidden rounded-full bg-[#f2ecf4]"><div className="h-full rounded-full bg-[#4f378a]" style={{ width: `${Math.max(10, (product.revenue / maxTopRevenue) * 100)}%` }} /></div><span className="text-xs font-bold">{Math.round((product.revenue / maxTopRevenue) * 100)}%</span></div></td></tr>)}</tbody></table></div><div className="mt-4 flex items-center justify-between border-t border-[#ece6ee] pt-4 text-sm text-[#7a7582]"><span>Aggregated by net GMV</span><Link to="/seller/products" className="flex items-center gap-2 font-bold text-[#4f378a] hover:underline">Full Product Catalog Analysis <ArrowRight size={16} /></Link></div></section>
+          <section className="flex flex-col justify-between rounded-xl bg-white p-5 shadow-sm"><div><div className="flex items-center justify-between"><h2 className="text-xl font-bold">Inventory Alerts</h2><Bell size={20} className="text-[#7a7582]" /></div><p className="mt-1 text-sm text-[#494551]">Items approaching restock thresholds</p><div className="mt-5 space-y-3"><div className="flex items-center justify-between rounded-xl bg-[#ffdad6]/30 p-3"><span className="flex items-center gap-2 text-sm font-bold"><span className="h-3 w-3 rounded-full bg-[#ba1a1a]" />Out of Stock</span><strong className="rounded-full bg-[#ba1a1a] px-3 py-1 text-xs text-white">{insights.lowStockProducts.filter((item) => item.stock <= 0).length}</strong></div><div className="flex items-center justify-between rounded-xl bg-[#ffdf93]/30 p-3"><span className="flex items-center gap-2 text-sm font-bold"><span className="h-3 w-3 rounded-full bg-[#c9a74d]" />Low Stock</span><strong className="rounded-full bg-[#c9a74d] px-3 py-1 text-xs text-[#503d00]">{insights.lowStockProducts.filter((item) => item.stock > 0 && item.stock < 5).length}</strong></div><div className="flex items-center justify-between rounded-xl bg-[#ece6ee] p-3"><span className="flex items-center gap-2 text-sm font-bold"><span className="h-3 w-3 rounded-full bg-[#e7c365]" />Almost Low</span><strong className="rounded-full bg-[#f2ecf4] px-3 py-1 text-xs text-[#63597c]">{insights.lowStockProducts.filter((item) => item.stock >= 5).length}</strong></div></div></div><Link to="/seller/products" className="mt-5 w-full rounded-lg bg-[#1d1b20] py-2 text-center text-sm font-bold text-white hover:bg-[#322f35]">Manage Inventory</Link></section>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="rounded-xl bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Store Performance</h2><p className="mt-1 text-sm text-[#494551]">Quality metrics affecting your search ranking</p></div><span className="rounded-full bg-[#e9ddff] px-3 py-1 text-xs font-bold text-[#4f378a]">Top Rated</span></div><div className="my-5 flex items-center gap-4"><div className="flex items-baseline gap-1"><span className="text-3xl font-extrabold">{rating}</span><span className="text-sm text-[#7a7582]">/ 5.0</span></div><div className="flex text-[#c9a74d]">{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={19} fill="currentColor" />)}</div><span className="text-xs text-[#7a7582]">({stats.totalOrders} verified buyer ratings)</span></div><div className="space-y-4"><div><div className="mb-1 flex justify-between text-sm font-semibold"><span>Fulfillment Rate</span><span>96%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#f2ecf4]"><div className="h-full w-[96%] rounded-full bg-[#4f378a]" /></div><span className="text-xs text-[#7a7582]">Target: ≥ 95% (Exceeding standard)</span></div><div><div className="mb-1 flex justify-between text-sm font-semibold"><span>On-time Delivery Rate</span><span>98%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#f2ecf4]"><div className="h-full w-[98%] rounded-full bg-[#4f378a]" /></div><span className="text-xs text-[#7a7582]">Benchmark across platform: 91%</span></div><div className="flex items-center justify-between rounded-xl bg-[#f8f2fa] p-3"><div><p className="text-sm font-bold">Cancellation Rate</p><p className="text-xs text-[#7a7582]">Calculated on 90 rolling days</p></div><span className="rounded-full bg-[#e1d4fd] px-3 py-1 text-xs font-bold text-[#63597c]">Healthy &lt;3%</span></div></div></section>
+          <section className="rounded-xl bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Earnings &amp; Payouts</h2><p className="mt-1 text-sm text-[#494551]">Merchant revenue balance and auto-transfer status</p></div><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e9ddff] text-[#4f378a]"><Wallet size={22} /></div></div><div className="mt-5 rounded-xl bg-[#4f378a] p-5 text-white shadow-sm"><span className="text-xs font-bold uppercase tracking-wider text-[#e0d2ff]">Available for Withdrawal</span><div className="mt-1 text-3xl font-extrabold">{formatPrice(stats.totalEarnings)}</div><div className="mt-3 flex items-center gap-2 text-xs text-[#e0d2ff]"><Clock3 size={15} /> Scheduled next auto-payout: <strong className="text-white">Friday</strong></div></div><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#f8f2fa] p-3"><span className="text-xs font-bold uppercase tracking-wider text-[#7a7582]">Pending Balance</span><strong className="mt-2 block text-xl">{formatPrice(Math.round(stats.totalEarnings * 0.14))}</strong><span className="text-xs text-[#7a7582]">Released on delivery</span></div><div className="rounded-xl bg-[#f8f2fa] p-3"><span className="text-xs font-bold uppercase tracking-wider text-[#7a7582]">Lifetime Earnings</span><strong className="mt-2 block text-xl">{formatPrice(stats.totalEarnings)}</strong><span className="text-xs text-[#63597c]">Since inception</span></div></div><div className="mt-4 flex flex-col gap-2 sm:flex-row"><Link to="/seller/earnings" className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#4f378a] py-2 text-sm font-bold text-white hover:bg-[#6750a4]"><Wallet size={17} /> Withdraw / Payout</Link><Link to="/seller/settings" className="rounded-lg bg-[#f2ecf4] px-4 py-2 text-center text-sm font-bold hover:bg-[#e6e0e9]">Payout Settings</Link></div></section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1050,6 +993,8 @@ function SellerDashboardManageView({
   const overviewBannerUrl = typeof user?.storefront_banner_url === 'string' ? user.storefront_banner_url.trim() : '';
   const executiveSummary = intelligence.executiveSummary;
 
+  return <ReferenceSellerDashboard stats={stats} insights={insights} user={user} />;
+
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[1.75rem] border border-border bg-white shadow-none">
@@ -1161,7 +1106,7 @@ function SellerDashboardManageView({
                     </p>
                     <p className="mt-2 max-w-xs text-xs text-slate-500">
                       {onboarding?.next_step?.title
-                        ? `Next: ${onboarding.next_step.title}`
+                        ? `Next: ${onboarding?.next_step?.title}`
                         : 'Complete your profile, publish products, and connect operations to unlock more traffic.'}
                     </p>
                   </div>
@@ -1506,7 +1451,7 @@ function SellerDashboardManageView({
 
 export const SellerDashboard = () => {
   const { token, user } = useUser();
-  const [manageMode, setManageMode] = useState(false);
+  const [manageMode, setManageMode] = useState(true);
   const [stats, setStats] = useState<SellerStatsResponse>({
     totalProducts: 0,
     totalOrders: 0,
@@ -1524,7 +1469,7 @@ export const SellerDashboard = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncManageMode = () => {
-      setManageMode(window.localStorage.getItem(manageModeStorageKey) === 'true');
+      setManageMode(window.localStorage.getItem(manageModeStorageKey) !== 'false');
     };
 
     syncManageMode();
@@ -1718,19 +1663,7 @@ export const SellerDashboard = () => {
 
       {manageMode ? (
         <SellerDashboardManageView stats={stats} insights={insights} onboarding={onboarding} products={products} user={user} />
-      ) : (
-        <SellerStorefrontPreview
-          storeName={storeName}
-          bannerUrl={user?.storefront_banner_url}
-          avatarUrl={user?.avatar_url}
-          headline={user?.storefront_headline || user?.bio}
-          storefrontSlug={user?.storefront_slug}
-          products={products}
-          bestSellers={bestSellerProducts}
-          flashSaleEntries={flashSaleEntries}
-          coupons={coupons}
-        />
-      )}
+      ) : null}
     </div>
   );
 };

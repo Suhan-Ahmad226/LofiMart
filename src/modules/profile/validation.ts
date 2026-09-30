@@ -84,7 +84,7 @@ export const notificationPreferenceSchema = z.object({
 });
 
 export const payoutMethodSchema = z.object({
-  type: z.enum(['bank_account', 'mobile_banking', 'stripe', 'paypal']),
+  type: z.enum(['bank_account', 'mobile_banking', 'paypal']),
   provider: z.string().trim().min(2).max(60),
   account_name: z.string().trim().max(120).optional(),
   account_number: z.string().trim().max(60).optional(),

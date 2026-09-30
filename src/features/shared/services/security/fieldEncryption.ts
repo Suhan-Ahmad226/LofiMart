@@ -8,7 +8,7 @@ type EncryptedPayload = {
 };
 
 function getEncryptionKey() {
-  const secret = getServerEnv().JWT_SECRET;
+  const secret = getServerEnv().FIELD_ENCRYPTION_KEY;
   return crypto.createHash('sha256').update(`${secret}:profile-encryption`).digest();
 }
 

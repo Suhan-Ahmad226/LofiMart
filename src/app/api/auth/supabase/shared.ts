@@ -1,8 +1,5 @@
-import bcrypt from 'bcryptjs';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import type { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { createSession, getAccessCookieOptions, getRefreshCookieOptions } from '../../../../features/auth/services/sessionStore';
 
 export const AUTH_ROLES = ['customer', 'seller', 'reseller'] as const;
 
@@ -72,68 +69,26 @@ export function formatAuthUser(user: {
   };
 }
 
-export async function issueAppSession(user: {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  tenantId: string | null;
-}) {
-  const session = await createSession({
-    id: user.id,
-    email: user.email,
-    name: user.name || undefined,
-    role: user.role,
-    tenantId: user.tenantId,
-  });
-
-  return session;
-}
-
-export function attachAppSessionCookies(
-  response: NextResponse,
-  user: {
-    id: string;
-    email: string;
-    name: string | null;
-    role: string;
-    tenantId: string | null;
-  },
-  session: Awaited<ReturnType<typeof issueAppSession>>,
-) {
-  const cookieUser = {
-    id: user.id,
-    email: user.email,
-    name: user.name || undefined,
-    role: user.role,
-    tenantId: user.tenantId,
-  };
-
-  response.cookies.set('access_token', session.accessToken, getAccessCookieOptions(cookieUser));
-  response.cookies.set('refresh_token', session.refreshToken, getRefreshCookieOptions(cookieUser));
-
-  return response;
-}
-
 export async function createLocalUserFromSupabase(input: {
   email: string;
   name?: string | null;
   role?: unknown;
   emailVerified?: boolean;
   emailVerifiedAt?: Date | null;
-  password?: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  supabaseAuthId?: string | null;
 }) {
   const role = normalizeAuthRole(input.role);
-  const passwordHash = input.password
-    ? await bcrypt.hash(input.password, 10)
-    : await bcrypt.hash(`supabase:${input.email}:${Date.now()}`, 10);
 
   return prisma.user.create({
     data: {
       email: input.email,
       name: input.name || input.email.split('@')[0],
-      passwordHash,
       role,
+      phone: input.phone || null,
+      avatarUrl: input.avatarUrl || null,
+      supabaseAuthId: input.supabaseAuthId || null,
       sellerStatus: role === 'seller' || role === 'reseller' ? 'draft' : 'approved',
       emailVerified: Boolean(input.emailVerified),
       emailVerifiedAt: input.emailVerified ? input.emailVerifiedAt || new Date() : null,

@@ -3,7 +3,7 @@ import { Bell, Coins, Package, ShieldCheck, Tag, Wallet, BadgeCheck, Users, Zap 
 import { motion } from 'framer-motion';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { Link, useNavigate } from '../../../lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import { CenteredLoader, EmptyState } from '@/features/shared/ui/FeedbackState';
 
 type NotificationItem = {
@@ -37,6 +37,8 @@ const iconByType: Record<string, React.ReactNode> = {
 export const CustomerNotificationsPage = () => {
   const { token } = useUser();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlNotification = searchParams.get('notification') || '';
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [focusedNotificationId, setFocusedNotificationId] = useState('');
@@ -92,15 +94,10 @@ export const CustomerNotificationsPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextNotification = params.get('notification');
-
-    if (nextNotification) {
-      setFocusedNotificationId(nextNotification);
+    if (urlNotification) {
+      setFocusedNotificationId(urlNotification);
     }
-  }, []);
+  }, [urlNotification]);
 
   const markAllRead = async () => {
     if (!token) {

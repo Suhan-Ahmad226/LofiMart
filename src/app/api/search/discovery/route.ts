@@ -57,12 +57,20 @@ export async function GET() {
     return NextResponse.json({
       trending,
       categories,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600',
+      },
     });
   } catch (error) {
     console.error('GET /api/search/discovery error:', error);
     return NextResponse.json({
       trending: ['Fashion', 'Electronics', 'Home Decor', 'Beauty'],
       categories: [],
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=900',
+      },
     });
   }
 }

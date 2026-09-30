@@ -1,3 +1,12 @@
 'use client';
 
-export { ForgotPasswordPage as default } from '../../../features/auth/screens/ForgotPasswordPage';
+import { Suspense } from 'react';
+import { ForgotPasswordPage } from '../../../features/auth/screens/ForgotPasswordPage';
+
+export default function ForgotPasswordRoute() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordPage />
+    </Suspense>
+  );
+}

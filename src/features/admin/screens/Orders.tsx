@@ -13,6 +13,7 @@ import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 import toast from '@/lib/toast';
 import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
+import { useSearchParams } from '../../../lib/navigation';
 
 type AdminOrder = {
   id: string;
@@ -93,6 +94,8 @@ function getStatusTone(status: string) {
 
 export const AdminOrdersPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -128,14 +131,10 @@ export const AdminOrdersPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-  }, []);
+  }, [urlSearch]);
 
   const handleStatusChange = async (order: AdminOrder, status: string) => {
     try {

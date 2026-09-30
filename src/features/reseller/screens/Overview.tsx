@@ -1,8 +1,11 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { DollarSign, Loader2, Share2, ShoppingBag, TrendingUp, Users, Zap } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
+import { DashboardHeader, DashboardKpiCard, DashboardSection, DashboardStatsGrid, DashboardAlert } from '@/features/shared/ui/dashboard';
 
 type ResellerStatCard = {
   label: string;
@@ -88,57 +91,36 @@ export const ResellerOverview = () => {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-sm text-accent">
-          {error}
-        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>
       )}
 
+      <DashboardHeader
+        greeting={user?.name ? `Welcome back, ${user.name}` : undefined}
+        title="Reseller Dashboard"
+        description="Track your sales, customers, and commission."
+      />
+
       {onboarding && Number(onboarding.summary?.progress_percent || 0) < 100 ? (
-        <div className="rounded-3xl border border-border bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="section-kicker text-fuchsia-600/80">Reseller onboarding</p>
-              <h2 className="mt-2 text-xl font-bold">Complete the setup that makes your reseller shop earn-ready</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {onboarding.summary?.completed_steps || 0}/{onboarding.summary?.total_steps || 0} onboarding steps complete.
-                {onboarding.next_step?.title ? ` Next: ${onboarding.next_step.title}.` : ''}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-2xl bg-secondary/60 px-4 py-3 text-sm">
-                <span className="font-bold text-foreground">{onboarding.summary?.progress_percent || 0}%</span>{' '}
-                <span className="text-muted-foreground">complete</span>
-              </div>
-              <Link
-                to={onboarding.next_step?.action_path || '/reseller-dashboard/onboarding'}
-                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Continue setup
-              </Link>
-            </div>
-          </div>
-        </div>
+        <DashboardAlert
+          tone="info"
+          title="Complete your reseller setup"
+          description={`${onboarding.summary?.completed_steps || 0}/${onboarding.summary?.total_steps || 0} onboarding steps complete.${onboarding.next_step?.title ? ` Next: ${onboarding.next_step.title}.` : ''}`}
+          action={
+            <Link to={onboarding.next_step?.action_path || '/reseller-dashboard/onboarding'} className="text-sm font-semibold text-primary hover:underline">
+              Continue setup
+            </Link>
+          }
+        />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <div key={stat.label} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="rounded-2xl bg-secondary p-3">{stat.icon}</div>
-              <div className="rounded-lg bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
-                Live
-              </div>
-            </div>
-            <p className="mb-1 text-sm text-muted-foreground">{stat.label}</p>
-            <h3 className="text-2xl font-bold">{stat.value}</h3>
-            <p className="mt-2 text-xs text-muted-foreground">{stat.helper}</p>
-          </div>
+      <DashboardStatsGrid columns={4}>
+        {stats.map((stat) => (
+          <DashboardKpiCard key={stat.label} label={stat.label} value={stat.value} helper={stat.helper} icon={stat.icon} />
         ))}
-      </div>
+      </DashboardStatsGrid>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
-          <h3 className="mb-6 text-lg font-bold">Referral Summary</h3>
+        <DashboardSection title="Referral Summary" description="Track your referral code performance.">
           <div className="space-y-6">
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-4">
@@ -179,10 +161,9 @@ export const ResellerOverview = () => {
               <p className="text-sm font-bold text-primary">{stats.find((item) => item.label === 'Successful Referrals')?.value || '0'}</p>
             </div>
           </div>
-        </div>
+        </DashboardSection>
 
-        <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
-          <h3 className="mb-6 text-lg font-bold">Performance Snapshot</h3>
+        <DashboardSection title="Performance Snapshot" description="Live reseller performance metrics.">
           <div className="grid gap-4 md:grid-cols-2">
             {stats.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground md:col-span-2">
@@ -197,7 +178,7 @@ export const ResellerOverview = () => {
               ))
             )}
           </div>
-        </div>
+        </DashboardSection>
       </div>
     </div>
   );

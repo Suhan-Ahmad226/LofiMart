@@ -1,5 +1,5 @@
 import React, { useId, useRef, useState } from 'react';
-import { Check, Image as ImageIcon, Link2, Loader2, UploadCloud } from 'lucide-react';
+import { Check, Image as ImageIcon, Loader2, UploadCloud } from 'lucide-react';
 
 interface Props {
   onUploaded: (url: string) => void;
@@ -7,37 +7,9 @@ interface Props {
   helper?: string;
 }
 
-type CloudinarySignatureResponse = {
-  cloudName: string;
-  apiKey: string;
-  timestamp: number;
-  signature: string;
-  error?: string;
-};
-
-type CloudinaryUploadSuccess = {
-  event: 'success';
-  info: {
-    secure_url: string;
-  };
-};
-
 type ServerUploadResponse = {
   url?: string;
   error?: string;
-};
-
-type CloudinaryUploadResult = CloudinaryUploadSuccess | { event?: string; info?: unknown };
-
-type CloudinaryWidgetInstance = {
-  open: () => void;
-};
-
-type CloudinaryWidgetApi = {
-  createUploadWidget: (
-    options: Record<string, unknown>,
-    callback: (error: { message?: string } | null, result: CloudinaryUploadResult) => void,
-  ) => CloudinaryWidgetInstance;
 };
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -46,14 +18,6 @@ const TARGET_UPLOAD_BYTES = Math.round(1.2 * 1024 * 1024);
 const DEFAULT_WEBP_QUALITY = 0.86;
 const MIN_WEBP_QUALITY = 0.72;
 const ALLOWED_FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
-
-function isCloudinaryUploadSuccess(result: CloudinaryUploadResult): result is CloudinaryUploadSuccess {
-  if (result.event !== 'success' || typeof result.info !== 'object' || result.info === null) {
-    return false;
-  }
-
-  return 'secure_url' in result.info && typeof result.info.secure_url === 'string';
-}
 
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) {
@@ -165,12 +129,6 @@ async function readFileAsDataUrl(file: File) {
   });
 }
 
-declare global {
-  interface Window {
-    cloudinary?: CloudinaryWidgetApi;
-  }
-}
-
 export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload Image', helper }) => {
   const inputId = useId();
   const helperId = useId();
@@ -185,91 +143,6 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
   const [selectedFileName, setSelectedFileName] = useState('');
   const [selectedFileSize, setSelectedFileSize] = useState('');
   const [optimizedFileSize, setOptimizedFileSize] = useState('');
-
-  const loadWidgetScript = async () => {
-    if (window.cloudinary) {
-      return window.cloudinary;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://widget.cloudinary.com/v2.0/global/all.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load upload widget'));
-      document.body.appendChild(script);
-    });
-
-    if (!window.cloudinary) {
-      throw new Error('Upload widget did not initialize correctly');
-    }
-
-    return window.cloudinary;
-  };
-
-  const getSignature = async () => {
-    const token = window.localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Please log in as an admin or seller before uploading media');
-    }
-
-    const signatureResponse = await fetch('/api/media/signature', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const signature = (await signatureResponse.json()) as CloudinarySignatureResponse;
-    if (!signatureResponse.ok) {
-      throw new Error(signature.error || 'Could not get upload signature');
-    }
-
-    return signature;
-  };
-
-  const uploadDirectToCloudinary = async (file: File, signature: CloudinarySignatureResponse) => {
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${signature.cloudName}/auto/upload`;
-    const formData = new FormData();
-
-    formData.append('file', file);
-    formData.append('api_key', signature.apiKey);
-    formData.append('timestamp', String(signature.timestamp));
-    formData.append('signature', signature.signature);
-
-    return await new Promise<string>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', uploadUrl);
-      xhr.timeout = 45000;
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          setUploadProgress(Math.round((event.loaded / event.total) * 100));
-        }
-      });
-
-      xhr.onerror = () => {
-        reject(new Error('Cloudinary upload connection failed. Please check your internet and try again.'));
-      };
-      xhr.ontimeout = () => {
-        reject(new Error('Cloudinary upload timed out. Please try again with a stable connection.'));
-      };
-      xhr.onload = () => {
-        try {
-          const response = JSON.parse(xhr.responseText || '{}') as { secure_url?: string; error?: { message?: string } };
-          if (xhr.status >= 200 && xhr.status < 300 && response.secure_url) {
-            resolve(response.secure_url);
-            return;
-          }
-
-          reject(new Error(response.error?.message || 'Image upload failed'));
-        } catch {
-          reject(new Error('Image upload failed'));
-        }
-      };
-
-      xhr.send(formData);
-    });
-  };
 
   const uploadViaServer = async (file: File) => {
     const token = window.localStorage.getItem('token');
@@ -314,25 +187,7 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
         setOptimizedFileSize(formatBytes(prepared.file.size));
       }
 
-      const signature = await getSignature();
-      let secureUrl: string;
-
-      try {
-        secureUrl = await uploadDirectToCloudinary(prepared.file, signature);
-      } catch (directUploadError) {
-        setUploadProgress(0);
-        try {
-          secureUrl = await uploadViaServer(prepared.file);
-        } catch (serverUploadError) {
-          const fallbackMessage =
-            serverUploadError instanceof Error
-              ? serverUploadError.message
-              : directUploadError instanceof Error
-                ? directUploadError.message
-                : 'Image upload failed. Please check your connection and try again.';
-          throw new Error(fallbackMessage);
-        }
-      }
+      const secureUrl = await uploadViaServer(prepared.file);
 
       setUrl(secureUrl);
       setUploadProgress(100);
@@ -342,50 +197,6 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
       setError(message);
       setUploadProgress(0);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const openWidget = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      const signature = await getSignature();
-      const cloudinary = await loadWidgetScript();
-      const widget = cloudinary.createUploadWidget(
-        {
-          cloudName: signature.cloudName,
-          uploadSignatureTimestamp: signature.timestamp,
-          uploadSignature: signature.signature,
-          apiKey: signature.apiKey,
-          resourceType: 'image',
-          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'],
-          cropping: false,
-          multiple: false,
-          sources: ['local', 'url', 'camera'],
-        },
-        (widgetError, result) => {
-          if (widgetError) {
-            setError(widgetError.message || 'Upload failed');
-            setLoading(false);
-            return;
-          }
-
-          if (isCloudinaryUploadSuccess(result)) {
-            setUrl(result.info.secure_url);
-            setPreviewUrl(result.info.secure_url);
-            setUploadProgress(100);
-            onUploaded(result.info.secure_url);
-            setLoading(false);
-          }
-        },
-      );
-
-      widget.open();
-    } catch (uploadError) {
-      const message = uploadError instanceof Error ? uploadError.message : 'Upload failed';
-      setError(message);
       setLoading(false);
     }
   };
@@ -482,15 +293,6 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
             >
               <UploadCloud className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Uploading...' : 'Choose file'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={openWidget}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={loading}
-            >
-              <Link2 className="h-4 w-4" />
-              <span>More sources</span>
             </button>
             {url ? <Check className="h-4 w-4 text-emerald-600" /> : null}
           </div>

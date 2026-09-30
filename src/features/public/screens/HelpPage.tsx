@@ -1,21 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, MessageCircle, Package, RefreshCcw, CreditCard, Truck } from 'lucide-react';
-import { useNavigate } from '../../../lib/navigation';
+import { useNavigate, useSearchParams } from '../../../lib/navigation';
 import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 
 export const HelpPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlTopic = searchParams.get('topic') || '';
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const topic = params.get('topic');
-    if (topic === 'contact-support') {
+    if (urlTopic === 'contact-support') {
       setQuery('support');
     }
-  }, []);
+  }, [urlTopic]);
 
   const faqs = [
     {

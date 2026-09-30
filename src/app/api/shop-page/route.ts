@@ -111,6 +111,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('GET /api/shop-page error:', error);
-    return NextResponse.json({ error: 'Failed to load homepage data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load homepage data' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

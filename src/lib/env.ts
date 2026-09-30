@@ -77,8 +77,7 @@ const ServerEnvSchema = z.object({
   REDIS_COMMAND_TIMEOUT_MS: intFromString('REDIS_COMMAND_TIMEOUT_MS', 3000),
   REDIS_MAX_RETRIES_PER_REQUEST: intFromString('REDIS_MAX_RETRIES_PER_REQUEST', 1),
   JWT_SECRET: requiredString('JWT_SECRET', 32),
-  STRIPE_SECRET_KEY: requiredString('STRIPE_SECRET_KEY'),
-  STRIPE_WEBHOOK_SECRET: optionalString(),
+  FIELD_ENCRYPTION_KEY: requiredString('FIELD_ENCRYPTION_KEY', 32),
   REDIS_PREFIX: requiredString('REDIS_PREFIX').default('amarshop'),
   RATE_LIMIT_PREFIX: requiredString('RATE_LIMIT_PREFIX').default('ratelimit'),
   QUEUE_PREFIX: requiredString('QUEUE_PREFIX').default('amarshop'),
@@ -87,9 +86,21 @@ const ServerEnvSchema = z.object({
   QUEUE_DEFAULT_JOB_ATTEMPTS: intFromString('QUEUE_DEFAULT_JOB_ATTEMPTS', 5),
   QUEUE_DEFAULT_JOB_BACKOFF_MS: intFromString('QUEUE_DEFAULT_JOB_BACKOFF_MS', 5000),
   LOW_STOCK_THRESHOLD: intFromString('LOW_STOCK_THRESHOLD', 5),
+  STOCK_RESERVATION_REAP_MS: intFromString('STOCK_RESERVATION_REAP_MS', 5 * 60 * 1000),
   CORS_ALLOWED_ORIGINS: commaSeparatedOrigins(),
   GOOGLE_CLIENT_ID: optionalString(),
   GOOGLE_CLIENT_SECRET: optionalString(),
+  FACEBOOK_CLIENT_ID: optionalString(),
+  FACEBOOK_CLIENT_SECRET: optionalString(),
+  FACEBOOK_APP_ID: optionalString(),
+  FACEBOOK_APP_SECRET: optionalString(),
+  FACEBOOK_REDIRECT_URI: optionalString(),
+  SOCIAL_AUTOMATION_WORKER_TOKEN: optionalString(),
+  SOCIAL_AUTOMATION_LEASE_SECONDS: intFromString('SOCIAL_AUTOMATION_LEASE_SECONDS', 5 * 60),
+  SOCIAL_AUTOMATION_SWEEP_MS: intFromString('SOCIAL_AUTOMATION_SWEEP_MS', 5 * 60 * 1000),
+  WHATSAPP_PHONE_NUMBER_ID: optionalString(),
+  WHATSAPP_API_TOKEN: optionalString(),
+  WHATSAPP_TEMPLATE_NAME: optionalString(),
   TELEGRAM_BOT_TOKEN: optionalString(),
   TELEGRAM_BOT_USERNAME: optionalString(),
   TELEGRAM_WEBHOOK_SECRET: optionalString(),
@@ -98,6 +109,7 @@ const ServerEnvSchema = z.object({
   CLOUDINARY_API_KEY: optionalString(),
   CLOUDINARY_API_SECRET: optionalString(),
   SUPABASE_SERVICE_ROLE_KEY: optionalString(),
+  SUPABASE_AUTH_WEBHOOK_SECRET: optionalString(),
   RESEND_API_KEY: optionalString(),
   SMTP_HOST: optionalString(),
   SMTP_PORT: intFromString('SMTP_PORT', 587),
@@ -125,17 +137,13 @@ const ServerEnvSchema = z.object({
   PATHAO_USERNAME: optionalString(),
   PATHAO_PASSWORD: optionalString(),
   PATHAO_BOOKING_ENDPOINT: optionalString(),
-  REDX_API_KEY: optionalString(),
-  REDX_SECRET_KEY: optionalString(),
-  REDX_BASE_URL: optionalString(),
-  REDX_BOOKING_ENDPOINT: optionalString(),
-  REDX_TRACKING_ENDPOINT: optionalString(),
   PATHAO_WEBHOOK_TOKEN: optionalString(),
-  REDX_WEBHOOK_TOKEN: optionalString(),
-  STEADFAST_API_KEY: optionalString(),
-  STEADFAST_SECRET_KEY: optionalString(),
-  STEADFAST_BASE_URL: optionalString(),
-  STEADFAST_WEBHOOK_TOKEN: optionalString(),
+  /**
+   * Escape hatch that permits `PATHAO_BASE_URL` to point somewhere other than the
+   * two documented Pathao hosts. Must be exactly "1" to take effect, so it cannot
+   * be enabled by a stray truthy value.
+   */
+  PATHAO_ALLOW_CUSTOM_BASE_URL: optionalString(),
 });
 
 let publicEnvCache: z.infer<typeof PublicEnvSchema> | null = null;
@@ -201,8 +209,6 @@ function validateProductionServerEnv(
     checkPlaceholder('DIRECT_URL', serverEnv.DIRECT_URL);
   }
   checkPlaceholder('REDIS_URL', serverEnv.REDIS_URL);
-  checkPlaceholder('STRIPE_SECRET_KEY', serverEnv.STRIPE_SECRET_KEY);
-  checkPlaceholder('STRIPE_WEBHOOK_SECRET', serverEnv.STRIPE_WEBHOOK_SECRET);
   checkPlaceholder('NEXT_PUBLIC_SUPABASE_URL', publicEnv.NEXT_PUBLIC_SUPABASE_URL);
   checkPlaceholder('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', publishableSupabaseKey);
   checkPlaceholder('NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY', publicEnv.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY);
@@ -221,6 +227,16 @@ function validateProductionServerEnv(
     GOOGLE_CLIENT_ID: serverEnv.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: serverEnv.GOOGLE_CLIENT_SECRET,
   });
+
+  const facebookAppId = serverEnv.FACEBOOK_APP_ID || serverEnv.FACEBOOK_CLIENT_ID;
+  const facebookAppSecret = serverEnv.FACEBOOK_APP_SECRET || serverEnv.FACEBOOK_CLIENT_SECRET;
+  if (facebookAppId || facebookAppSecret) {
+    if (!facebookAppId || !facebookAppSecret) {
+      errors.push(
+        'Facebook OAuth is partially configured. Set both FACEBOOK_APP_ID and FACEBOOK_APP_SECRET (or the FACEBOOK_CLIENT_ID/FACEBOOK_CLIENT_SECRET aliases).',
+      );
+    }
+  }
 
   ensureProductionPair(errors, 'Cloudinary media upload', {
     CLOUDINARY_CLOUD_NAME: serverEnv.CLOUDINARY_CLOUD_NAME,
@@ -241,31 +257,39 @@ function validateProductionServerEnv(
     BKASH_APP_SECRET: serverEnv.BKASH_APP_SECRET,
   });
 
+  // Pathao: the five OAuth + merchant fields are the only hard requirements.
+  // PATHAO_BOOKING_ENDPOINT and PATHAO_WEBHOOK_TOKEN are optional (the client
+  // falls back to the documented default endpoint, and webhooks fail closed when
+  // no token is configured), so they must not be part of the "all or nothing" pair.
   ensureProductionPair(errors, 'Pathao courier', {
     PATHAO_CLIENT_ID: serverEnv.PATHAO_CLIENT_ID,
     PATHAO_CLIENT_SECRET: serverEnv.PATHAO_CLIENT_SECRET,
     PATHAO_BASE_URL: serverEnv.PATHAO_BASE_URL,
     PATHAO_USERNAME: serverEnv.PATHAO_USERNAME,
     PATHAO_PASSWORD: serverEnv.PATHAO_PASSWORD,
-    PATHAO_BOOKING_ENDPOINT: serverEnv.PATHAO_BOOKING_ENDPOINT,
-    PATHAO_WEBHOOK_TOKEN: serverEnv.PATHAO_WEBHOOK_TOKEN,
   });
 
-  ensureProductionPair(errors, 'RedX courier', {
-    REDX_API_KEY: serverEnv.REDX_API_KEY,
-    REDX_SECRET_KEY: serverEnv.REDX_SECRET_KEY,
-    REDX_BASE_URL: serverEnv.REDX_BASE_URL,
-    REDX_BOOKING_ENDPOINT: serverEnv.REDX_BOOKING_ENDPOINT,
-    REDX_TRACKING_ENDPOINT: serverEnv.REDX_TRACKING_ENDPOINT,
-    REDX_WEBHOOK_TOKEN: serverEnv.REDX_WEBHOOK_TOKEN,
-  });
+  for (const field of [
+    'PATHAO_CLIENT_ID',
+    'PATHAO_CLIENT_SECRET',
+    'PATHAO_USERNAME',
+    'PATHAO_PASSWORD',
+    'PATHAO_BASE_URL',
+    'PATHAO_BOOKING_ENDPOINT',
+    'PATHAO_WEBHOOK_TOKEN',
+  ] as const) {
+    checkPlaceholder(field, serverEnv[field]);
+  }
 
-  ensureProductionPair(errors, 'Steadfast courier', {
-    STEADFAST_API_KEY: serverEnv.STEADFAST_API_KEY,
-    STEADFAST_SECRET_KEY: serverEnv.STEADFAST_SECRET_KEY,
-    STEADFAST_BASE_URL: serverEnv.STEADFAST_BASE_URL,
-    STEADFAST_WEBHOOK_TOKEN: serverEnv.STEADFAST_WEBHOOK_TOKEN,
-  });
+  // The custom-base-URL escape hatch turns off the host allowlist that stops
+  // merchant credentials being sent to an unrecognised server. That is a
+  // deliberate security decision, so it is surfaced at startup rather than
+  // discovered during an incident.
+  if (serverEnv.PATHAO_ALLOW_CUSTOM_BASE_URL === '1') {
+    errors.push(
+      'PATHAO_ALLOW_CUSTOM_BASE_URL=1 is set: Pathao credentials may be sent to a host that is not a documented Pathao endpoint. Confirm this is intentional.',
+    );
+  }
 
   const smtpConfigured = Boolean(
     serverEnv.SMTP_HOST || serverEnv.SMTP_USER || serverEnv.SMTP_PASS || serverEnv.SMTP_FROM,
@@ -283,11 +307,6 @@ function validateProductionServerEnv(
       SMTP_PASS: serverEnv.SMTP_PASS,
       SMTP_FROM: serverEnv.SMTP_FROM,
     });
-  }
-
-  const stripeLooksLive = serverEnv.STRIPE_SECRET_KEY.startsWith('sk_live_');
-  if (stripeLooksLive && !serverEnv.STRIPE_WEBHOOK_SECRET) {
-    errors.push('STRIPE_WEBHOOK_SECRET is required when using a live Stripe secret in production');
   }
 
   const sslCommerzConfigured = Boolean(serverEnv.SSLCOMMERZ_STORE_ID || serverEnv.SSLCOMMERZ_STORE_PASSWORD);

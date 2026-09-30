@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import toast from '@/lib/toast';
 import { Link, useParams } from '../../../lib/navigation';
 import {
+  AlertCircle,
   ArrowRight,
   BadgeCheck,
   Clock3,
   Copy,
   ExternalLink,
-  Loader2,
   Package,
   Search,
   ShieldCheck,
@@ -19,8 +19,9 @@ import {
   Truck,
   Zap,
 } from 'lucide-react';
-import { ProductCard } from '@/features/shop/components/ProductCard';
+import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { CenteredLoader, EmptyState } from '@/features/shared/ui/FeedbackState';
 import { Product } from '../../../types';
 import { copyText } from '../../../lib/browser-actions';
 import { formatPrice } from '../../../lib/utils';
@@ -69,6 +70,18 @@ type StorefrontPayload = {
   flash_sale_entries: FlashSaleEntry[];
 };
 
+const FALLBACK_ACCENT = '#0F766E';
+
+function validHexAccent(value: unknown): value is string {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value.trim());
+}
+
+const storefrontLinkClassName =
+  'inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2';
+
+const storefrontSecondaryActionClassName =
+  'inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2';
+
 export function PublicSellerStorefront() {
   const { slug } = useParams();
   const [data, setData] = useState<StorefrontPayload | null>(null);
@@ -76,15 +89,27 @@ export function PublicSellerStorefront() {
   const [error, setError] = useState('');
   const [reviewState, setReviewState] = useState<{ status?: string; store_name?: string | null } | null>(null);
   const [query, setQuery] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
   const deferredQuery = useDeferredValue(query);
 
-  useEffect(() => {
-    if (!slug) return;
+  const retry = useCallback(() => setRetryKey((key) => key + 1), []);
 
+  useEffect(() => {
     let mounted = true;
+
+    if (!slug) {
+      setLoading(false);
+      setError('This storefront could not be found.');
+      setReviewState(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
     setLoading(true);
     setError('');
     setReviewState(null);
+    setData(null);
 
     fetch(`/api/storefronts/${encodeURIComponent(String(slug))}`)
       .then(async (res) => {
@@ -116,7 +141,7 @@ export function PublicSellerStorefront() {
     return () => {
       mounted = false;
     };
-  }, [slug]);
+  }, [slug, retryKey]);
 
   const filteredProducts = useMemo(() => {
     const items = Array.isArray(data?.products) ? data.products : [];
@@ -170,25 +195,64 @@ export function PublicSellerStorefront() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+        <CenteredLoader label="Loading storefront..." />
       </div>
     );
   }
 
   if (error || !data?.storefront) {
+    if (reviewState) {
+      return (
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
+          <h1 className="sr-only">Store is under review</h1>
+          <EmptyState
+            tone="soft"
+            icon={<Clock3 size={30} className="text-primary" />}
+            title="Store is under review"
+            description={`${reviewState.store_name || 'This store'} is not live yet. The seller is still completing admin approval before public selling starts.`}
+            actions={
+              <>
+                <Link to="/shop" className={storefrontLinkClassName}>
+                  Browse other stores
+                  <ArrowRight size={18} aria-hidden="true" />
+                </Link>
+                <button type="button" onClick={retry} className={storefrontSecondaryActionClassName}>
+                  Check again
+                </button>
+              </>
+            }
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold text-slate-950">{reviewState ? 'Store is under review' : 'Store unavailable'}</h1>
-        <p className="mt-3 text-sm text-slate-500">
-          {reviewState
-            ? `${reviewState.store_name || 'This store'} is not live yet. The seller is still completing admin approval before public selling starts.`
-            : error || 'This store is not published right now.'}
-        </p>
+      <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
+        <h1 className="sr-only">Store unavailable</h1>
+        <EmptyState
+          tone="danger"
+          icon={<AlertCircle size={30} className="text-primary" />}
+          title="Store unavailable"
+          description={error || 'This store is not published right now.'}
+          actions={
+            <>
+              <Link to="/shop" className={storefrontLinkClassName}>
+                Browse other stores
+                <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+              <button type="button" onClick={retry} className={storefrontSecondaryActionClassName}>
+                Try again
+              </button>
+            </>
+          }
+        />
       </div>
     );
   }
 
-  const accent = data.storefront.accent_color || '#0F766E';
+  const accent = validHexAccent(data.storefront.accent_color)
+    ? data.storefront.accent_color.trim()
+    : FALLBACK_ACCENT;
   const publishState = data.products.length > 0 ? 'Live catalog' : 'Setup mode';
   const previewDomain = data.storefront.custom_domain || `${data.storefront.slug}.lofimart.com`;
   const navSections = [
@@ -492,7 +556,7 @@ export function PublicSellerStorefront() {
                 Curated from real storefront product signals
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
               {storefrontInsights.featuredProducts.map((product) => (
                 <ProductCard key={`favorite-${product.id}`} product={product} />
               ))}
@@ -588,7 +652,7 @@ export function PublicSellerStorefront() {
                 Seller-curated arrivals
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
               {storefrontInsights.latestProducts.map((product) => (
                 <ProductCard key={`latest-${product.id}`} product={product} />
               ))}
@@ -644,7 +708,7 @@ export function PublicSellerStorefront() {
               No products matched this store search right now.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

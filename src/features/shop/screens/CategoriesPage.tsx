@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from '../../../lib/navigation';
 import {
   ArrowRight,
@@ -17,33 +17,11 @@ import {
   Tag,
   Utensils,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { cn } from '../../../lib/utils';
-
-type Subsubcategory = {
-  id: string | number;
-  name: string;
-};
-
-type Subcategory = {
-  id: string | number;
-  name: string;
-  subsubcategories?: Subsubcategory[];
-};
-
-type Category = {
-  id: string | number;
-  name: string;
-  icon?: string | null;
-  subcategories?: Subcategory[];
-};
-
-type Product = {
-  id: number;
-  category: string;
-};
+import type { CategoriesPageData, Category } from './CategoriesPage.data';
 
 const fallbackCategories: Category[] = [
   { id: 'fashion', name: 'Fashion', subcategories: [{ id: 'fashion-women', name: 'Women' }, { id: 'fashion-men', name: 'Men' }] },
@@ -100,16 +78,19 @@ function CategoriesSkeleton() {
   );
 }
 
-export const CategoriesPage = () => {
-  const [categories, setCategories] = useState<Category[]>(fallbackCategories);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export const CategoriesPage = ({ initialData }: { initialData?: CategoriesPageData }) => {
+  const hasInitialCategories = !!(initialData && initialData.categories.length > 0);
+  const [categories, setCategories] = useState<Category[]>(hasInitialCategories ? (initialData?.categories ?? fallbackCategories) : fallbackCategories);
+  const [products, setProducts] = useState<CategoriesPageData['products']>(initialData?.products ?? []);
+  const [loading, setLoading] = useState(!hasInitialCategories);
   const [error, setError] = useState('');
   const [usingFallback, setUsingFallback] = useState(false);
   const [query, setQuery] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<string | number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (hasInitialCategories) return;
     let active = true;
 
     const loadData = async () => {
@@ -128,9 +109,9 @@ export const CategoriesPage = () => {
         setCategories(hasLiveCategories ? categoriesData : fallbackCategories);
         setProducts(Array.isArray(productsData) ? productsData : []);
         setUsingFallback(!hasLiveCategories || !categoriesRes.ok);
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         if (!active) return;
-        setError(fetchError?.message || 'Unable to load categories right now.');
+        setError(fetchError instanceof Error ? fetchError.message : 'Unable to load categories right now.');
         setCategories(fallbackCategories);
         setProducts([]);
         setUsingFallback(true);
@@ -146,13 +127,20 @@ export const CategoriesPage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [hasInitialCategories, reloadKey]);
+
+  const reload = () => {
+    setError('');
+    setUsingFallback(false);
+    setLoading(true);
+    setReloadKey((key) => key + 1);
+  };
 
   const decoratedCategories = useMemo(() => {
     return categories.map((category, index) => {
       const style = getCategoryStyle(index);
       const categoryCount = products.filter(
-        (product) => product.category?.toLowerCase() === category.name.toLowerCase(),
+        (product) => product.category?.trim().toLowerCase() === category.name.trim().toLowerCase(),
       ).length;
 
       return {
@@ -182,6 +170,7 @@ export const CategoriesPage = () => {
   const featuredCategories = filteredCategories.slice(0, 4);
   const totalSubcategories = decoratedCategories.reduce((sum, category) => sum + (category.subcategories?.length ?? 0), 0);
   const totalItems = decoratedCategories.reduce((sum, category) => sum + category.count, 0);
+  const isSearchTerm = query.trim().length > 0;
 
   return (
     <div className="bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)]">
@@ -252,6 +241,8 @@ export const CategoriesPage = () => {
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
+                  type="search"
+                  aria-label="Search product categories"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search categories, subcategories, or product spaces"
@@ -277,8 +268,15 @@ export const CategoriesPage = () => {
             </section>
 
             {error && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {error} Showing the latest available category structure instead.
+              <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+                <p>{error} Showing the latest available category structure instead.</p>
+                <button
+                  type="button"
+                  onClick={reload}
+                  className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-200"
+                >
+                  Try again
+                </button>
               </div>
             )}
             {!error && usingFallback && (
@@ -293,18 +291,37 @@ export const CategoriesPage = () => {
                   <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
                     <Search size={24} />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-950">No categories matched your search</h2>
-                  <p className="text-sm leading-7 text-slate-500">
-                    Try a simpler keyword or browse all categories again to continue exploring.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setQuery('')}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Reset search
-                    <ArrowRight size={16} />
-                  </button>
+                  {isSearchTerm ? (
+                    <>
+                      <h2 className="text-2xl font-bold text-slate-950">No categories matched your search</h2>
+                      <p className="text-sm leading-7 text-slate-500">
+                        Try a simpler keyword or browse all categories again to continue exploring.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setQuery('')}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        Reset search
+                        <ArrowRight size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl font-bold text-slate-950">No categories available right now</h2>
+                      <p className="text-sm leading-7 text-slate-500">
+                        We couldn't load the category structure. Check your connection or try again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={reload}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        Try again
+                        <ArrowRight size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </section>
             ) : (
@@ -331,6 +348,8 @@ export const CategoriesPage = () => {
                             type="button"
                             onClick={() => setExpandedCategory(expanded ? null : category.id)}
                             className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                            aria-expanded={expanded}
+                            aria-controls={`category-${category.id}-panel`}
                             aria-label={expanded ? `Collapse ${category.name}` : `Expand ${category.name}`}
                           >
                             <ChevronDown
@@ -365,7 +384,7 @@ export const CategoriesPage = () => {
                       </div>
 
                       {expanded && (
-                        <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
+                        <div id={`category-${category.id}-panel`} className="border-t border-slate-100 bg-slate-50 px-5 py-4">
                           {category.subcategories && category.subcategories.length > 0 ? (
                             <div className="space-y-3">
                               {category.subcategories.slice(0, 6).map((subcategory) => (

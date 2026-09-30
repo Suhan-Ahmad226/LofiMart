@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
       shippingAddress: body.shippingAddress || body.fullAddressSummary || undefined,
       refCode: body.refCode ? String(body.refCode) : undefined,
       couponCode: body.couponCode ? String(body.couponCode) : undefined,
-      deliveryFee: Number(body.deliveryFee || 0),
     });
 
     return NextResponse.json(

@@ -66,7 +66,7 @@ sequenceDiagram
     Seller->>API: Accept order
     API->>DB: Update shipment status = "accepted"
     Seller->>API: Book courier
-    API->>Courier: Book shipment (Pathao/RedX/Steadfast)
+    API->>Courier: Book shipment (Pathao)
     Courier-->>API: Tracking ID
     API->>DB: Store tracking info
     Seller->>API: Mark as shipped
@@ -170,18 +170,33 @@ graph LR
 ```mermaid
 graph TB
     Book["Book Shipment"] --> SelectProvider{"Select<br/>Courier"}
-    SelectProvider -->|"Pathao"| PathaoBook["Pathao API<br/>(Auto store sync)"]
-    SelectProvider -->|"RedX"| RedxBook["RedX API"]
-    SelectProvider -->|"Steadfast"| SteadfastBook["Steadfast API"]
-    SelectProvider -->|"Paperfly"| ManualBook["Manual Booking"]
+    SelectProvider -->|"Pathao"| PathaoBook["Pathao API<br/>(Store must be<br/>pre-mapped)"]
+    SelectProvider -->|"Manual"| ManualBook["Manual Booking"]
     
     PathaoBook --> TrackingID["Tracking ID<br/>Generated"]
-    RedxBook --> TrackingID
-    SteadfastBook --> TrackingID
     ManualBook --> TrackingID["Manual Tracking<br/>Reference"]
     
     TrackingID --> UpdateShipment["Update Shipment<br/>with Tracking"]
 ```
+
+### Booking Safety
+
+All booking goes through `bookShipmentForShipment`
+(`src/modules/logistics/bookingService.ts`), which owns the shipment row.
+There is deliberately no convenience `bookShipment(input)` that only calls the
+courier: such a helper can create a real parcel the database never learns about.
+
+| Concern | Behaviour |
+|---------|-----------|
+| Concurrent requests | A conditional `updateMany` on a pre-booking status claims the shipment. Exactly one caller reaches the courier; the loser gets the stored tracking id, or a `409`. |
+| Already tracked | Returns the stored tracking id untouched (`duplicate: true`). No second parcel. |
+| Manual tracking id | Recorded on the shipment and the booking treated as complete. |
+| Transient courier failure | The claim is released, restoring the previous status so the seller can retry. |
+| Non-idempotent retries | Order creation is never retried at the HTTP layer. A timed-out `create_order` may still have been accepted, so replaying it risks a duplicate consignment for the same invoice. |
+| Event publication | Published *after* the tracking id is persisted and never rolls the booking back; a queue outage cannot make a successful booking look failed. |
+| Metadata | Merged into the existing JSON document, so unrelated keys written by other flows survive a re-book. |
+| Stored identifiers | Only non-sensitive values (consignment/tracking id, invoice, fees, status slug) are persisted. Recipient name, phone, address and full API payloads are not copied into metadata or webhook storage. |
+| Response validation | Consumed responses are Zod-validated and must fail closed; ids must be numeric or digit-only so a malformed body cannot become a stored tracking number. |
 
 ### Delivery Tracking
 

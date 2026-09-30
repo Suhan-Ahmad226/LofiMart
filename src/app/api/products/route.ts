@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/server';
 import { raceWithTimeout } from '../_utils/route-timeout';
 import {
@@ -10,36 +11,100 @@ import {
   serializeProduct,
   slugify,
 } from './shared';
+import { associateProductMedia } from '@/lib/media';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+
+const PAGINATION = {
+  DEFAULT_LIMIT: 48,
+  MAX_LIMIT: 100,
+} as const;
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = Number.parseInt(searchParams.get('limit') || '', 10);
+    const rawLimit = Number.parseInt(searchParams.get('limit') || '', 10);
     const category = (searchParams.get('category') || '').trim();
     const sellerId = (searchParams.get('seller_id') || '').trim();
     const search = (searchParams.get('q') || searchParams.get('search') || '').trim();
 
+    const defaultLimit = PAGINATION.DEFAULT_LIMIT;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, PAGINATION.MAX_LIMIT) : defaultLimit;
+
+    const rawPage = searchParams.get('page');
+    const hasPagination = rawPage !== null && rawPage !== undefined && rawPage !== '';
+    const requestedLimit = searchParams.has('limit');
+
+    // Paged requests opt into an object payload ({ products, pagination }),
+    // while legacy calls that omit `page` keep returning a plain array.
+    const page = hasPagination
+      ? Math.max(1, Math.floor(Number.parseInt(rawPage as string, 10) || 1))
+      : 1;
+    const skip = hasPagination ? (page - 1) * limit : 0;
+
+    const where = getPublicPublishedProductWhere({
+      ...(category ? { category: { equals: category, mode: 'insensitive' } } : {}),
+      ...(sellerId ? { sellerId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+              { category: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    });
+
+    // Stable deterministic ordering so paged windows can't skip or duplicate rows.
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
+
+    if (hasPagination) {
+      const [{ value: products, timedOut }, { value: total }] = await Promise.all([
+        raceWithTimeout(
+          prisma.product.findMany({
+            where,
+            include: productSellerInclude,
+            orderBy,
+            skip,
+            take: limit,
+          }),
+          4000,
+          [],
+        ),
+        raceWithTimeout(prisma.product.count({ where }), 4000, 0),
+      ]);
+
+      if (timedOut) {
+        console.warn('GET /api/products timed out; returning empty storefront payload');
+      }
+
+      const productPayload = (products ?? []).map(serializeProduct);
+
+      return NextResponse.json(
+        {
+          products: productPayload,
+          pagination: {
+            page,
+            limit,
+            total,
+            hasMore: skip + productPayload.length < total,
+          },
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=900',
+          },
+        },
+      );
+    }
+
     const { value: products, timedOut } = await raceWithTimeout(
       prisma.product.findMany({
-        where: getPublicPublishedProductWhere({
-          ...(category ? { category: { equals: category, mode: 'insensitive' } } : {}),
-          ...(sellerId ? { sellerId } : {}),
-          ...(search
-            ? {
-                OR: [
-                  { name: { contains: search, mode: 'insensitive' } },
-                  { description: { contains: search, mode: 'insensitive' } },
-                  { category: { contains: search, mode: 'insensitive' } },
-                ],
-              }
-            : {}),
-        }),
+        where,
         include: productSellerInclude,
-        orderBy: { createdAt: 'desc' },
-        ...(Number.isFinite(limit) && limit > 0 ? { take: limit } : {}),
+        orderBy,
+        take: requestedLimit ? limit : defaultLimit,
       }),
       4000,
       [],
@@ -49,7 +114,14 @@ export async function GET(request: NextRequest) {
       console.warn('GET /api/products timed out; returning empty storefront payload');
     }
 
-    return NextResponse.json((products ?? []).map(serializeProduct));
+    return NextResponse.json(
+      (products ?? []).map(serializeProduct),
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=900',
+        },
+      },
+    );
   } catch (error) {
     console.error('GET /api/products error:', error);
     return NextResponse.json([]);
@@ -112,6 +184,16 @@ export async function POST(request: NextRequest) {
         publishedAt: productStatus === PRODUCT_STATUSES.published ? new Date() : null,
       },
     });
+
+    const mediaUrls = [
+      product.image,
+      product.videoUrl,
+      product.model3d,
+      ...(Array.isArray(product.galleryImages)
+        ? product.galleryImages.filter((item): item is string => typeof item === 'string')
+        : []),
+    ].filter((item): item is string => Boolean(item));
+    await associateProductMedia(product.id, String(user.id), mediaUrls);
 
     return NextResponse.json({
       success: true,

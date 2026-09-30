@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Download, Filter, Loader2, MapPin, Search, Truck, Undo2, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
+import { useSearchParams } from '../../../lib/navigation';
 import NotificationContainer, { useNotification } from '@/features/shared/animations/NotificationContainer';
 
 interface SellerShipment {
@@ -18,39 +19,38 @@ interface SellerShipment {
   status: string;
   courier_provider?: string | null;
   tracking_id?: string | null;
-  shipment_metadata?: Record<string, unknown> | null;
+  /** The courier's own status string, as last reconciled. */
+  provider_status?: string | null;
+  provider_reference?: string | null;
+  last_reconciled_at?: string | null;
 }
 
-interface CourierPartner {
-  code: string;
-  name: string;
-  mode: 'manual' | 'api';
-  supportsCod: boolean;
-  supportsTrackingSync: boolean;
-  supportsPickupBooking: boolean;
-  setupStatus?: 'manual_ready' | 'api_ready' | 'missing_config';
-  setupMessage?: string;
-  brandColor?: string;
-  shortLabel?: string;
-}
-
-interface SellerPathaoReadiness {
-  updatedAt: string;
-  envReady: boolean;
-  warehouseBlockers: Array<{
+interface SellerCourierReadiness {
+  checkedAt: string;
+  /** At least one courier is configured *and* at least one pickup point is bookable. */
+  bookable: boolean;
+  bookableWarehouseCount: number;
+  warehouseCount: number;
+  providers: Array<{
+    code: string;
+    name: string;
+    configured: boolean;
+    setupMessage: string;
+    missingConfig: string[];
+    supportsPickupBooking: boolean;
+  }>;
+  /** Per pickup location, so the seller is told which location needs work. */
+  warehouses: Array<{
     id: string;
     name: string;
+    bookable: boolean;
     blockers: string[];
-  }>;
-  bookingCandidates: Array<{
-    id: string;
-    order_id: string;
-    warehouse_id: string | null;
-    warehouse_name: string | null;
-    courier_provider: string | null;
-    tracking_id: string | null;
-    status: string;
-    blockers: string[];
+    couriers: Array<{
+      provider: string;
+      externalStoreId: string | null;
+      status: string;
+      isActive: boolean;
+    }>;
   }>;
 }
 
@@ -72,17 +72,16 @@ type SellerCourierView = (typeof sellerCourierViews)[number];
 
 export const SellerCourierManagement = () => {
   const { token, user } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
   const [shipments, setShipments] = useState<SellerShipment[]>([]);
-  const [courierPartners, setCourierPartners] = useState<CourierPartner[]>([]);
-  const [pathaoReadiness, setPathaoReadiness] = useState<SellerPathaoReadiness | null>(null);
-  const [loadingPathaoReadiness, setLoadingPathaoReadiness] = useState(false);
+  const [courierReadiness, setCourierReadiness] = useState<SellerCourierReadiness | null>(null);
+  const [loadingCourierReadiness, setLoadingCourierReadiness] = useState(false);
   const [loading, setLoading] = useState(true);
   const [apiReady, setApiReady] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<Record<string, string>>({});
   const [updatingShipmentId, setUpdatingShipmentId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<SellerCourierView>('all');
-  const [providerFilter, setProviderFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [error, setError] = useState('');
@@ -128,53 +127,54 @@ export const SellerCourierManagement = () => {
     }
   };
 
-  const loadPathaoReadiness = async () => {
+  const loadCourierReadiness = async () => {
     if (!token) return;
 
     try {
-      setLoadingPathaoReadiness(true);
-      const response = await fetch('/api/seller/logistics/pathao-readiness', {
+      setLoadingCourierReadiness(true);
+      const response = await fetch('/api/seller/logistics/courier-readiness', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to load Pathao readiness.');
+        throw new Error(payload?.error || 'Failed to load courier readiness.');
       }
 
-      setPathaoReadiness(payload as SellerPathaoReadiness);
+      const readiness = (payload && typeof payload === 'object' ? payload : {}) as {
+        checked_at?: string;
+        bookable?: boolean;
+        bookable_warehouse_count?: number;
+        warehouse_count?: number;
+        providers?: SellerCourierReadiness['providers'];
+        warehouses?: SellerCourierReadiness['warehouses'];
+      };
+
+      setCourierReadiness({
+        checkedAt: readiness.checked_at || new Date().toISOString(),
+        bookable: Boolean(readiness.bookable),
+        bookableWarehouseCount: Number(readiness.bookable_warehouse_count || 0),
+        warehouseCount: Number(readiness.warehouse_count || 0),
+        providers: readiness.providers || [],
+        warehouses: readiness.warehouses || [],
+      });
     } catch {
-      setPathaoReadiness(null);
+      setCourierReadiness(null);
     } finally {
-      setLoadingPathaoReadiness(false);
+      setLoadingCourierReadiness(false);
     }
   };
 
   useEffect(() => {
     void loadShipments();
-    void loadPathaoReadiness();
+    void loadCourierReadiness();
   }, [token]);
 
   useEffect(() => {
-    fetch('/api/logistics/providers', { cache: 'no-store' })
-      .then((response) => response.json())
-      .then((data) => {
-        setCourierPartners(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        setCourierPartners([]);
-      });
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    if (nextSearch) {
-      setSearchTerm(nextSearch);
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
     }
-  }, []);
+  }, [urlSearch]);
 
   useEffect(() => {
     if (showDeferredGuidance) return;
@@ -234,11 +234,46 @@ export const SellerCourierManagement = () => {
     }
   };
 
-  const handleRequestPickup = async (shipmentId: string) => {
-    const providerCode = selectedProvider[shipmentId] || courierPartners[0]?.code || 'pathao';
+  /**
+   * A shipment's `courier_provider` is sometimes a provider code and sometimes a
+   * display name, depending on which code path wrote it. The booking endpoint
+   * needs the code.
+   *
+   * Resolved against the provider list the readiness endpoint returned rather than
+   * against the registry. Importing the registry into this component would pull the
+   * whole adapter chain — and with it `ioredis` — into the browser bundle, which
+   * does not build. The fallback to the raw value is deliberate: the server
+   * rejects an unknown code with a clear message, which beats this component
+   * guessing one.
+   */
+  const resolveCourier = (value?: string | null) => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
 
+    const match = (courierReadiness?.providers || []).find(
+      (provider) =>
+        provider.code.toLowerCase() === raw.toLowerCase() ||
+        provider.name.toLowerCase() === raw.toLowerCase(),
+    );
+    if (match) return match;
+
+    return { code: raw, name: raw, configured: false, setupMessage: '', missingConfig: [], supportsPickupBooking: false };
+  };
+
+  const handleRequestPickup = async (shipmentId: string) => {
     if (!token) return;
     setUpdatingShipmentId(shipmentId);
+
+    // The courier is read from the shipment rather than hardcoded. Booking through
+    // a courier the shipment was never assigned to would create a parcel the
+    // customer cannot track and the reconciliation job would never find.
+    const shipment = shipments.find((entry) => entry.id === shipmentId);
+    const providerCode = resolveCourier(shipment?.courier_provider)?.code;
+    if (!providerCode) {
+      info('Assign a courier to this shipment before requesting pickup.', 3600);
+      setUpdatingShipmentId('');
+      return;
+    }
 
     try {
       const response = await fetch('/api/seller/courier/bookings', {
@@ -281,12 +316,21 @@ export const SellerCourierManagement = () => {
     }
   };
 
-  const handlePathaoSync = async (shipmentId: string) => {
+  /**
+   * Asks the server to refresh this shipment's status from its courier.
+   *
+   * One handler covers both "sync" and the old per-consignment "order info" lookup.
+   * The lookup was keyed on a Pathao consignment id and called a Pathao-only route;
+   * syncing the shipment gets the same answer for any courier, keeps the courier's
+   * request inside the ownership check on the server, and refreshes our own stored
+   * status at the same time instead of only displaying a value we would discard.
+   */
+  const handleCourierSync = async (shipmentId: string) => {
     if (!token) return;
     setUpdatingShipmentId(shipmentId);
 
     try {
-      const response = await fetch(`/api/logistics/pathao/shipments/${shipmentId}/sync`, {
+      const response = await fetch(`/api/logistics/shipments/${shipmentId}/sync`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -295,105 +339,27 @@ export const SellerCourierManagement = () => {
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to sync Pathao shipment');
+        throw new Error(payload?.error || 'Failed to refresh shipment status');
       }
 
       setShipments((current) =>
         current.map((shipment) => (shipment.id === shipmentId ? { ...shipment, ...(payload?.shipment || {}) } : shipment)),
       );
-      success(`Pathao sync completed for shipment ${shipmentId.slice(0, 8)}.`, 3200);
-    } catch (requestError) {
-      info(requestError instanceof Error ? requestError.message : 'Pathao sync failed right now.', 3600);
-    } finally {
-      setUpdatingShipmentId('');
-    }
-  };
 
-  const handlePathaoOrderInfo = async (consignmentId: string) => {
-    if (!token) return;
-    const trimmedId = String(consignmentId || '').trim();
-    if (!trimmedId) {
-      info('This shipment does not have a Pathao consignment or tracking ID yet.', 3200);
-      return;
-    }
-
-    setUpdatingShipmentId(trimmedId);
-
-    try {
-      const response = await fetch(`/api/logistics/pathao/orders/${encodeURIComponent(trimmedId)}/info`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to load Pathao order info');
+      const providerName = payload?.providerName || payload?.provider || 'Courier';
+      const status = payload?.providerStatus || payload?.shipment?.status;
+      if (payload?.outcome === 'unchanged' && !status) {
+        info(`${providerName} reports no newer status for this shipment yet.`, 3600);
+        return;
       }
-
-      const orderInfo = payload?.data || payload;
       success(
-        `Pathao order ${orderInfo?.consignment_id || trimmedId}: ${String(orderInfo?.order_status || orderInfo?.order_status_slug || 'status unavailable')}.`,
-        4200,
+        status
+          ? `${providerName} status for ${shipmentId.slice(0, 8)}: ${String(status).replaceAll('_', ' ')}.`
+          : `${providerName} sync completed for ${shipmentId.slice(0, 8)}.`,
+        3600,
       );
     } catch (requestError) {
-      info(requestError instanceof Error ? requestError.message : 'Pathao order info could not be loaded.', 3600);
-    } finally {
-      setUpdatingShipmentId('');
-    }
-  };
-
-  const handleRedxSync = async (shipmentId: string) => {
-    if (!token) return;
-    setUpdatingShipmentId(shipmentId);
-
-    try {
-      const response = await fetch(`/api/logistics/redx/shipments/${shipmentId}/sync`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to sync RedX shipment');
-      }
-
-      setShipments((current) =>
-        current.map((shipment) => (shipment.id === shipmentId ? { ...shipment, ...(payload?.shipment || {}) } : shipment)),
-      );
-      success(`RedX sync completed for shipment ${shipmentId.slice(0, 8)}.`, 3200);
-    } catch (requestError) {
-      info(requestError instanceof Error ? requestError.message : 'RedX sync failed right now.', 3600);
-    } finally {
-      setUpdatingShipmentId('');
-    }
-  };
-
-  const handleSteadfastSync = async (shipmentId: string) => {
-    if (!token) return;
-    setUpdatingShipmentId(shipmentId);
-
-    try {
-      const response = await fetch(`/api/logistics/steadfast/shipments/${shipmentId}/sync`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to sync Steadfast shipment');
-      }
-
-      setShipments((current) =>
-        current.map((shipment) => (shipment.id === shipmentId ? { ...shipment, ...(payload?.shipment || {}) } : shipment)),
-      );
-      success(`Steadfast sync completed for shipment ${shipmentId.slice(0, 8)}.`, 3200);
-    } catch (requestError) {
-      info(requestError instanceof Error ? requestError.message : 'Steadfast sync failed right now.', 3600);
+      info(requestError instanceof Error ? requestError.message : 'Courier sync failed right now.', 3600);
     } finally {
       setUpdatingShipmentId('');
     }
@@ -406,14 +372,10 @@ export const SellerCourierManagement = () => {
         const shipmentDate = shipment.order_created_at ? new Date(shipment.order_created_at) : null;
         const startDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
         const endDate = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
-        const matchesProvider =
-          providerFilter === 'all' ||
-          String(shipment.courier_provider || 'unassigned').toLowerCase() === providerFilter.toLowerCase();
         const matchesStartDate = !startDate || !shipmentDate || shipmentDate >= startDate;
         const matchesEndDate = !endDate || !shipmentDate || shipmentDate <= endDate;
 
         return (
-          matchesProvider &&
           matchesStartDate &&
           matchesEndDate &&
           (
@@ -426,7 +388,7 @@ export const SellerCourierManagement = () => {
           )
         );
       }),
-    [shipments, searchTerm, providerFilter, dateFrom, dateTo],
+    [shipments, searchTerm, dateFrom, dateTo],
   );
 
   const viewScopedShipments = useMemo(() => {
@@ -466,7 +428,7 @@ export const SellerCourierManagement = () => {
   useEffect(() => {
     setActiveRenderCount(24);
     setHistoryRenderCount(20);
-  }, [searchTerm, providerFilter, dateFrom, dateTo, view]);
+  }, [searchTerm, dateFrom, dateTo, view]);
 
   useEffect(() => {
     const needle = searchTerm.trim().toLowerCase();
@@ -506,18 +468,6 @@ export const SellerCourierManagement = () => {
     };
   }, [shipments]);
 
-  const providerOptions = useMemo(() => {
-    const providerSet = new Set<string>();
-
-    shipments.forEach((shipment) => {
-      if (shipment.courier_provider && courierPartners.some((partner) => partner.code === String(shipment.courier_provider).toLowerCase())) {
-        providerSet.add(shipment.courier_provider);
-      }
-    });
-
-    return Array.from(providerSet).sort((left, right) => left.localeCompare(right));
-  }, [shipments]);
-
   const parseAddress = (rawAddress?: string | Record<string, unknown> | null) => {
     if (!rawAddress) {
       return { city: 'Unknown', fullName: 'Customer' };
@@ -534,21 +484,18 @@ export const SellerCourierManagement = () => {
     }
   };
 
-  const getPathaoEventSummary = (shipment: SellerShipment) => {
-    const metadata =
-      shipment.shipment_metadata && typeof shipment.shipment_metadata === 'object'
-        ? (shipment.shipment_metadata as Record<string, unknown>)
-        : {};
+  /**
+   * The courier's last reported status, for support context.
+   *
+   * Reads the generic `provider_status` column. The previous version read
+   * `shipment_metadata.pathaoLastEvent`, which reconciliation no longer writes, so
+   * the field was permanently blank while the code kept implying it was live data.
+   */
+  const getCourierEventSummary = (shipment: SellerShipment) => {
+    const providerStatus = String(shipment.provider_status || '').trim();
+    if (!providerStatus) return null;
 
-    const lastEvent = typeof metadata.pathaoLastEvent === 'string' ? metadata.pathaoLastEvent : null;
-    const lastStatusSlug = typeof metadata.pathaoLastStatusSlug === 'string' ? metadata.pathaoLastStatusSlug : null;
-
-    if (!lastEvent && !lastStatusSlug) return null;
-
-    return {
-      event: lastEvent ? lastEvent.replaceAll('_', ' ').replaceAll('.', ' ') : null,
-      status: lastStatusSlug ? lastStatusSlug.replaceAll('_', ' ') : null,
-    };
+    return { event: providerStatus.replaceAll('_', ' ').replaceAll('.', ' ') };
   };
 
   const handleExport = () => {
@@ -603,93 +550,32 @@ export const SellerCourierManagement = () => {
     success(`Exported ${rows.length} courier shipment records.`, 2600);
   };
 
-  const getProviderByCode = (code?: string | null) =>
-    courierPartners.find((partner) => partner.code === String(code || '').toLowerCase()) || null;
-
-  const getProviderBookingHint = (providerCode?: string | null) => {
-    const normalizedCode = String(providerCode || '').toLowerCase();
-    if (normalizedCode === 'steadfast') {
-      return 'Book the parcel from the Steadfast merchant panel first, then save and follow the shipment from this queue.';
-    }
-
-    if (normalizedCode === 'paperfly') {
-      return 'Use the Paperfly merchant workflow, then keep the tracking ID and milestone updates synced here.';
-    }
-
-    if (normalizedCode === 'pathao') {
-      return 'Pathao can auto-book when API config and pickup mapping are complete. Otherwise use the manual merchant flow.';
-    }
-
-    if (normalizedCode === 'redx') {
-      return 'RedX can auto-book when credentials are configured. Manual tracking still works as a safe fallback.';
-    }
-
-    return 'Use the courier merchant workflow, save the tracking ID, and keep shipment milestones updated here.';
-  };
+  const getProviderBookingHint = () =>
+    "Auto-booking needs working API credentials and a linked pickup point. Otherwise create the parcel through the courier's merchant portal and paste the tracking id.";
 
   const renderProviderSyncAction = (shipment: SellerShipment, busy: boolean) => {
-    const isPathaoShipment = String(shipment.courier_provider || '').toLowerCase().includes('pathao');
-    const isRedxShipment = String(shipment.courier_provider || '').toLowerCase().includes('redx');
-    const isSteadfastShipment = String(shipment.courier_provider || '').toLowerCase().includes('steadfast');
-
-    if (!isPathaoShipment && !courierPartners.some((partner) => partner.code === String(shipment.courier_provider).toLowerCase())) {
+    // Offered for any shipment that already has a courier and a tracking id, rather
+    // than for one courier by name. Gating on the name would have hidden the button
+    // the day a second courier is added, which is the opposite of the point of this
+    // refactor.
+    const courier = resolveCourier(shipment.courier_provider);
+    if (!courier || !shipment.tracking_id) {
       return null;
     }
 
-    if (isPathaoShipment) {
-      return (
-        <>
-          <button
-            onClick={() => void handlePathaoSync(shipment.id)}
-            disabled={busy}
-            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
-          >
-            {busy ? 'Syncing...' : 'Sync Pathao'}
-          </button>
-          {shipment.tracking_id ? (
-            <button
-              onClick={() => void handlePathaoOrderInfo(shipment.tracking_id || '')}
-              disabled={busy}
-              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
-            >
-              {busy ? 'Loading...' : 'Order Info'}
-            </button>
-          ) : null}
-        </>
-      );
-    }
-
-    if (isRedxShipment) {
-      return (
-        <button
-          onClick={() => void handleRedxSync(shipment.id)}
-          disabled={busy}
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-        >
-          {busy ? 'Syncing...' : 'Sync RedX'}
-        </button>
-      );
-    }
-
-    if (isSteadfastShipment) {
-      return (
-        <button
-          onClick={() => void handleSteadfastSync(shipment.id)}
-          disabled={busy}
-          className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
-        >
-          {busy ? 'Syncing...' : 'Sync Steadfast'}
-        </button>
-      );
-    }
-
-    return null;
+    return (
+      <button
+        onClick={() => void handleCourierSync(shipment.id)}
+        disabled={busy}
+        className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+      >
+        {busy ? 'Syncing...' : `Sync ${courier.name}`}
+      </button>
+    );
   };
 
   const renderAction = (shipment: SellerShipment) => {
     const busy = updatingShipmentId === shipment.id;
-    const isPathaoShipment = String(shipment.courier_provider || '').toLowerCase().includes('pathao');
-    const isSteadfastShipment = String(shipment.courier_provider || '').toLowerCase().includes('steadfast');
 
     if (shipment.status === 'pending' || shipment.status === 'processing') {
       return (
@@ -716,41 +602,24 @@ export const SellerCourierManagement = () => {
     }
 
     if (shipment.status === 'ready_for_pickup') {
-      const selectedCode = selectedProvider[shipment.id] || courierPartners[0]?.code || 'pathao';
-      const selectedPartner = getProviderByCode(selectedCode);
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <select
-              value={selectedCode}
-              onChange={(event) =>
-                setSelectedProvider((current) => ({ ...current, [shipment.id]: event.target.value }))
-              }
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[10px] font-bold text-gray-600"
-            >
-              {courierPartners.map((partner) => (
-                <option key={partner.code} value={partner.code}>
-                  {partner.name}
-                </option>
-              ))}
-            </select>
             <button
               onClick={() => void handleRequestPickup(shipment.id)}
               disabled={busy}
               className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
             >
-              {busy ? 'Saving...' : selectedCode === 'pathao' ? 'Book in Pathao' : 'Request Pickup'}
+              {busy ? 'Saving...' : 'Request pickup'}
             </button>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-            <span className="font-bold text-slate-800">{selectedPartner?.name || 'Courier'}:</span>{' '}
-            {selectedPartner?.setupMessage || getProviderBookingHint(selectedCode)}
+            <span className="font-bold text-slate-800">Courier:</span>{' '}
+            {getProviderBookingHint()}
           </div>
-          {selectedCode === 'pathao' ? (
-            <div className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
-              Pathao auto-booking works best when this shipment's pickup location already has a linked store, city, zone, and area mapping.
-            </div>
-          ) : null}
+          <div className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
+            Auto-booking needs this shipment's pickup location to have a linked, approved pickup point with its city, zone and area mapped.
+          </div>
         </div>
       );
     }
@@ -768,11 +637,6 @@ export const SellerCourierManagement = () => {
             </button>
             {renderProviderSyncAction(shipment, busy)}
           </div>
-          {isSteadfastShipment ? (
-            <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-800">
-              Finish the Steadfast merchant-panel update first, then continue shipment milestones from here.
-            </div>
-          ) : null}
         </div>
       );
     }
@@ -788,7 +652,7 @@ export const SellerCourierManagement = () => {
             {busy ? 'Saving...' : 'Start Transit'}
           </button>
           {renderProviderSyncAction(shipment, busy)}
-          </div>
+        </div>
       );
     }
 
@@ -803,7 +667,7 @@ export const SellerCourierManagement = () => {
             {busy ? 'Saving...' : 'Out for Delivery'}
           </button>
           {renderProviderSyncAction(shipment, busy)}
-          </div>
+        </div>
       );
     }
 
@@ -818,7 +682,7 @@ export const SellerCourierManagement = () => {
             {busy ? 'Saving...' : 'Mark Delivered'}
           </button>
           {renderProviderSyncAction(shipment, busy)}
-          </div>
+        </div>
       );
     }
 
@@ -865,25 +729,24 @@ export const SellerCourierManagement = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {courierPartners.map((partner) => (
+        {(courierReadiness?.providers || []).map((provider) => (
           <div
-            key={partner.code}
+            key={provider.code}
             className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm md:p-4"
           >
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl font-bold text-white"
-              style={{ backgroundColor: partner.brandColor || '#0f172a' }}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-white ${
+                provider.configured ? 'bg-emerald-600' : 'bg-slate-400'
+              }`}
             >
-              {partner.shortLabel || partner.name.slice(0, 2).toUpperCase()}
+              {provider.name.slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <p className="text-sm font-bold">{partner.name}</p>
+              <p className="text-sm font-bold">{provider.name}</p>
               <p className="text-[10px] text-gray-400">
-                {partner.setupStatus === 'api_ready'
+                {provider.configured
                   ? 'API config ready'
-                  : partner.setupStatus === 'missing_config'
-                    ? 'Config needed for API mode'
-                    : 'Manual pickup workflow'}
+                  : 'Config needed for API mode'}
               </p>
             </div>
           </div>
@@ -922,109 +785,92 @@ export const SellerCourierManagement = () => {
       <section className="rounded-[32px] border border-rose-100 bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-600">Pathao readiness</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-600">Courier readiness</p>
             <h2 className="mt-2 text-lg font-bold text-slate-950">Seller-side booking blockers</h2>
             <p className="mt-2 text-sm text-slate-500">
-              See which pickup locations or shipment details still need work before reliable Pathao auto-booking.
+              See which pickup locations still need work before reliable auto-booking.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void loadPathaoReadiness()}
-            disabled={loadingPathaoReadiness}
+            onClick={() => void loadCourierReadiness()}
+            disabled={loadingCourierReadiness}
             className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
-            <Loader2 className={`h-4 w-4 ${loadingPathaoReadiness ? 'animate-spin' : 'hidden'}`} />
-            <span>{loadingPathaoReadiness ? 'Refreshing...' : 'Refresh readiness'}</span>
+            <Loader2 className={`h-4 w-4 ${loadingCourierReadiness ? 'animate-spin' : 'hidden'}`} />
+            <span>{loadingCourierReadiness ? 'Refreshing...' : 'Refresh readiness'}</span>
           </button>
         </div>
 
-        <div className="mt-5 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="mt-5 grid gap-6">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-bold text-slate-900">Pickup location blockers</h3>
               <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                pathaoReadiness?.envReady ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                courierReadiness?.bookable ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
               }`}>
-                {pathaoReadiness?.envReady ? 'Env ready' : 'Env check needed'}
+                {courierReadiness
+                  ? `${courierReadiness.bookableWarehouseCount}/${courierReadiness.warehouseCount} bookable`
+                  : 'Checking...'}
               </span>
             </div>
-            {pathaoReadiness?.warehouseBlockers.length ? (
-              pathaoReadiness.warehouseBlockers.map((warehouse) => (
-                <div key={warehouse.id} className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-slate-900">{warehouse.name}</p>
-                    <a
-                      href={`/seller/pickup-locations?warehouse=${encodeURIComponent(warehouse.id)}`}
-                      className="text-[11px] font-semibold text-slate-700 hover:text-primary"
-                    >
-                      Fix now
-                    </a>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {warehouse.blockers.map((blocker) => (
-                      <span
-                        key={blocker}
-                        className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold text-amber-800"
-                      >
-                        {blocker}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
-                Pickup locations look good for Pathao mapping right now.
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900">Shipment booking dry-run</h3>
-            {pathaoReadiness?.bookingCandidates.length ? (
-              pathaoReadiness.bookingCandidates.map((shipment) => (
+            {courierReadiness?.warehouses.length ? (
+              courierReadiness.warehouses.map((warehouse) => (
                 <div
-                  key={shipment.id}
+                  key={warehouse.id}
                   className={`rounded-2xl border p-4 ${
-                    shipment.blockers.length ? 'border-amber-100 bg-amber-50' : 'border-emerald-100 bg-emerald-50'
+                    warehouse.bookable
+                      ? 'border-emerald-100 bg-emerald-50'
+                      : 'border-amber-100 bg-amber-50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-900">Shipment #{shipment.id.slice(0, 8)}</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Order {shipment.order_id} • {shipment.warehouse_name || 'Warehouse pending'}
-                      </p>
-                    </div>
-                    <a
-                      href={`/seller/courier?search=${encodeURIComponent(shipment.tracking_id || shipment.id)}`}
-                      className="text-[11px] font-semibold text-slate-700 hover:text-primary"
-                    >
-                      Open shipment
-                    </a>
+                    <p className="font-semibold text-slate-900">{warehouse.name}</p>
+                    {warehouse.bookable ? (
+                      <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+                        Bookable
+                      </span>
+                    ) : (
+                      <a
+                        href={`/seller/pickup-locations?warehouse=${encodeURIComponent(warehouse.id)}`}
+                        className="text-[11px] font-semibold text-slate-700 hover:text-primary"
+                      >
+                        Fix now
+                      </a>
+                    )}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {shipment.blockers.length ? (
-                      shipment.blockers.map((blocker) => (
+                  {warehouse.couriers.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {warehouse.couriers.map((courier) => (
+                        <span
+                          key={`${courier.provider}-${courier.externalStoreId ?? 'none'}`}
+                          className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700"
+                        >
+                          {courier.provider}
+                          {courier.externalStoreId ? ` · ${courier.externalStoreId}` : ''} · {courier.status}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {warehouse.blockers.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {warehouse.blockers.map((blocker) => (
                         <span
                           key={blocker}
                           className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold text-amber-800"
                         >
                           {blocker}
                         </span>
-                      ))
-                    ) : (
-                      <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-                        Ready for Pathao booking
-                      </span>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ))
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                No active seller shipments need a Pathao dry-run check right now.
+                {loadingCourierReadiness
+                  ? 'Checking pickup point readiness...'
+                  : 'No pickup locations yet. Create one to enable auto-booking.'}
               </div>
             )}
           </div>
@@ -1066,7 +912,7 @@ export const SellerCourierManagement = () => {
               ))}
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -1077,19 +923,6 @@ export const SellerCourierManagement = () => {
                 className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 sm:w-64 sm:py-2"
               />
             </div>
-            <select
-              value={providerFilter}
-              onChange={(event) => setProviderFilter(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs font-semibold text-gray-600 outline-none focus:ring-2 focus:ring-indigo-500/20 sm:w-auto sm:py-2"
-            >
-              <option value="all">All couriers</option>
-              <option value="unassigned">Unassigned</option>
-              {providerOptions.map((provider) => (
-                <option key={provider} value={provider}>
-                  {provider}
-                </option>
-              ))}
-            </select>
             <input
               type="date"
               value={dateFrom}
@@ -1105,7 +938,7 @@ export const SellerCourierManagement = () => {
               aria-label="Filter shipments to date"
             />
             <button
-              onClick={() => info('Search by shipment ID, tracking ID, status, warehouse, courier, or date range.', 2600)}
+              onClick={() => info('Search by shipment ID, tracking ID, status, warehouse, or date range.', 2600)}
               className="rounded-xl border border-gray-200 bg-white p-3 text-gray-400 hover:text-indigo-600 sm:p-2"
             >
               <Filter className="h-4 w-4" />
@@ -1113,7 +946,6 @@ export const SellerCourierManagement = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
-                setProviderFilter('all');
                 setDateFrom('');
                 setDateTo('');
                 setView('all');
@@ -1147,7 +979,7 @@ export const SellerCourierManagement = () => {
               {renderedActiveShipments.length > 0 ? (
                 renderedActiveShipments.map((shipment) => {
                   const address = parseAddress(shipment.shipping_address);
-                  const pathaoEventSummary = getPathaoEventSummary(shipment);
+                  const courierEventSummary = getCourierEventSummary(shipment);
                   const focused = shipment.id === focusedShipmentId;
                   return (
                     <tr
@@ -1198,14 +1030,8 @@ export const SellerCourierManagement = () => {
                           <div className="mt-2 space-y-1 text-[10px] text-gray-500">
                             {shipment.courier_provider ? <p>Courier: {shipment.courier_provider}</p> : null}
                             {shipment.tracking_id ? <p>Tracking: {shipment.tracking_id}</p> : null}
-                            {pathaoEventSummary ? (
-                              <p className="text-rose-700">
-                                Pathao: {pathaoEventSummary.event || 'event pending'}
-                                {pathaoEventSummary.status ? ` • ${pathaoEventSummary.status}` : ''}
-                              </p>
-                            ) : null}
-                            {String(shipment.courier_provider || '').toLowerCase().includes('steadfast') ? (
-                              <p className="text-blue-700">Manual merchant tracking flow active</p>
+                            {courierEventSummary ? (
+                              <p className="text-rose-700">Courier: {courierEventSummary.event}</p>
                             ) : null}
                           </div>
                         ) : null}
@@ -1291,9 +1117,6 @@ export const SellerCourierManagement = () => {
                     <td className="px-6 py-5 text-xs text-gray-600">
                       <p>{shipment.courier_provider || 'Not assigned'}</p>
                       <p className="mt-1 font-mono text-[11px] text-slate-700">{shipment.tracking_id || 'Pending'}</p>
-                      {String(shipment.courier_provider || '').toLowerCase().includes('steadfast') ? (
-                        <p className="mt-1 text-[10px] text-blue-700">Merchant panel synced manually</p>
-                      ) : null}
                     </td>
                     <td className="px-6 py-5">
                       <div

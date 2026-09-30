@@ -1,47 +1,29 @@
 'use client';
 
 import React from 'react';
-import { Link } from '../../../../lib/navigation';
+import { Link, useLocation } from '../../../../lib/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Gift, X } from 'lucide-react';
+import { useCommerceConfig } from '../../../shared/state/CommerceConfigContext';
 
 const STORAGE_KEY = 'amarshop-exit-offer-dismissed';
 
 export default function ExitIntentOffer() {
-  const [pathname, setPathname] = React.useState('/');
+  const location = useLocation();
   const [open, setOpen] = React.useState(false);
-  const [config, setConfig] = React.useState({
-    enabled: true,
-    title: 'Keep your shortlist moving with a softer first order',
-    message: 'Use code WELCOME10 for an extra conversion push on your next checkout.',
-    code: 'WELCOME10',
-    primary_cta: 'Review cart',
-    secondary_cta: 'Keep browsing',
-  });
+  const commerceConfig = useCommerceConfig();
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setPathname(window.location.pathname);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    fetch('/api/public/commerce-config')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.exit_intent) {
-          setConfig({
-            enabled: Boolean(data.exit_intent.enabled),
-            title: String(data.exit_intent.title || 'Keep your shortlist moving with a softer first order'),
-            message: String(data.exit_intent.message || 'Use code WELCOME10 for an extra conversion push on your next checkout.'),
-            code: String(data.exit_intent.code || 'WELCOME10'),
-            primary_cta: String(data.exit_intent.primary_cta || 'Review cart'),
-            secondary_cta: String(data.exit_intent.secondary_cta || 'Keep browsing'),
-          });
-        }
-      })
-      .catch(() => undefined);
-  }, []);
+  const config = React.useMemo(() => {
+    const exitIntent = commerceConfig?.exit_intent;
+    return {
+      enabled: exitIntent ? Boolean(exitIntent.enabled) : true,
+      title: String(exitIntent?.title || 'Keep your shortlist moving with a softer first order'),
+      message: String(exitIntent?.message || 'Use code WELCOME10 for an extra conversion push on your next checkout.'),
+      code: String(exitIntent?.code || 'WELCOME10'),
+      primary_cta: String(exitIntent?.primary_cta || 'Review cart'),
+      secondary_cta: String(exitIntent?.secondary_cta || 'Keep browsing'),
+    };
+  }, [commerceConfig]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
@@ -57,7 +39,7 @@ export default function ExitIntentOffer() {
     }
 
     const blockedRoutes = ['/checkout', '/order-success', '/login', '/register'];
-    if (blockedRoutes.some((route) => pathname.startsWith(route))) {
+    if (blockedRoutes.some((route) => location.pathname.startsWith(route))) {
       return;
     }
 
@@ -69,7 +51,7 @@ export default function ExitIntentOffer() {
 
     document.addEventListener('mouseout', onMouseOut);
     return () => document.removeEventListener('mouseout', onMouseOut);
-  }, [pathname, open, config.enabled]);
+  }, [location.pathname, open, config.enabled]);
 
   const close = () => {
     if (typeof window !== 'undefined') {

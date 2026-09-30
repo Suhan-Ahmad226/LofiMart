@@ -4,24 +4,21 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { Link, useLocation } from '../../../lib/navigation';
 import { MessageCircle, ShieldCheck, Truck, Zap } from 'lucide-react';
-import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '@/features/shared/layout/Layout';
+import { Header, Footer, MobileBottomNav, ScrollToTopButton } from '@/features/shared/layout';
 import PageTransition from '@/features/shared/animations/PageTransition';
 import { NotificationContainer, useNotification } from '@/features/shared/animations/NotificationContainer';
 import PWAInstallPrompt from '@/features/shared/pwa/PWAInstallPrompt';
 import OfflineIndicator from '@/features/shared/pwa/OfflineIndicator';
 import { Toaster } from '@/lib/toast';
+import PageSkeleton from '@/features/shared/ui/PageSkeleton';
 import { initOfflineStorage, offlineStorage } from '../../../utils/offlineStorage';
 import { useUser } from '../../../features/shared/state/UserContext';
 import SiteMotionEnhancer from '@/features/shared/animations/SiteMotionEnhancer';
-const ChatBot = dynamic(() => import('@/features/ai/components/ChatBot'), { ssr: false });
 const CartRecoveryTracker = dynamic(() => import('@/features/shop/components/conversion/CartRecoveryTracker'), { ssr: false });
 const ExitIntentOffer = dynamic(() => import('@/features/shop/components/conversion/ExitIntentOffer'), { ssr: false });
 const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/PerformanceMonitor'), { ssr: false });
 
-function ChatBotWrapper() {
-  const { user } = useUser();
-  return <ChatBot userId={user?.id} userName={user?.name} initialOpen showLauncher={false} />;
-}
+
 
 function HomeAnnouncementBar() {
   return (
@@ -60,12 +57,12 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const isOpsRoute =
     location.pathname.startsWith('/admin') ||
     location.pathname.startsWith('/seller') ||
-    location.pathname.startsWith('/reseller-dashboard') ||
-    location.pathname.startsWith('/account');
+    location.pathname.startsWith('/reseller-dashboard');
+  const isAccountRoute = location.pathname.startsWith('/account');
   const showPublicChrome = !isOpsRoute;
   const showHomeAnnouncement = showPublicChrome && location.pathname === '/';
 
-  const shouldLoadGrowthLayer = !isOpsRoute && engagementReady && allowEnhancedGrowthLayer;
+  const shouldLoadGrowthLayer = !isOpsRoute && !isAccountRoute && engagementReady && allowEnhancedGrowthLayer;
   const shouldLoadMotionLayer = !isOpsRoute && idleReady;
   const shouldLoadAnalytics = !isOpsRoute && idleReady;
 
@@ -302,9 +299,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     ? 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-slate-50'
     : 'site-main relative z-10 min-w-0 flex-grow overflow-x-clip bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.06),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.84),rgba(248,250,252,0.98)_22%,rgba(240,244,254,0.6)_100%)]';
 
-  const footerClassName = isOpsRoute
-    ? ''
-    : 'defer-visibility-auto md:pb-0 pb-[var(--bottom-nav-height)]';
+  const footerClassName = 'defer-visibility-auto md:pb-0 pb-[var(--bottom-nav-height)]';
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground relative overflow-x-clip">
@@ -315,15 +310,19 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       {showHomeAnnouncement ? <HomeAnnouncementBar /> : null}
       {showPublicChrome ? <Header /> : null}
       <main id="main-content" tabIndex={-1} className={mainClassName}>
-        <PageTransition type="fade" duration={0.55}>
-          {children}
-        </PageTransition>
+        {/* Suspense is required by Next.js 15 for pages that call the built-in
+            useSearchParams (via our useSearchParams) during static generation /
+            client hydration. The page shells are client-fetched, so the fallback
+            is an empty fragment while params resolve. */}
+        <React.Suspense fallback={<div className="flex h-[50vh] items-center justify-center"><PageSkeleton variant="dashboard" /></div>}>
+          <PageTransition type="fade" duration={0.55}>
+            {children}
+          </PageTransition>
+        </React.Suspense>
       </main>
-      {showPublicChrome ? (
-        <div className={footerClassName}>
-          <Footer />
-        </div>
-      ) : null}
+      <div className={footerClassName}>
+        <Footer />
+      </div>
       {showPublicChrome ? <MobileBottomNav /> : null}
       <ScrollToTopButton />
       <NotificationContainer notifications={notifications} onClose={removeNotification} />
@@ -334,20 +333,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
           {shouldLoadAnalytics ? <PerformanceMonitor /> : null}
           {shouldLoadGrowthLayer ? (
             <>
-              {chatRequested ? (
-                <ChatBotWrapper />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setChatRequested(true)}
-                  className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transition hover:scale-105 hover:shadow-xl sm:bottom-6 sm:right-6"
-                  style={{ bottom: 'calc(var(--bottom-nav-height, 5.5rem) + 0.5rem)' }}
-                  aria-label="Open chat assistant"
-                  title="Open chat assistant"
-                >
-                  <MessageCircle className="h-7 w-7" />
-                </button>
-              )}
               <CartRecoveryTracker />
               <ExitIntentOffer />
             </>

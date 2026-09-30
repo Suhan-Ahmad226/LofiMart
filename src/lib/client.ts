@@ -1,9 +1,8 @@
-import { createClient as createSupabaseBrowserClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-type BrowserSupabaseClient = ReturnType<typeof createSupabaseBrowserClient>;
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
 
 declare global {
-   
   var __lofimartSupabaseBrowserClient__: BrowserSupabaseClient | undefined;
 }
 
@@ -27,7 +26,7 @@ export function createClient() {
   }
 
   if (!globalThis.__lofimartSupabaseBrowserClient__) {
-    globalThis.__lofimartSupabaseBrowserClient__ = createSupabaseBrowserClient(getSupabaseUrl()!, getSupabaseKey()!, {
+    globalThis.__lofimartSupabaseBrowserClient__ = createBrowserClient(getSupabaseUrl()!, getSupabaseKey()!, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

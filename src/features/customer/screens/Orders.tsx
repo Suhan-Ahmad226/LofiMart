@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Package, Clock, ChevronRight, AlertCircle, Truck, Loader2 } from 'lucide-react';
 import { formatPrice } from '../../../lib/utils';
-import { Link, useNavigate } from '../../../lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { useCart } from '../../../features/shop/state/CartContext';
 import { ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
@@ -9,6 +9,8 @@ import { EmptyState } from '@/features/shared/ui/FeedbackState';
 import toast from '@/lib/toast';
 
 export const CustomerOrdersPage = () => {
+  const [searchParams] = useSearchParams();
+  const urlOrder = searchParams.get('order') || '';
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,21 +49,20 @@ export const CustomerOrdersPage = () => {
     }
   }, [token]);
 
-  const getPathaoEventSummary = (shipment: any) => {
-    const metadata =
-      shipment?.shipment_metadata && typeof shipment.shipment_metadata === 'object'
-        ? (shipment.shipment_metadata as Record<string, unknown>)
-        : {};
+  /**
+   * The courier's own last status string, for support context.
+   *
+   * Reads the generic `provider_status` column rather than a Pathao-keyed
+   * `shipment_metadata` entry. The old lookup was reading a field nothing writes
+   * any more, so it always returned null, and it named a courier in code that
+   * also renders shipments from any other courier.
+   */
+  const getCourierEventSummary = (shipment: any) => {
+    const providerStatus =
+      typeof shipment?.provider_status === 'string' ? shipment.provider_status.trim() : '';
+    if (!providerStatus) return null;
 
-    const lastEvent = typeof metadata.pathaoLastEvent === 'string' ? metadata.pathaoLastEvent : null;
-    const lastStatusSlug = typeof metadata.pathaoLastStatusSlug === 'string' ? metadata.pathaoLastStatusSlug : null;
-
-    if (!lastEvent && !lastStatusSlug) return null;
-
-    return [lastEvent, lastStatusSlug]
-      .filter(Boolean)
-      .map((value) => String(value).replaceAll('_', ' ').replaceAll('.', ' '))
-      .join(' â€¢ ');
+    return providerStatus.replaceAll('_', ' ').replaceAll('.', ' ');
   };
 
   const visibleOrders = useMemo(() => {
@@ -74,14 +75,10 @@ export const CustomerOrdersPage = () => {
   }, [orders, focusedOrderId]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextOrder = params.get('order');
-    if (nextOrder) {
-      setFocusedOrderId(nextOrder);
+    if (urlOrder) {
+      setFocusedOrderId(urlOrder);
     }
-  }, []);
+  }, [urlOrder]);
 
   const handleCancelOrder = async (order: any) => {
     try {
@@ -226,9 +223,9 @@ export const CustomerOrdersPage = () => {
                           </span>
                         ))}
                       </div>
-                      {getPathaoEventSummary(order.shipments[0]) ? (
+                      {getCourierEventSummary(order.shipments[0]) ? (
                         <p className="text-[11px] text-rose-700">
-                          Courier event: {getPathaoEventSummary(order.shipments[0])}
+                          Courier update: {getCourierEventSummary(order.shipments[0])}
                         </p>
                       ) : null}
                     </div>

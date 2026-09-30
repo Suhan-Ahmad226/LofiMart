@@ -25,8 +25,9 @@ mindmap
       REDIS_*_TIMEOUTS
     Authentication
       JWT_SECRET
-      SUPABASE_URL
-      SUPABASE_ANON_KEY
+      NEXT_PUBLIC_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      NEXT_PUBLIC_SUPABASE_ANON_KEY
       SUPABASE_SERVICE_ROLE_KEY
     Payments
       BKASH_*
@@ -34,8 +35,6 @@ mindmap
       SSLCOMMERZ_*
     Couriers
       PATHAO_*
-      REDX_*
-      STEADFAST_*
     AI
       GEMINI_API_KEY
     Media
@@ -107,13 +106,16 @@ mindmap
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes* | Supabase publishable key (client-safe, new format `sb_publishable_*`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes* | Legacy Supabase anonymous key (fallback for publishable key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-side only) |
+
+\* Set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` (at least one; publishable preferred).
 
 **Security Notes:**
 - `SUPABASE_SERVICE_ROLE_KEY` has admin privileges — never expose to client
-- `SUPABASE_ANON_KEY` is safe for client-side use
+- Publishable/anon keys are safe for client-side use
 - Rotate keys periodically
 
 ---
@@ -183,28 +185,11 @@ mindmap
 |----------|----------|-------------|
 | `PATHAO_CLIENT_ID` | Yes | Pathao OAuth client ID |
 | `PATHAO_CLIENT_SECRET` | Yes | Pathao OAuth client secret |
-| `PATHAO_BASE_URL` | Yes | Pathao API base URL |
+| `PATHAO_BASE_URL` | Yes | Pathao API base URL. Production: `https://api-hermes.pathao.com`. Sandbox: `https://courier-api-sandbox.pathao.com` |
 | `PATHAO_USERNAME` | Yes | Pathao merchant username |
 | `PATHAO_PASSWORD` | Yes | Pathao merchant password |
-
-### RedX
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `REDX_API_KEY` | Yes | RedX API key |
-| `REDX_SECRET_KEY` | Yes | RedX secret key |
-| `REDX_BASE_URL` | Yes | RedX API base URL |
-| `REDX_BOOKING_ENDPOINT` | Yes | Booking endpoint path |
-| `REDX_TRACKING_ENDPOINT` | No | Tracking endpoint path |
-
-### Steadfast
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `STEADFAST_API_KEY` | Yes | Steadfast API key |
-| `STEADFAST_SECRET_KEY` | Yes | Steadfast secret key |
-| `STEADFAST_BASE_URL` | Yes | Steadfast API base URL |
-| `STEADFAST_WEBHOOK_TOKEN` | No | Webhook verification token |
+| `PATHAO_BOOKING_ENDPOINT` | No | Overrides the consignment endpoint. Defaults to the documented `/aladdin/api/v1/orders` |
+| `PATHAO_WEBHOOK_TOKEN` | No | Shared secret Pathao presents on webhooks. There is deliberately no fallback to `PATHAO_CLIENT_SECRET`: the webhook endpoint is public, so reusing an OAuth secret would let anyone who obtains it forge shipment status events. Unset means Pathao webhooks are rejected (fails closed) and status must be synced via the API or the reconciliation worker instead. |
 
 ---
 
@@ -223,6 +208,7 @@ mindmap
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Yes | Cloudinary cloud name (client-safe) |
 | `CLOUDINARY_API_KEY` | Yes | Cloudinary API key (server-side) |
 | `CLOUDINARY_API_SECRET` | Yes | Cloudinary API secret (server-side) |
+| `SUPABASE_AUTH_WEBHOOK_SECRET` | Yes | Shared secret for the authenticated Supabase Auth deletion webhook |
 
 ---
 

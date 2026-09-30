@@ -93,7 +93,13 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
 }) => {
   const location = useLocation();
   const prefersReducedMotion = useReducedMotion();
-  const [shouldReduceForDevice, setShouldReduceForDevice] = React.useState(false);
+  const [deviceReduced, setDeviceReduced] = React.useState(false);
+
+  const opsRoute =
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/seller') ||
+    location.pathname.startsWith('/reseller-dashboard') ||
+    location.pathname.startsWith('/account');
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') {
@@ -109,16 +115,11 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
     const saveDataEnabled = Boolean(connection.connection?.saveData);
     const lowCpu = (connection.hardwareConcurrency ?? 8) <= 4;
     const lowMemory = (connection.deviceMemory ?? 8) <= 4;
-    const opsRoute =
-      location.pathname.startsWith('/admin') ||
-      location.pathname.startsWith('/seller') ||
-      location.pathname.startsWith('/reseller-dashboard') ||
-      location.pathname.startsWith('/account');
 
-    setShouldReduceForDevice(saveDataEnabled || lowCpu || lowMemory || opsRoute);
-  }, [location.pathname]);
+    setDeviceReduced(saveDataEnabled || lowCpu || lowMemory);
+  }, []);
 
-  if (prefersReducedMotion || shouldReduceForDevice) {
+  if (prefersReducedMotion || deviceReduced || opsRoute) {
     return <div className="page-shell">{children}</div>;
   }
 
@@ -161,7 +162,7 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
         key={location.pathname}
         variants={variants}

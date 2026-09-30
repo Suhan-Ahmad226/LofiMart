@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: categories,
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400',
+      },
     });
   } catch (error) {
     console.error('GET /api/v2/categories fallback:', error);

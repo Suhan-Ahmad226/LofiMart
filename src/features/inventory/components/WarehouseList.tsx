@@ -4,14 +4,16 @@ import toast from '@/lib/toast';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
 import { useInventoryActions } from '@/features/inventory/hooks/useInventoryActions';
 import { inventoryApi } from '@/features/inventory/services/inventoryApi';
+import api from '../../../lib/api';
+import { useSearchParams } from '../../../lib/navigation';
 
-type PathaoOption = {
-  id: number;
+type CourierOption = {
+  id: string;
   name: string;
   extra?: string;
 };
 
-type PathaoFormState = {
+type CourierFormState = {
   contactName: string;
   secondaryContact: string;
   otpNumber: string;
@@ -29,6 +31,8 @@ type PathaoFormState = {
 const WarehouseList: React.FC = () => {
   const { warehouses } = useInventoryState();
   const { addWarehouse, removeWarehouse, loadAll } = useInventoryActions();
+  const [searchParams] = useSearchParams();
+  const urlWarehouse = searchParams.get('warehouse') || '';
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [newWarehouse, setNewWarehouse] = useState({
     name: '',
@@ -38,7 +42,7 @@ const WarehouseList: React.FC = () => {
   });
   const [creatingWarehouse, setCreatingWarehouse] = useState(false);
   const [pendingDeleteWarehouseId, setPendingDeleteWarehouseId] = useState('');
-  const [form, setForm] = useState<PathaoFormState>({
+  const [form, setForm] = useState<CourierFormState>({
     contactName: '',
     secondaryContact: '',
     otpNumber: '',
@@ -52,10 +56,21 @@ const WarehouseList: React.FC = () => {
     outsideDhakaEta: '2-4 business days',
     freeShippingThresholdOverride: '',
   });
-  const [cities, setCities] = useState<PathaoOption[]>([]);
-  const [zones, setZones] = useState<PathaoOption[]>([]);
-  const [areas, setAreas] = useState<PathaoOption[]>([]);
-  const [stores, setStores] = useState<PathaoOption[]>([]);
+
+  /**
+   * The courier this screen configures.
+   *
+   * Resolved from the registry rather than hardcoded, so the page is correct for
+   * whichever courier is live and needs no edit when that changes. `null` until it
+   * loads, which is why every courier call below is guarded on it.
+   */
+  const [courier, setCourier] = useState<{ code: string; name: string; shortLabel: string } | null>(
+    null,
+  );
+  const [cities, setCities] = useState<CourierOption[]>([]);
+  const [zones, setZones] = useState<CourierOption[]>([]);
+  const [areas, setAreas] = useState<CourierOption[]>([]);
+  const [stores, setStores] = useState<CourierOption[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creatingStore, setCreatingStore] = useState(false);
@@ -95,7 +110,7 @@ const WarehouseList: React.FC = () => {
         city: 'Dhaka',
         postalCode: '1200',
       });
-      toast.success('Warehouse created. Update its address and Pathao mapping next.');
+      toast.success('Warehouse created. Update its address and courier mapping next.');
     } catch {
       toast.error('Failed to create warehouse.');
     } finally {
@@ -128,12 +143,9 @@ const WarehouseList: React.FC = () => {
   }, [selectedWarehouseId, warehouses]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || warehouses.length === 0) return;
+    if (!urlWarehouse || warehouses.length === 0 || typeof window === 'undefined') return;
 
-    const warehouseId = new URLSearchParams(window.location.search).get('warehouse');
-    if (!warehouseId) return;
-
-    const matched = warehouses.find((warehouse) => warehouse.id === warehouseId);
+    const matched = warehouses.find((warehouse) => warehouse.id === urlWarehouse);
     if (!matched) return;
 
     setSelectedWarehouseId(matched.id);
@@ -145,7 +157,7 @@ const WarehouseList: React.FC = () => {
         block: 'center',
       });
     });
-  }, [warehouses]);
+  }, [urlWarehouse, warehouses]);
 
   useEffect(() => {
     if (!selectedWarehouse) return;
@@ -154,10 +166,10 @@ const WarehouseList: React.FC = () => {
       contactName: selectedWarehouse.contact?.name || '',
       secondaryContact: selectedWarehouse.contact?.secondaryPhone || '',
       otpNumber: selectedWarehouse.contact?.otpNumber || '',
-      cityId: selectedWarehouse.pathao?.cityId ? String(selectedWarehouse.pathao.cityId) : '',
-      zoneId: selectedWarehouse.pathao?.zoneId ? String(selectedWarehouse.pathao.zoneId) : '',
-      areaId: selectedWarehouse.pathao?.areaId ? String(selectedWarehouse.pathao.areaId) : '',
-      storeId: selectedWarehouse.pathao?.storeId ? String(selectedWarehouse.pathao.storeId) : '',
+      cityId: selectedWarehouse.courier?.cityId ? String(selectedWarehouse.courier.cityId) : '',
+      zoneId: selectedWarehouse.courier?.zoneId ? String(selectedWarehouse.courier.zoneId) : '',
+      areaId: selectedWarehouse.courier?.areaId ? String(selectedWarehouse.courier.areaId) : '',
+      storeId: selectedWarehouse.courier?.storeId || '',
       insideDhakaFee: selectedWarehouse.shipping?.insideDhakaFee != null ? String(selectedWarehouse.shipping.insideDhakaFee) : '',
       outsideDhakaFee: selectedWarehouse.shipping?.outsideDhakaFee != null ? String(selectedWarehouse.shipping.outsideDhakaFee) : '',
       insideDhakaEta: selectedWarehouse.shipping?.insideDhakaEta || '1-2 business days',
@@ -175,26 +187,47 @@ const WarehouseList: React.FC = () => {
     const loadMeta = async () => {
       try {
         setLoadingMeta(true);
-        const [cityPayload, storePayload] = await Promise.all([
-          inventoryApi.fetchPathaoCities(),
-          inventoryApi.fetchPathaoStores(),
+
+        // Which courier is live is a registry fact, not a build-time constant.
+        const providerResponse = await api.get<{ code: string; name: string; shortLabel: string }[]>(
+          '/logistics/providers',
+        );
+        const provider = providerResponse.data?.[0] ?? null;
+        if (ignore) return;
+
+        if (!provider) {
+          setCities([]);
+          setStores([]);
+          toast.error('No courier is available. Ask an administrator to enable one.');
+          return;
+        }
+
+        setCourier(provider);
+
+        const [citiesPayload, storesPayload] = await Promise.all([
+          inventoryApi.fetchCourierLocations({ provider: provider.code, level: 'city' }),
+          // The provider is required: the endpoint has no way to guess which
+          // courier's pickup points to list, so omitting it returns a 400 and
+          // silently leaves the warehouse form with no stores to choose from.
+          inventoryApi.fetchCourierStores({ provider: provider.code }),
         ]);
 
         if (ignore) return;
 
-        const cityRows = Array.isArray(cityPayload?.data?.data) ? cityPayload.data.data : [];
-        const storeRows = Array.isArray(storePayload?.data?.data) ? storePayload.data.data : [];
-
-        setCities(cityRows.map((item: any) => ({ id: Number(item.city_id), name: String(item.city_name || '') })));
+        setCities(
+          (citiesPayload?.nodes ?? []).map((node) => ({ id: node.id, name: node.name })),
+        );
         setStores(
-          storeRows.map((item: any) => ({
-            id: Number(item.store_id),
-            name: String(item.store_name || ''),
-            extra: item.is_active === 1 ? 'active' : 'inactive',
+          (storesPayload?.remoteStores ?? []).map((store) => ({
+            id: store.externalStoreId,
+            name: store.externalStoreName || store.externalStoreId,
+            extra: store.active ? 'active' : 'inactive',
           })),
         );
-      } catch (error) {
-        toast.error('Failed to load Pathao cities or stores.');
+      } catch {
+        if (!ignore) {
+          toast.error('Failed to load courier cities or pickup points.');
+        }
       } finally {
         if (!ignore) {
           setLoadingMeta(false);
@@ -212,17 +245,19 @@ const WarehouseList: React.FC = () => {
     let ignore = false;
 
     const loadZones = async () => {
-      const cityId = Number(form.cityId);
-      if (!Number.isFinite(cityId) || cityId <= 0) {
+      if (!courier || !form.cityId) {
         setZones([]);
         return;
       }
 
       try {
-        const payload = await inventoryApi.fetchPathaoZones(cityId);
+        const payload = await inventoryApi.fetchCourierLocations({
+          provider: courier.code,
+          level: 'zone',
+          parentId: form.cityId,
+        });
         if (ignore) return;
-        const rows = Array.isArray(payload?.data?.data) ? payload.data.data : [];
-        setZones(rows.map((item: any) => ({ id: Number(item.zone_id), name: String(item.zone_name || '') })));
+        setZones((payload?.nodes ?? []).map((node) => ({ id: node.id, name: node.name })));
       } catch {
         if (!ignore) {
           setZones([]);
@@ -234,27 +269,34 @@ const WarehouseList: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, [form.cityId]);
+  }, [form.cityId, courier]);
 
   useEffect(() => {
     let ignore = false;
 
     const loadAreas = async () => {
-      const zoneId = Number(form.zoneId);
-      if (!Number.isFinite(zoneId) || zoneId <= 0) {
+      if (!courier || !form.zoneId) {
         setAreas([]);
         return;
       }
 
       try {
-        const payload = await inventoryApi.fetchPathaoAreas(zoneId);
+        const payload = await inventoryApi.fetchCourierLocations({
+          provider: courier.code,
+          level: 'area',
+          parentId: form.zoneId,
+        });
         if (ignore) return;
-        const rows = Array.isArray(payload?.data?.data) ? payload.data.data : [];
         setAreas(
-          rows.map((item: any) => ({
-            id: Number(item.area_id),
-            name: String(item.area_name || '').trim(),
-            extra: item.home_delivery_available ? 'home delivery' : 'pickup only',
+          (payload?.nodes ?? []).map((node) => ({
+            id: node.id,
+            name: node.name,
+            extra:
+              node.homeDeliveryAvailable === false
+                ? 'pickup only'
+                : node.pickupAvailable === false
+                  ? 'home delivery only'
+                  : undefined,
           })),
         );
       } catch {
@@ -268,10 +310,14 @@ const WarehouseList: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, [form.zoneId]);
+  }, [form.zoneId, courier]);
 
   const handleSave = async () => {
     if (!selectedWarehouse) return;
+    if (!courier) {
+      toast.error('No courier is available to link this warehouse to.');
+      return;
+    }
 
     try {
       setSaving(true);
@@ -279,7 +325,6 @@ const WarehouseList: React.FC = () => {
         name: selectedWarehouse.name,
         location: selectedWarehouse.location,
         contact: selectedWarehouse.contact,
-        pathao: selectedWarehouse.pathao,
         shipping: {
           insideDhakaFee: form.insideDhakaFee ? Number(form.insideDhakaFee) : undefined,
           outsideDhakaFee: form.outsideDhakaFee ? Number(form.outsideDhakaFee) : undefined,
@@ -291,14 +336,17 @@ const WarehouseList: React.FC = () => {
         createdAt: selectedWarehouse.createdAt,
         updatedAt: new Date().toISOString(),
       });
-      await inventoryApi.updateWarehousePathaoConfig(selectedWarehouse.id, {
+      await inventoryApi.updateWarehouseCourierConfig(selectedWarehouse.id, {
+        provider: courier.code,
         contactName: form.contactName,
         secondaryContact: form.secondaryContact,
         otpNumber: form.otpNumber,
         cityId: form.cityId ? Number(form.cityId) : null,
         zoneId: form.zoneId ? Number(form.zoneId) : null,
         areaId: form.areaId ? Number(form.areaId) : null,
-        storeId: form.storeId ? Number(form.storeId) : null,
+        // A `pending:` id is a placeholder for "we created a pickup point but have
+        // not been told its id", so it is never written back as a real id.
+        storeId: form.storeId && !form.storeId.startsWith('pending:') ? form.storeId : null,
       });
       await loadAll();
       toast.success('Warehouse courier and shipping configuration saved.');
@@ -311,17 +359,49 @@ const WarehouseList: React.FC = () => {
 
   const handleCreateStore = async () => {
     if (!selectedWarehouse) return;
+    if (!courier) {
+      toast.error('No courier is available to register a pickup point with.');
+      return;
+    }
+
+    const cityId = Number(form.cityId);
+    const zoneId = Number(form.zoneId);
+    const areaId = Number(form.areaId);
+
+    // The location ids are required, not defaulted. Registering a pickup point
+    // against a guessed location has the courier collecting parcels from the wrong
+    // hub with no way to flag it.
+    if (!cityId || !zoneId || !areaId) {
+      toast.error('Choose the city, zone and area before registering a pickup point.');
+      return;
+    }
 
     try {
       setCreatingStore(true);
-      const payload = await inventoryApi.createPathaoStore({ warehouseId: selectedWarehouse.id });
-      const nextStoreId = Number(payload?.store_id || 0);
+      const payload = await inventoryApi.createCourierStore({
+        provider: courier.code,
+        warehouseId: selectedWarehouse.id,
+        cityId,
+        zoneId,
+        areaId,
+      });
+
+      const nextStoreId = typeof payload.externalStoreId === 'string' ? payload.externalStoreId : '';
       if (nextStoreId) {
-        setForm((current) => ({ ...current, storeId: String(nextStoreId) }));
+        setForm((current) => ({ ...current, storeId: nextStoreId }));
       }
-      toast.success(nextStoreId ? `Pathao store created and linked: ${nextStoreId}` : 'Pathao store request sent successfully.');
+
+      // "Submitted" and "ready" are different states: the courier reviews new
+      // pickup points, and telling an operator it is live before approval would
+      // have them promise a service that cannot be booked yet.
+      toast.success(
+        payload.bookable
+          ? `${courier.name} pickup point is approved and linked: ${nextStoreId}`
+          : `${courier.name} pickup point submitted. It becomes bookable once the courier approves it.`,
+      );
+      await loadAll();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Failed to create Pathao store.');
+      toast.error(error?.response?.data?.error || 'Failed to register the pickup point.');
     } finally {
       setCreatingStore(false);
     }
@@ -340,14 +420,14 @@ const WarehouseList: React.FC = () => {
     <div className="space-y-5 rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Warehouse and Pathao Mapping</h2>
+          <h2 className="text-xl font-semibold">Warehouse and Courier Mapping</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Link each seller pickup location with Pathao city, zone, area, and merchant store for live bookings.
+            Link each seller pickup location to a courier city, zone, area, and pickup point so live bookings can be created.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-rose-600">
           <Truck size={14} />
-          <span>Pathao Ready</span>
+          <span>{courier ? `${courier.name} Ready` : 'Courier Ready'}</span>
         </div>
       </div>
 
@@ -426,11 +506,16 @@ const WarehouseList: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-2 text-right">
-                    <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${warehouse.pathao?.storeId ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {warehouse.pathao?.storeId ? `Store ${warehouse.pathao.storeId}` : 'Store not linked'}
+                    {/* Bookable, not merely linked: a pickup point the courier has
+                        not approved cannot take a parcel, and showing it as ready
+                        would have an operator promise a booking that fails. */}
+                    <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${warehouse.courier?.storeActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {warehouse.courier?.storeId
+                        ? `${warehouse.courier.storeActive ? 'Pickup point' : 'Awaiting approval'} ${warehouse.courier.storeId}`
+                        : 'Pickup point not linked'}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {warehouse.pathao?.cityId && warehouse.pathao?.zoneId && warehouse.pathao?.areaId ? 'Area mapped' : 'Area mapping pending'}
+                      {warehouse.courier?.cityId && warehouse.courier?.zoneId && warehouse.courier?.areaId ? 'Area mapped' : 'Area mapping pending'}
                     </div>
                     <div className="text-xs text-slate-400">
                       {warehouse.shipping?.insideDhakaFee != null && warehouse.shipping?.outsideDhakaFee != null ? 'Rules ready' : 'Rules pending'}
@@ -495,7 +580,7 @@ const WarehouseList: React.FC = () => {
             <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">{selectedWarehouse.name}</h3>
-                <p className="mt-1 text-sm text-slate-500">Configure pickup contact, Pathao area mapping, and merchant store link.</p>
+                <p className="mt-1 text-sm text-slate-500">Configure the pickup contact, the courier area mapping, and the pickup point link.</p>
               </div>
               <button
                 type="button"
@@ -542,7 +627,7 @@ const WarehouseList: React.FC = () => {
                   onChange={(event) => setForm((current) => ({ ...current, storeId: event.target.value }))}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                 >
-                  <option value="">No linked Pathao store</option>
+                  <option value="">No linked pickup point</option>
                   {stores.map((store) => (
                     <option key={store.id} value={store.id}>
                       {store.name} ({store.id}) {store.extra ? `- ${store.extra}` : ''}
@@ -616,10 +701,10 @@ const WarehouseList: React.FC = () => {
             <div className="mt-5 rounded-2xl border border-rose-100 bg-white p-4 text-sm text-slate-600">
               <div className="flex items-center gap-2 font-semibold text-rose-600">
                 <Store size={16} />
-                <span>Pathao store sync</span>
+                <span>Pickup point sync</span>
               </div>
               <p className="mt-2">
-                Save the city, zone, and area first. Then you can auto-create a Pathao store directly from this warehouse and link the returned `store_id`.
+                Save the city, zone, and area first. You can then register this warehouse as a pickup point and link the id the courier assigns.
               </p>
             </div>
 
@@ -697,14 +782,18 @@ const WarehouseList: React.FC = () => {
                 className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50"
               >
                 {creatingStore ? <Loader2 className="animate-spin" size={16} /> : <Store size={16} />}
-                <span>{creatingStore ? 'Creating store...' : 'Create Pathao store'}</span>
+                <span>
+            {creatingStore
+              ? 'Registering...'
+              : `Register pickup point with ${courier?.name ?? 'courier'}`}
+          </span>
               </button>
             </div>
 
             {loadingMeta ? (
               <div className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-slate-500">
                 <Loader2 className="animate-spin" size={14} />
-                <span>Loading Pathao reference data...</span>
+                <span>Loading courier reference data...</span>
               </div>
             ) : null}
           </div>

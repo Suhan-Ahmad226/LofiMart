@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Loader2 } from 'lucide-react';
 import toast from '@/lib/toast';
-import { useNavigate } from '../../../lib/navigation';
+import { useNavigate, useSearchParams } from '../../../lib/navigation';
 import { FormNotice } from '@/features/shared/ui/FeedbackState';
 
 export const ContactPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSubject = searchParams.get('subject') || '';
+  const urlMessage = searchParams.get('message') || '';
+  const urlEmail = searchParams.get('email') || '';
+  const urlFirstName = searchParams.get('firstName') || '';
+  const urlLastName = searchParams.get('lastName') || '';
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
@@ -24,26 +30,17 @@ export const ContactPage = () => {
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const subject = params.get('subject');
-    const message = params.get('message');
-    const email = params.get('email');
-    const firstName = params.get('firstName');
-    const lastName = params.get('lastName');
-
-    if (!subject && !message && !email && !firstName && !lastName) return;
+    if (!urlSubject && !urlMessage && !urlEmail && !urlFirstName && !urlLastName) return;
 
     setFormData((current) => ({
       ...current,
-      subject: subject || current.subject,
-      message: message || current.message,
-      email: email || current.email,
-      firstName: firstName || current.firstName,
-      lastName: lastName || current.lastName,
+      subject: urlSubject || current.subject,
+      message: urlMessage || current.message,
+      email: urlEmail || current.email,
+      firstName: urlFirstName || current.firstName,
+      lastName: urlLastName || current.lastName,
     }));
-  }, []);
+  }, [urlEmail, urlFirstName, urlLastName, urlMessage, urlSubject]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

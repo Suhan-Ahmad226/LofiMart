@@ -114,9 +114,13 @@ export async function GET() {
         { icon: "clock", title_en: "24/7 Support", title_bn: "২৪/৭ সাপোর্ট", description_en: "Always here to help you", description_bn: "সবসময় সাহায্যের জন্য প্রস্তুত" },
         { icon: "heart", title_en: "Local First", title_bn: "লোকাল ফার্স্ট", description_en: "Supporting Bangladeshi brands", description_bn: "বাংলাদেশি ব্র্যান্ডকে এগিয়ে নেওয়া" },
       ]),
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=600, s-maxage=1800, stale-while-revalidate=86400',
+      },
     });
   } catch (error) {
     console.error('GET /api/public/about-page error:', error);
-    return NextResponse.json({}, { headers: { 'X-Data-Source': 'fallback' } });
+    return NextResponse.json({}, { headers: { 'X-Data-Source': 'fallback', 'Cache-Control': 'no-store' } });
   }
 }

@@ -8,6 +8,7 @@ import {
   isKnownManualOrderPaymentMethod,
 } from '../../../lib/commerce-channels';
 import { useUser } from '../../../features/shared/state/UserContext';
+import { useCommerceConfig } from '../../../features/shared/state/CommerceConfigContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
 
@@ -174,6 +175,7 @@ function resolveSkuMatch(products: CatalogProduct[], rawSku: string) {
 
 export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
   const { token } = useUser();
+  const commerceConfig = useCommerceConfig();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -202,19 +204,14 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
   );
 
   useEffect(() => {
-    fetch('/api/public/commerce-config')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!Array.isArray(data?.enabled_manual_order_payment_methods)) return;
-        const nextMethods = data.enabled_manual_order_payment_methods.filter((value: unknown): value is string =>
-          isKnownManualOrderPaymentMethod(typeof value === 'string' ? value : ''),
-        );
-        if (nextMethods.length === 0) return;
-        setEnabledPaymentMethods(nextMethods);
-        setPaymentMethod((current) => (nextMethods.includes(current) ? current : nextMethods[0]));
-      })
-      .catch(() => undefined);
-  }, []);
+    if (!Array.isArray(commerceConfig?.enabled_manual_order_payment_methods)) return;
+    const nextMethods = commerceConfig.enabled_manual_order_payment_methods.filter((value: unknown): value is string =>
+      isKnownManualOrderPaymentMethod(typeof value === 'string' ? value : ''),
+    );
+    if (nextMethods.length === 0) return;
+    setEnabledPaymentMethods(nextMethods);
+    setPaymentMethod((current) => (nextMethods.includes(current) ? current : nextMethods[0]));
+  }, [commerceConfig]);
 
   useEffect(() => {
     if (!token) {
@@ -540,61 +537,29 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2rem] border border-border bg-white shadow-sm">
-        <div className="bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.06),rgba(15,118,110,0.06))] px-6 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-primary/70">
-                {mode === 'seller' ? 'Seller operations desk' : 'Reseller operations desk'}
-              </p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                {mode === 'seller' ? 'Manual orders' : 'Reseller manual orders'}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                {mode === 'seller'
-                  ? 'Create customer orders directly from your catalog with fast SKU search, category filters, and clean fulfillment notes.'
-                  : 'Create customer orders from your approved reseller catalog with margin control, SKU shortcuts, and quick shipment follow-up.'}
-              </p>
-              {mode === 'reseller' && refCode ? (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                  Active reseller code
-                  <span className="normal-case tracking-normal">{refCode}</span>
-                </div>
-              ) : null}
+    <div className="min-h-full bg-[#fdf7ff] px-4 py-5 text-[#1d1b20] sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1480px] flex-col gap-6">
+        <header className="flex flex-col justify-between gap-4 pb-1 md:flex-row md:items-center">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#63597c]">
+              <Link to={mode === 'seller' ? '/seller/manual-orders' : '/reseller-dashboard/manual-orders'} className="inline-flex items-center gap-1 text-[#4f378a] hover:text-[#1d1b20]">
+                <span aria-hidden="true">←</span> Manual Orders
+              </Link>
+              <span className="text-[#cbc4d2]">/</span>
+              <span className="text-[#494551]">New Order Draft</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[36rem]">
-              <div className="rounded-[1.25rem] border border-white/70 bg-white/90 px-4 py-4 shadow-sm backdrop-blur">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Catalog</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{products.length}</p>
-                <p className="mt-1 text-xs text-slate-500">Products ready for orders</p>
-              </div>
-              <div className="rounded-[1.25rem] border border-white/70 bg-white/90 px-4 py-4 shadow-sm backdrop-blur">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Categories</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{categories.length}</p>
-                <p className="mt-1 text-xs text-slate-500">Fast filter groups</p>
-              </div>
-              <div className="rounded-[1.25rem] border border-white/70 bg-white/90 px-4 py-4 shadow-sm backdrop-blur">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Recent orders</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{recentOrders.length}</p>
-                <p className="mt-1 text-xs text-slate-500">Latest manual entries</p>
-              </div>
-              <div className="rounded-[1.25rem] border border-white/70 bg-white/90 px-4 py-4 shadow-sm backdrop-blur">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Payments</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{visiblePaymentOptions.length}</p>
-                <p className="mt-1 text-xs text-slate-500">Allowed checkout methods</p>
-              </div>
-            </div>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-[#1d1b20] sm:text-[32px]">Create Manual Order</h1>
           </div>
-        </div>
-      </section>
+          <Link to="#recent-orders" className="inline-flex items-center gap-2 self-start rounded-lg bg-[#f2ecf4] px-4 py-2 text-sm font-semibold text-[#1d1b20] shadow-sm transition hover:bg-[#e6e0e9] md:self-auto">
+            Recent Orders <span aria-hidden="true">→</span>
+          </Link>
+        </header>
 
-      <section className="rounded-[2rem] border border-slate-200/80 bg-white/80 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <section className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              Order tools
+            <div className="inline-flex items-center gap-2 rounded-lg bg-[#e9ddff] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#4f378a]">
+              Quick add tools
             </div>
             <p className="max-w-xl text-sm leading-6 text-slate-600">
               Use search to filter products fast, or paste a SKU to jump straight into the order line.
@@ -611,7 +576,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by name, category, or SKU"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-4 text-sm outline-none transition focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                className="w-full rounded-lg border border-[#cbc4d2]/60 bg-[#f8f2fa] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-[#4f378a] focus:bg-white focus:ring-2 focus:ring-[#4f378a]/15"
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -625,12 +590,12 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                   }
                 }}
                 placeholder="Enter or scan SKU"
-                className="min-w-0 flex-1 rounded-2xl border border-primary/15 bg-white px-4 py-3.5 text-sm outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                className="min-w-0 flex-1 rounded-lg border border-[#cbc4d2]/60 bg-[#f8f2fa] px-4 py-3 text-sm outline-none transition focus:border-[#4f378a] focus:ring-2 focus:ring-[#4f378a]/15"
               />
               <button
                 type="button"
                 onClick={handleSkuQuickAdd}
-                className="rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="rounded-lg bg-[#1d1b20] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#322f35]"
               >
                 Add by SKU
               </button>
@@ -649,31 +614,34 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div>
       ) : null}
 
-      <form onSubmit={submitManualOrder} className="grid gap-8 xl:grid-cols-[0.85fr_1.15fr]">
+      <form onSubmit={submitManualOrder} className="grid items-start gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
-          <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-950">Customer details</h2>
+          <div className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center justify-between border-b border-[#ece6ee] pb-4">
+              <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#1d1b20]">Customer Information</h2>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#4f378a]">Manual Intake</span>
+            </div>
             <div className="mt-5 grid gap-4">
               <input
                 required
                 value={customerName}
                 onChange={(event) => setCustomerName(event.target.value)}
                 placeholder="Customer name"
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               />
               <input
                 required
                 value={customerPhone}
                 onChange={(event) => setCustomerPhone(event.target.value)}
                 placeholder="Phone number"
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               />
               <input
                 required
                 value={customerCity}
                 onChange={(event) => setCustomerCity(event.target.value)}
                 placeholder="City"
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               />
               <textarea
                 required
@@ -681,12 +649,12 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                 value={customerAddress}
                 onChange={(event) => setCustomerAddress(event.target.value)}
                 placeholder="Full customer address"
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               />
               <select
                 value={paymentMethod}
                 onChange={(event) => setPaymentMethod(event.target.value)}
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               >
                 {visiblePaymentOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -699,13 +667,13 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Optional delivery note"
-                className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="rounded-lg bg-[#f8f2fa] px-4 py-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
               />
             </div>
           </div>
 
-          <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-950">Quick rules</h2>
+          <div className="rounded-xl bg-[#f2ecf4] p-5 shadow-sm sm:p-6">
+            <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#1d1b20]">Quick rules</h2>
             <div className="mt-4 space-y-2 text-sm text-slate-600">
               <p>Products are filtered by category and searchable by SKU for faster order creation.</p>
               <p>SKU is auto-generated and short, so sellers can find products quickly.</p>
@@ -719,12 +687,12 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-950">Order items</h2>
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xl font-bold text-[#1d1b20]">Order Items</h2>
             <button
               type="button"
               onClick={() => setItems((current) => [...current, { ...emptyLine }])}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#4f378a] shadow-sm transition hover:bg-[#f2ecf4]"
             >
               <Plus size={16} />
               <span>Add item</span>
@@ -739,12 +707,16 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
             const itemSubtotal = (Number(line.unitPrice || 0) || 0) * (Number(line.quantity || 0) || 0);
 
             return (
-              <div key={`manual-order-line-${index}`} className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
-                <div className="grid gap-4 lg:grid-cols-[0.7fr_1.2fr_0.45fr_0.55fr_auto]">
+              <div key={`manual-order-line-${index}`} className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+                <div className="mb-4 flex items-center justify-between rounded-lg bg-[#f8f2fa] px-3 py-2">
+                  <span className="rounded bg-[#1d1b20] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">Item {String(index + 1).padStart(2, '0')}</span>
+                  <span className="text-xs font-semibold text-[#765b00]">In stock: {selectedProduct?.stock ?? '—'} units</span>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-[0.7fr_1.2fr_0.45fr_0.55fr_auto]">
                   <select
                     value={line.category}
                     onChange={(event) => updateLine(index, { category: event.target.value })}
-                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="rounded-lg bg-[#f8f2fa] px-3 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
                   >
                     <option value="">All categories</option>
                     {categories.map((category) => (
@@ -756,7 +728,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                   <select
                     value={line.productId}
                     onChange={(event) => updateLine(index, { productId: event.target.value })}
-                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="rounded-lg bg-[#f8f2fa] px-3 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
                   >
                     <option value="">Select a product</option>
                     {productOptions.map((product) => (
@@ -770,7 +742,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                     min={1}
                     value={line.quantity}
                     onChange={(event) => updateLine(index, { quantity: Math.max(1, Number(event.target.value || 1)) })}
-                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="rounded-lg bg-[#f8f2fa] px-3 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
                   />
                   <input
                     type="number"
@@ -778,22 +750,22 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                     step="0.01"
                     value={line.unitPrice}
                     onChange={(event) => updateLine(index, { unitPrice: event.target.value })}
-                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="rounded-lg bg-[#f8f2fa] px-3 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#4f378a]/20"
                   />
                   <button
                     type="button"
                     onClick={() => setItems((current) => (current.length === 1 ? [{ ...emptyLine }] : current.filter((_, lineIndex) => lineIndex !== index)))}
-                    className="inline-flex items-center justify-center rounded-xl border border-rose-200 px-3 text-rose-600 transition hover:bg-rose-50"
+                    className="inline-flex items-center justify-center rounded-lg border border-rose-200 px-3 text-rose-600 transition hover:bg-rose-50"
                   >
                     <Trash2 size={18} />
                   </button>
                 </div>
 
                 {selectedProduct ? (
-                  <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                  <div className="mt-4 rounded-xl bg-[#f8f2fa] p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#ece6ee] text-[#4f378a]">
                           <Package2 size={18} />
                         </div>
                         <div>
@@ -821,7 +793,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                                   },
                                 })
                               }
-                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                              className="w-full rounded-lg border border-[#cbc4d2]/70 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#4f378a]/20"
                             >
                               <option value="">Select {option.name}</option>
                               {option.values.map((value) => (
@@ -853,10 +825,10 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
             );
           })}
 
-          <div className="flex items-center justify-between rounded-3xl border border-primary/10 bg-primary/5 px-6 py-5">
+          <div className="flex items-center justify-between rounded-xl bg-[#e9ddff] px-5 py-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary/70">Order total</p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#4f378a]">Order total</p>
+              <p className="mt-2 text-2xl font-extrabold text-[#1d1b20]">
                 {formatPrice(
                   items.reduce((sum, line) => sum + (Number(line.unitPrice || 0) || 0) * (Number(line.quantity || 0) || 0), 0),
                 )}
@@ -865,7 +837,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-[#4f378a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#6750a4] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? 'Creating order...' : 'Create manual order'}
             </button>
@@ -873,16 +845,16 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
         </div>
       </form>
 
-      <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
+      <div id="recent-orders" className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Recent manual orders</h2>
-            <p className="text-sm text-slate-500">Short order codes and customer details for your latest manually created orders.</p>
+            <h2 className="text-xl font-bold text-[#1d1b20]">Recent Manual Orders</h2>
+            <p className="text-sm text-[#494551]">Latest customer orders requiring fulfillment or tracking.</p>
           </div>
           <button
             type="button"
             onClick={() => void refreshRecentOrders()}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg bg-[#f2ecf4] px-4 py-2 text-sm font-semibold text-[#1d1b20] transition hover:bg-[#e6e0e9]"
           >
             Refresh
           </button>
@@ -893,9 +865,10 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
             No manual orders created yet.
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 overflow-x-auto">
+            <div className="min-w-[720px] space-y-3">
             {recentOrders.slice(0, 10).map((order) => (
-              <div key={order.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div key={order.id} className="rounded-lg border-b border-[#ece6ee] bg-white p-4 transition hover:bg-[#f8f2fa]">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-bold text-slate-950">#{order.order_code || order.id}</p>
@@ -904,7 +877,7 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <span className="rounded-full bg-white px-3 py-1 font-semibold text-slate-700">
+                    <span className="rounded-full bg-[#e1d4fd] px-3 py-1 font-semibold text-[#63597c]">
                       {String(order.status).replaceAll('_', ' ')}
                     </span>
                     <span className="font-bold text-primary">{formatPrice(order.total)}</span>
@@ -1046,9 +1019,11 @@ export const ManualOrderWorkspace: React.FC<{ mode: Mode }> = ({ mode }) => {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };

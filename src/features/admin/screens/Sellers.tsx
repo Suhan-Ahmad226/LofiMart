@@ -10,6 +10,7 @@ type SellerRow = {
   name?: string | null;
   email?: string | null;
   shop_name?: string | null;
+  storefront_slug?: string | null;
   status?: string | null;
   rating?: number | null;
   product_count?: number;
@@ -227,9 +228,12 @@ export const AdminSellersPage = () => {
                         <Eye size={18} />
                       </button>
                       <button
-                        onClick={() => navigate(`/seller-profile/${seller.id}`)}
-                        className="p-2 text-gray-400 transition-colors hover:text-gray-700"
+                        onClick={() => {
+                          if (seller.storefront_slug) navigate(`/store/${seller.storefront_slug}`);
+                        }}
+                        className="p-2 text-gray-400 transition-colors hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
                         title="Open public profile"
+                        disabled={!seller.storefront_slug}
                       >
                         <ExternalLink size={18} />
                       </button>

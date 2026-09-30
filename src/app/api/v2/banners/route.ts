@@ -34,6 +34,10 @@ export async function GET(request: NextRequest) {
         button_text: banner.buttonText,
         is_active: true,
       })),
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
+      },
     });
   } catch (error) {
     console.error('GET /api/v2/banners fallback:', error);

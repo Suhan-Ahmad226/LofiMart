@@ -1,23 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from '../../../lib/navigation';
 import {
+  AlertCircle,
   ArrowDown,
   ArrowLeft,
+  ArrowRight,
   ArrowUp,
   BadgeDollarSign,
+  Bold,
   Box,
+  ChevronDown,
   Eye,
   EyeOff,
+  GripVertical,
   Image as ImageIcon,
+  Italic,
   Layers3,
+  List,
+  ListOrdered,
   Loader2,
   PackageCheck,
   Plus,
   Save,
+  Smile,
   Sparkles,
+  TableProperties,
   Tags,
   Trash2,
-  AlertCircle,
+  X,
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import CloudinaryUpload from '@/features/shared/media/CloudinaryUpload';
@@ -253,6 +263,19 @@ export const SellerProductForm = () => {
     });
   };
 
+  const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('Could not read selected file.'));
+    };
+    reader.onerror = () => reject(new Error('Could not read selected file.'));
+    reader.readAsDataURL(file);
+  });
+
   const categorySpecSuggestions = CATEGORY_SPEC_TEMPLATES[formData.category] || [];
   const descriptionPreview = renderProductDescription(formData.description);
   const applyDescriptionFormat = (type: 'bold' | 'italic' | 'bullet' | 'table' | 'emoji') => {
@@ -303,729 +326,648 @@ export const SellerProductForm = () => {
   const variantValueCount = formData.variant_options.reduce((total, option) => total + option.values.filter((value) => value.label.trim()).length, 0);
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 pb-24">
-      <div className="rounded-[1.75rem] border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-              <Sparkles size={14} />
-              <span>{isEdit ? 'Listing editor' : 'New listing'}</span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-              {isEdit ? 'Edit Product' : 'Add New Product'}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Build a clean, trust-ready product page with media, pricing, rich details, variants, and reseller controls in one workspace.
-            </p>
+    <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e]">
+      {error && (
+        <div className="mx-auto max-w-7xl px-4 pt-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            <AlertCircle size={18} />
+            <span>{error}</span>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        </div>
+      )}
+
+      {!sellerApproved && (
+        <div className="mx-auto max-w-7xl px-4 pt-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            Your seller account is not approved yet. Products can be created and edited, but they stay private in draft mode until admin approval.
+          </div>
+        </div>
+      )}
+
+      <form id="seller-product-form" onSubmit={handleSubmit} className="mx-auto w-full max-w-7xl p-4 md:p-6">
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-3xl font-bold text-[#191c1e]">{isEdit ? 'Edit Product' : 'Add New Product'}</h1>
+            <div className="mt-2 flex items-center gap-2 text-sm text-[#505f76]">
+              <button type="button" onClick={() => navigate('/seller/products')} className="hover:text-[#004ac6] transition-colors">
+                Products
+              </button>
+              <ArrowRight className="h-3.5 w-3.5 text-[#505f76]" />
+              <span className="text-[#191c1e]">{isEdit ? 'Edit Product' : 'Add New Product'}</span>
+            </div>
+          </div>
+
+          <div className="flex w-full items-center gap-3 sm:w-auto">
             <button
               type="button"
               onClick={() => navigate('/seller/products')}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-[#c3c6d7] bg-white px-6 py-2.5 text-sm font-medium text-[#191c1e] transition-colors hover:bg-[#f2f4f6] sm:flex-none"
             >
-              <ArrowLeft size={16} />
-              <span>Products</span>
+              Cancel
             </button>
             <button
               type="submit"
-              form="seller-product-form"
               disabled={loading}
-              className="btn-primary inline-flex h-11 items-center justify-center gap-2 px-5 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#004ac6] px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#003ea8] disabled:opacity-60 sm:flex-none"
             >
               {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
               <span>{isEdit ? 'Update Product' : 'Publish Product'}</span>
             </button>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {error && (
-        <div className="flex items-center gap-3 rounded-2xl border border-accent/20 bg-accent/10 p-4 text-accent">
-          <AlertCircle size={20} />
-          <p className="text-sm font-bold">{error}</p>
-        </div>
-      )}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <aside className="lg:col-span-4">
+            <section className="rounded-xl border border-[#c3c6d7] bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-[#191c1e]">Media</h3>
 
-      {!sellerApproved && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-          Your seller account is not approved yet. Products can be created and edited, but they stay private in draft mode until admin approval.
-        </div>
-      )}
-
-      <form id="seller-product-form" onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
-            <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-sm sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">Media Studio</h2>
-                  <p className="mt-1 text-xs text-slate-500">First image becomes the product cover.</p>
+              <div className="mb-6">
+                <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-[#c3c6d7] bg-[#f2f4f6] transition-colors hover:border-[#004ac6] hover:bg-white">
+                  {formData.image ? (
+                    <>
+                      <img src={formData.image} alt="Cover preview" className="aspect-square h-full w-full object-cover" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity hover:opacity-100">
+                        <label className="cursor-pointer rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#191c1e] shadow-sm">
+                          Change image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const result = await readFileAsDataUrl(file);
+                                setFormData((current) => ({ ...current, image: result }));
+                              } catch (error) {
+                                setError(error instanceof Error ? error.message : 'Could not read image preview.');
+                              } finally {
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="group block cursor-pointer">
+                      <div className="flex aspect-square w-full flex-col items-center justify-center p-6 text-center">
+                        <ImageIcon className="mb-2 h-10 w-10 text-[#505f76] transition-colors group-hover:text-[#004ac6]" />
+                        <p className="mb-1 text-sm font-semibold text-[#191c1e]">Upload Image</p>
+                        <p className="text-xs text-[#505f76]">Drag and drop or click to upload</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const result = await readFileAsDataUrl(file);
+                            setFormData((current) => ({ ...current, image: result }));
+                          } catch (error) {
+                            setError(error instanceof Error ? error.message : 'Could not read image preview.');
+                          } finally {
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{mediaCount} assets</span>
               </div>
-              <div className="aspect-square overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50">
-                {formData.image ? (
-                  <img src={formData.image} alt="Product cover preview" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
-                    <ImageIcon size={42} />
-                    <span className="text-xs font-semibold">Upload a square cover image</span>
-                  </div>
-                )}
+
+              <div className="mb-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-[#191c1e]">Gallery</h4>
+                  <span className="text-xs text-[#505f76]">({formData.gallery_images.length}/8)</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {formData.gallery_images.length > 0 ? (
+                    formData.gallery_images.slice(0, 5).map((url, index) => (
+                      <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-lg border border-[#c3c6d7]">
+                        <img src={url} alt={`Gallery ${index + 1}`} className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((current) => ({
+                                ...current,
+                                gallery_images: current.gallery_images.filter((_, itemIndex) => itemIndex !== index),
+                              }))
+                            }
+                            className="rounded-md bg-white p-1 text-[#505f76] hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">Pos {index + 1}</div>
+                      </div>
+                    ))
+                  ) : null}
+
+                  <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#c3c6d7] bg-[#f2f4f6] text-[#505f76] transition-colors hover:border-[#004ac6] hover:bg-white group">
+                    <Plus className="h-5 w-5 text-[#505f76] group-hover:text-[#004ac6]" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (!files.length) return;
+
+                        try {
+                          const nextUrls = await Promise.all(files.map(async (file) => readFileAsDataUrl(file)));
+                          setFormData((current) => ({
+                            ...current,
+                            gallery_images: [...current.gallery_images, ...nextUrls.filter((url) => !current.gallery_images.includes(url))].slice(0, 8),
+                          }));
+                        } catch (error) {
+                          setError(error instanceof Error ? error.message : 'Could not read gallery image preview.');
+                        } finally {
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
-              <div className="mt-4 space-y-4">
-                <CloudinaryUpload
-                  label="Upload cover image"
-                  helper="Use a clean 800x800px image for best product cards."
-                  onUploaded={(url) => setFormData({ ...formData, image: url })}
-                />
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Manual Image URL</label>
+
+              <div className="space-y-4 border-t border-[#c3c6d7] pt-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#505f76]">Video URL</label>
                   <input
                     type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="Paste hosted image URL"
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:ring-2 focus:ring-primary/20"
+                    value={formData.video_url}
+                    onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                    placeholder="https://youtube.com/..."
+                    className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#505f76]">3D Model (.glb) URL</label>
+                  <input
+                    type="url"
+                    value={formData.model_3d}
+                    onChange={(e) => setFormData({ ...formData, model_3d: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]"
                   />
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-black/5 bg-white p-4 shadow-sm sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">Listing Health</h2>
-                  <p className="mt-1 text-xs text-slate-500">Quick checks before publishing.</p>
-                </div>
-                <PackageCheck className="text-primary" size={20} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold uppercase text-slate-400">Basics</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">{completedBasics}/5</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold uppercase text-slate-400">Specs</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">{formData.specifications.length}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold uppercase text-slate-400">Variants</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">{variantValueCount}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[11px] font-bold uppercase text-slate-400">SKU</p>
-                  <p className="mt-1 truncate text-sm font-black text-slate-950">{baseSkuPreview}</p>
-                </div>
-              </div>
-            </div>
+            </section>
           </aside>
 
-          <div className="space-y-6">
-            <section className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-              <div className="mb-6 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Box size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-slate-950">Product Basics</h2>
-                  <p className="mt-1 text-sm text-slate-500">Name, category, price, stock, SKU, and buyer-facing story.</p>
-                </div>
-              </div>
+          <div className="space-y-6 lg:col-span-8">
+            <section className="rounded-xl border border-[#c3c6d7] bg-white p-6 shadow-sm">
+              <h3 className="mb-6 text-lg font-semibold text-[#191c1e]">Product Details</h3>
 
-              <div className="grid gap-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Product Name</label>
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-[#505f76]">
+                    Product Name <span className="text-[#ba1a1a]">*</span>
+                  </label>
                   <input
                     type="text"
-                    required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g. Premium Cotton Panjabi"
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2.5 text-base outline-none transition-all focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Category</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option>Fashion</option>
-                      <option>Electronics</option>
-                      <option>Groceries</option>
-                      <option>Home & Living</option>
-                    </select>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-[#505f76]">
+                      Category <span className="text-[#ba1a1a]">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full cursor-pointer appearance-none rounded-lg border border-[#c3c6d7] bg-white px-4 py-2.5 text-sm text-[#191c1e] outline-none transition-all focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+                      >
+                        <option>Fashion</option>
+                        <option>Electronics</option>
+                        <option>Groceries</option>
+                        <option>Home &amp; Living</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#505f76]" />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Price (BDT)</label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="0.00"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Stock Quantity</label>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-[#505f76]">
+                      Price (BDT) <span className="text-[#ba1a1a]">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#505f76] font-medium">৳</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-[#c3c6d7] bg-white pl-8 pr-4 py-2.5 text-sm outline-none transition-all focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-[#505f76]">
+                      Stock Quantity <span className="text-[#ba1a1a]">*</span>
+                    </label>
                     <input
                       type="number"
-                      required
                       min="0"
                       value={formData.stock}
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                       placeholder="0"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-[#004ac6] focus:ring-2 focus:ring-[#004ac6]/20"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">SKU</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={baseSkuPreview}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-500 focus:ring-2 focus:ring-primary/20"
-                    />
-                    <p className="text-xs text-slate-500">SKU auto-generates when the product is saved.</p>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <label className="text-sm font-semibold text-slate-700">Description</label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { key: 'bold', label: 'B' },
-                        { key: 'italic', label: 'I' },
-                        { key: 'bullet', label: 'Bullets' },
-                        { key: 'table', label: 'Table' },
-                        { key: 'emoji', label: 'Tag' },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          title={`Insert ${item.key}`}
-                          onClick={() => applyDescriptionFormat(item.key as 'bold' | 'italic' | 'bullet' | 'table' | 'emoji')}
-                          className="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setShowDescriptionPreview((current) => !current)}
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:bg-primary/10"
-                      >
-                        {showDescriptionPreview ? <EyeOff size={14} /> : <Eye size={14} />}
-                        <span>{showDescriptionPreview ? 'Hide' : 'Preview'}</span>
-                      </button>
-                    </div>
-                  </div>
-                  <textarea
-                    id="product-description-field"
-                    rows={6}
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Describe material, fit, use cases, care, warranty, and what makes this product worth buying."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 focus:bg-white focus:ring-2 focus:ring-primary/20"
-                  />
-                  <p className="text-xs text-slate-500">Supports bold, italic, bullet lists, tables, and short highlights. Raw HTML is not allowed.</p>
-                  {showDescriptionPreview ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Customer preview</p>
-                      <div
-                        className="mt-3 space-y-4 text-sm leading-6 text-slate-700"
-                        dangerouslySetInnerHTML={{ __html: descriptionPreview || '<p class="text-sm text-slate-500">Description preview will appear here.</p>' }}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-              <div className="mb-5 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
-                  <ImageIcon size={20} />
-                </div>
                 <div>
-                  <h2 className="text-lg font-black text-slate-950">Gallery And Rich Media</h2>
-                  <p className="mt-1 text-sm text-slate-500">Add extra photos, a video link, or a GLB model for richer product pages.</p>
+                  <label className="mb-1.5 block text-sm font-semibold text-[#505f76]">SKU</label>
+                  <div className="flex w-full items-center justify-between rounded-lg border border-[#c3c6d7] bg-[#f2f4f6] px-4 py-2.5 text-sm text-[#505f76]">
+                    <span>SKU: {baseSkuPreview || 'AUTOGENERATED'}</span>
+                    <span className="rounded bg-[#e0e3e5] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-tighter text-[#191c1e]">Preview</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-5">
-                <CloudinaryUpload
-                  label="Add gallery image"
-                  helper="Use detail shots, packaging, scale, and lifestyle images."
-                  onUploaded={(url) =>
-                    setFormData((current) => ({
-                      ...current,
-                      gallery_images: current.gallery_images.includes(url) ? current.gallery_images : [...current.gallery_images, url],
-                    }))
-                  }
-                />
-
-                {formData.gallery_images.length > 0 ? (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {formData.gallery_images.map((url, index) => (
-                      <div key={`${url}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="aspect-square overflow-hidden rounded-xl bg-white">
-                          <img src={url} alt={`Gallery ${index + 1}`} className="h-full w-full object-cover" />
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-slate-500">Image {index + 1}</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              title="Move up"
-                              onClick={() => moveGalleryImage(index, index - 1)}
-                              disabled={index === 0}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              <ArrowUp size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              title="Move down"
-                              onClick={() => moveGalleryImage(index, index + 1)}
-                              disabled={index === formData.gallery_images.length - 1}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              <ArrowDown size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              title="Remove image"
-                              onClick={() =>
-                                setFormData((current) => ({
-                                  ...current,
-                                  gallery_images: current.gallery_images.filter((_, itemIndex) => itemIndex !== index),
-                                }))
-                              }
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 transition hover:bg-rose-50"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                        <input
-                          type="url"
-                          value={url}
-                          onChange={(e) =>
-                            setFormData((current) => ({
-                              ...current,
-                              gallery_images: current.gallery_images.map((item, itemIndex) => (itemIndex === index ? e.target.value : item)),
-                            }))
-                          }
-                          className="mt-3 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs focus:ring-2 focus:ring-primary/20"
-                        />
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label className="block text-sm font-semibold text-[#505f76]">Description</label>
+                  </div>
+                  <div className="overflow-hidden rounded-lg border border-[#c3c6d7] transition-all focus-within:border-[#004ac6] focus-within:ring-2 focus-within:ring-[#004ac6]/20">
+                    <div className="flex items-center justify-between gap-2 overflow-x-auto border-b border-[#c3c6d7] bg-[#f2f4f6] px-4 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" onClick={() => applyDescriptionFormat('bold')} className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Bold text">
+                          <Bold className="h-5 w-5" />
+                        </button>
+                        <button type="button" onClick={() => applyDescriptionFormat('italic')} className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Italic text">
+                          <Italic className="h-5 w-5" />
+                        </button>
+                        <div className="mx-1 h-5 w-px bg-[#c3c6d7]" />
+                        <button type="button" onClick={() => applyDescriptionFormat('bullet')} className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Bullet list">
+                          <List className="h-5 w-5" />
+                        </button>
+                        <button type="button" className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Numbered list">
+                          <ListOrdered className="h-5 w-5" />
+                        </button>
+                        <div className="mx-1 h-5 w-px bg-[#c3c6d7]" />
+                        <button type="button" className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Insert table">
+                          <TableProperties className="h-5 w-5" />
+                        </button>
+                        <button type="button" className="rounded p-1.5 text-[#505f76] transition-colors hover:bg-[#e0e3e5]" aria-label="Insert emoji">
+                          <Smile className="h-5 w-5" />
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                    No gallery images added yet.
-                  </div>
-                )}
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Product Video URL</label>
-                    <input
-                      type="url"
-                      value={formData.video_url}
-                      onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                      placeholder="Paste hosted product video URL"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">3D Model URL (GLB)</label>
-                    <input
-                      type="url"
-                      value={formData.model_3d}
-                      onChange={(e) => setFormData({ ...formData, model_3d: e.target.value })}
-                      placeholder="Paste hosted .glb model URL"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs font-medium text-[#505f76]">Show Preview</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowDescriptionPreview((current) => !current)}
+                          className={`relative h-4 w-8 rounded-full transition-colors ${showDescriptionPreview ? 'bg-[#004ac6]' : 'bg-[#c3c6d7]'}`}
+                        >
+                          <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-all ${showDescriptionPreview ? 'left-4' : 'left-0.5'}`} />
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      id="product-description-field"
+                      rows={6}
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Enter detailed product description..."
+                      className="min-h-[160px] w-full resize-y border-none bg-white px-4 py-3 text-sm outline-none"
                     />
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                      <Tags size={20} />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-950">Product Specifications</h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                      Add category-wise details like color, weight, size, warranty, dimensions, or material.
-                      </p>
-                    </div>
-                  </div>
+            <section className="rounded-xl border border-dashed border-[#c3c6d7] bg-white p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h3 className="text-base font-semibold text-[#191c1e]">Product Specifications</h3>
+                <button
+                  type="button"
+                  onClick={() => setFormData((current) => ({ ...current, specifications: [...current.specifications, { label: '', value: '' }] }))}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#c3c6d7] px-4 py-1.5 text-xs font-semibold text-[#505f76] transition-colors hover:bg-[#f2f4f6]"
+                >
+                  <Plus className="h-4 w-4" /> Add Spec
+                </button>
+              </div>
+
+              <div className="mb-4 flex flex-wrap gap-2">
+                <span className="mb-1 block w-full text-[10px] font-bold uppercase tracking-wider text-[#505f76]">Common Specs</span>
+                {categorySpecSuggestions.map((suggestion) => (
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData((current) => ({
-                        ...current,
-                        specifications: [...current.specifications, { label: '', value: '' }],
-                      }))
-                    }
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                    key={suggestion}
+                    onClick={() => {
+                      const exists = formData.specifications.some((item) => item.label.toLowerCase() === suggestion.toLowerCase());
+                      if (!exists) {
+                        setFormData((current) => ({ ...current, specifications: [...current.specifications, { label: suggestion, value: '' }] }));
+                      }
+                    }}
+                    className="rounded-full bg-[#f2f4f6] px-3 py-1 text-xs text-[#191c1e] transition-colors hover:bg-[#e0e3e5]"
                   >
-                    <Plus size={14} />
-                    <span>Add spec</span>
+                    {suggestion}
                   </button>
+                ))}
+              </div>
+
+              {formData.specifications.length === 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <input value="Fabric" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm" />
+                    </div>
+                    <div className="flex-1">
+                      <input value="Cotton" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm" />
+                    </div>
+                    <button type="button" className="p-2 text-[#505f76] hover:text-red-600">
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <input placeholder="Spec Key (e.g. Size)" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm placeholder:text-[#505f76]/70" />
+                    </div>
+                    <div className="flex-1">
+                      <input placeholder="Spec Value (e.g. XL)" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm placeholder:text-[#505f76]/70" />
+                    </div>
+                    <button type="button" className="p-2 text-[#505f76] hover:text-red-600">
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
                 </div>
-
-                {categorySpecSuggestions.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {categorySpecSuggestions.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() =>
-                          setFormData((current) => {
-                            if (current.specifications.some((item) => item.label.toLowerCase() === suggestion.toLowerCase())) {
-                              return current;
-                            }
-                            return {
-                              ...current,
-                              specifications: [...current.specifications, { label: suggestion, value: '' }],
-                            };
-                          })
-                        }
-                        className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-200"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-
-                {formData.specifications.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                    No specifications added yet.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {formData.specifications.map((specification, index) => (
-                      <div key={`spec-${index}`} className="grid gap-3 md:grid-cols-[0.8fr_1.2fr_auto]">
+              ) : (
+                <div className="space-y-4">
+                  {formData.specifications.map((specification, index) => (
+                    <div key={`spec-${index}`} className="flex items-center gap-4">
+                      <div className="flex-1">
                         <input
                           type="text"
                           value={specification.label}
                           onChange={(e) =>
                             setFormData((current) => ({
                               ...current,
-                              specifications: current.specifications.map((item, itemIndex) =>
-                                itemIndex === index ? { ...item, label: e.target.value } : item,
-                              ),
+                              specifications: current.specifications.map((item, itemIndex) => (itemIndex === index ? { ...item, label: e.target.value } : item)),
                             }))
                           }
-                          placeholder="Spec label"
-                          className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
+                          className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                          placeholder="Spec Key"
                         />
+                      </div>
+                      <div className="flex-1">
                         <input
                           type="text"
                           value={specification.value}
                           onChange={(e) =>
                             setFormData((current) => ({
                               ...current,
-                              specifications: current.specifications.map((item, itemIndex) =>
-                                itemIndex === index ? { ...item, value: e.target.value } : item,
-                              ),
+                              specifications: current.specifications.map((item, itemIndex) => (itemIndex === index ? { ...item, value: e.target.value } : item)),
                             }))
                           }
-                          placeholder="Spec value"
-                          className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20"
+                          className="w-full rounded-lg border border-[#c3c6d7] bg-white px-4 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                          placeholder="Spec Value"
                         />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData((current) => ({
-                              ...current,
-                              specifications: current.specifications.filter((_, itemIndex) => itemIndex !== index),
-                            }))
-                          }
-                          className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 px-3 text-rose-600 transition hover:bg-rose-50"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="space-y-5 rounded-[1.5rem] border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600">
-                      <BadgeDollarSign size={20} />
+                      <button
+                        type="button"
+                        onClick={() => setFormData((current) => ({ ...current, specifications: current.specifications.filter((_, itemIndex) => itemIndex !== index) }))}
+                        className="p-2 text-[#505f76] hover:text-red-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-950">Reseller Sales</h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                      Enable this if resellers can add this product to their shop and sell above your reseller base price.
-                      </p>
-                    </div>
-                  </div>
-                  <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-slate-700 shadow-sm">
-                    <input
-                      type="checkbox"
-                      checked={formData.reseller_enabled}
-                      onChange={(e) => setFormData({ ...formData, reseller_enabled: e.target.checked })}
-                    />
-                    <span>Allow resellers</span>
-                  </label>
+                  ))}
                 </div>
+              )}
+            </section>
 
-                {formData.reseller_enabled ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Reseller base price</label>
+            <section className="relative overflow-hidden rounded-xl border border-[#bfe0cb] bg-[#edf9f2] p-6">
+              <div className="absolute left-0 top-0 h-full w-1.5 bg-[#007d55]" />
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[#005236]">Reseller Sales</h3>
+                  <p className="text-xs font-medium text-[#006242]">Allow authorized resellers to sell this product</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold uppercase text-[#005236]">Allow resellers</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, reseller_enabled: !formData.reseller_enabled })}
+                    className={`relative h-6 w-11 rounded-full transition-colors ${formData.reseller_enabled ? 'bg-[#007d55]' : 'bg-[#d0e1fb]'}`}
+                  >
+                    <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-md transition-all ${formData.reseller_enabled ? 'right-1' : 'left-1'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {formData.reseller_enabled && (
+                <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#005236]">Reseller Base Price</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#505f76] font-medium">৳</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={formData.reseller_base_price}
                         onChange={(e) => setFormData({ ...formData, reseller_base_price: e.target.value })}
-                        placeholder="Minimum seller price for reseller orders"
-                        className="h-12 w-full rounded-xl border border-emerald-100 bg-white px-4 text-sm focus:ring-2 focus:ring-primary/20"
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-[#bfe0cb] bg-white pl-8 pr-4 py-2.5 text-sm outline-none transition-all focus:border-[#007d55] focus:ring-1 focus:ring-[#007d55]"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Suggested reseller sale price</label>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#005236]">Suggested Sale Price</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#505f76] font-medium">৳</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={formData.reseller_suggested_price}
                         onChange={(e) => setFormData({ ...formData, reseller_suggested_price: e.target.value })}
-                        placeholder="Optional guidance for resellers"
-                        className="h-12 w-full rounded-xl border border-emerald-100 bg-white px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Reseller notes</label>
-                      <textarea
-                        rows={3}
-                        value={formData.reseller_notes}
-                        onChange={(e) => setFormData({ ...formData, reseller_notes: e.target.value })}
-                        placeholder="Tell resellers how to pitch or position this product"
-                        className="w-full rounded-xl border border-emerald-100 bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20"
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-[#bfe0cb] bg-white pl-8 pr-4 py-2.5 text-sm outline-none transition-all focus:border-[#007d55] focus:ring-1 focus:ring-[#007d55]"
                       />
                     </div>
                   </div>
-                ) : null}
-              </section>
 
-              <section className="rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                      <Layers3 size={20} />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-950">Variant Options</h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                      Add simple options like Size, Color, or Storage. These options appear on the product page.
-                      </p>
-                    </div>
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-[#005236]">Reseller Notes</label>
+                    <textarea
+                      rows={2}
+                      value={formData.reseller_notes}
+                      onChange={(e) => setFormData({ ...formData, reseller_notes: e.target.value })}
+                      placeholder="Additional info for resellers..."
+                      className="w-full resize-y rounded-lg border border-[#bfe0cb] bg-white px-4 py-3 text-sm outline-none transition-all focus:border-[#007d55] focus:ring-1 focus:ring-[#007d55]"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((current) => ({
-                        ...current,
-                        variant_options: [...current.variant_options, { name: '', values: [{ label: '', price_adjustment: 0, sku_suffix: null, stock_override: null }] }],
-                      }))
-                    }
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    <Plus size={14} />
-                    <span>Add option</span>
-                  </button>
                 </div>
+              )}
+            </section>
 
-                {formData.variant_options.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                    No variants yet. Add options if this product comes in multiple versions.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.variant_options.map((variant, index) => (
-                      <div key={`variant-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_auto] xl:items-start">
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Option name</label>
-                            <input
-                              type="text"
-                              value={variant.name}
-                              onChange={(e) => updateVariant(index, { name: e.target.value })}
-                              placeholder="Size"
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                            />
+            <section className="rounded-xl border border-dashed border-[#c3c6d7] bg-white p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#191c1e]">Variant Options</h3>
+                <button
+                  type="button"
+                  onClick={() => setFormData((current) => ({ ...current, variant_options: [...current.variant_options, { name: 'Size', values: [{ label: '', price_adjustment: 0, sku_suffix: null, stock_override: null }] }] }))}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#004ac6]/20 bg-[#004ac6]/5 px-4 py-2 text-sm font-semibold text-[#004ac6] transition-colors hover:bg-[#004ac6]/10"
+                >
+                  <Plus className="h-5 w-5" /> Add Option
+                </button>
+              </div>
+
+              {formData.variant_options.length === 0 ? (
+                <div className="space-y-6">
+                  <div className="rounded-xl border border-[#c3c6d7]/50 bg-[#f2f4f6]/50 p-5">
+                    <div className="mb-4 flex items-center justify-between border-b border-[#c3c6d7]/30 pb-4">
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="h-4 w-4 text-[#505f76]" />
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#191c1e]">Option: Size</span>
+                      </div>
+                      <button type="button" className="text-[#505f76] hover:text-red-600" aria-label="Delete option">
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
+                        <div className="md:col-span-1">
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Value</label>
+                          <input value="M" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Price Adjust</label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#505f76] text-xs">+৳</span>
+                            <input placeholder="0" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white pl-8 pr-2 py-2 text-sm" />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Values</label>
-                            <div className="space-y-3 rounded-xl bg-white p-3">
-                              {variant.values.map((value, valueIndex) => (
-                                <div key={`variant-${index}-value-${valueIndex}`} className="grid gap-3 lg:grid-cols-[1.1fr_0.75fr_0.75fr_0.85fr_auto]">
-                                  <input
-                                    type="text"
-                                    value={value.label}
-                                    onChange={(e) => updateVariantValue(index, valueIndex, { label: e.target.value })}
-                                    placeholder="Blue"
-                                    className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                                  />
-                                  <input
-                                    type="number"
-                                    value={value.price_adjustment ?? 0}
-                                    onChange={(e) => updateVariantValue(index, valueIndex, { price_adjustment: Number(e.target.value) || 0 })}
-                                    placeholder="0"
-                                    className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={value.sku_suffix || ''}
-                                    onChange={(e) =>
-                                      updateVariantValue(index, valueIndex, {
-                                        sku_suffix: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') || null,
-                                      })
-                                    }
-                                    placeholder="BLU"
-                                    className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                                  />
-                                  <input
-                                    type="number"
-                                    value={value.stock_override ?? ''}
-                                    onChange={(e) =>
-                                      updateVariantValue(index, valueIndex, {
-                                        stock_override: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
-                                      })
-                                    }
-                                    placeholder="Base stock"
-                                    className="h-11 w-full rounded-xl border border-slate-200 px-4 text-sm focus:ring-2 focus:ring-primary/20"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setFormData((current) => ({
-                                        ...current,
-                                        variant_options: current.variant_options.map((currentVariant, currentVariantIndex) =>
-                                          currentVariantIndex === index
-                                            ? {
-                                                ...currentVariant,
-                                                values: currentVariant.values.filter((_, currentValueIndex) => currentValueIndex !== valueIndex),
-                                              }
-                                            : currentVariant,
-                                        ),
-                                      }))
-                                    }
-                                    className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 px-3 text-rose-600 transition hover:bg-rose-50"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              ))}
-                              <div className="hidden gap-3 text-[11px] font-bold uppercase tracking-wide text-gray-400 lg:grid lg:grid-cols-[1.1fr_0.75fr_0.75fr_0.85fr_auto]">
-                                <span>Value label</span>
-                                <span>Price adjust</span>
-                                <span>SKU suffix</span>
-                                <span>Stock override</span>
-                                <span />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setFormData((current) => ({
-                                    ...current,
-                                    variant_options: current.variant_options.map((currentVariant, currentVariantIndex) =>
-                                      currentVariantIndex === index
-                                        ? {
-                                            ...currentVariant,
-                                            values: [
-                                              ...currentVariant.values,
-                                              { label: '', price_adjustment: 0, sku_suffix: null, stock_override: null },
-                                            ],
-                                          }
-                                        : currentVariant,
-                                    ),
-                                  }))
-                                }
-                                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
-                              >
-                                <Plus size={14} />
-                                <span>Add value</span>
-                              </button>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                {variant.values
-                                  .filter((value) => String(value.label || '').trim())
-                                  .map((value, valueIndex) => (
-                                    <span
-                                      key={`variant-preview-${index}-${valueIndex}`}
-                                      className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600"
-                                    >
-                                      {value.label}: {buildVariantSkuPreview(baseSkuPreview, value.sku_suffix)}
-                                    </span>
-                                  ))}
-                              </div>
-                            </div>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Stock Override</label>
+                          <input placeholder="Same as main" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">SKU Suffix</label>
+                            <input placeholder="-M" readOnly className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm" />
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((current) => ({
-                                ...current,
-                                variant_options: current.variant_options.filter((_, variantIndex) => variantIndex !== index),
-                              }))
-                            }
-                            className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-rose-600 transition hover:bg-rose-50"
-                          >
-                            <Trash2 size={16} />
+                          <button type="button" className="mt-5 p-1.5 text-[#505f76] hover:text-red-600" aria-label="Remove value">
+                            <X className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </section>
 
-            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-black/5 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => navigate('/seller/products')}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 px-6 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary inline-flex h-12 items-center justify-center gap-2 px-8 disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                <span>{isEdit ? 'Update Product' : 'Publish Product'}</span>
-              </button>
-            </div>
+                      <button type="button" className="flex items-center gap-2 py-2 text-xs font-bold text-[#004ac6] hover:underline">
+                        <Plus className="h-4 w-4" /> Add Value
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {formData.variant_options.map((variant, variantIndex) => (
+                    <div key={`variant-${variantIndex}`} className="rounded-xl border border-[#c3c6d7] bg-[#f2f4f6]/40 p-5">
+                      <div className="mb-4 flex items-center justify-between border-b border-[#c3c6d7]/30 pb-4">
+                        <div className="flex items-center gap-3">
+                          <GripVertical className="h-4 w-4 text-[#505f76]" />
+                          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#191c1e]">Option: {variant.name || 'New Option'}</span>
+                        </div>
+                        <button type="button" onClick={() => setFormData((current) => ({ ...current, variant_options: current.variant_options.filter((_, index) => index !== variantIndex) }))} className="text-[#505f76] hover:text-red-600" aria-label="Delete option">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Value</label>
+                            <input
+                              type="text"
+                              value={variant.values[0]?.label || ''}
+                              onChange={(e) => updateVariantValue(variantIndex, 0, { label: e.target.value })}
+                              className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Price Adjust</label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#505f76] text-xs">+৳</span>
+                              <input
+                                type="number"
+                                value={variant.values[0]?.price_adjustment ?? 0}
+                                onChange={(e) => updateVariantValue(variantIndex, 0, { price_adjustment: Number(e.target.value) || 0 })}
+                                className="w-full rounded-lg border border-[#c3c6d7] bg-white pl-8 pr-2 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">Stock Override</label>
+                            <input
+                              type="number"
+                              value={variant.values[0]?.stock_override ?? ''}
+                              onChange={(e) => updateVariantValue(variantIndex, 0, { stock_override: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                              className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <label className="mb-1 block text-[10px] font-bold uppercase text-[#505f76]">SKU Suffix</label>
+                              <input
+                                type="text"
+                                value={variant.values[0]?.sku_suffix || ''}
+                                onChange={(e) => updateVariantValue(variantIndex, 0, { sku_suffix: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') || null })}
+                                className="w-full rounded-lg border border-[#c3c6d7] bg-white px-3 py-2 text-sm outline-none focus:border-[#004ac6] focus:ring-1 focus:ring-[#004ac6]/20"
+                              />
+                            </div>
+                            <button type="button" onClick={() => setFormData((current) => ({ ...current, variant_options: current.variant_options.map((item, index) => index === variantIndex ? { ...item, values: item.values.filter((_, valueIndex) => valueIndex !== 0) } : item) }))} className="mt-5 p-1.5 text-[#505f76] hover:text-red-600" aria-label="Remove value">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setFormData((current) => ({ ...current, variant_options: current.variant_options.map((item, index) => index === variantIndex ? { ...item, values: [...item.values, { label: '', price_adjustment: 0, sku_suffix: null, stock_override: null }] } : item) }))}
+                          className="flex items-center gap-2 py-2 text-xs font-bold text-[#004ac6] hover:underline"
+                        >
+                          <Plus className="h-4 w-4" /> Add Value
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
+        </div>
+
+        <div className="md:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-40 flex gap-3 border-t border-[#c3c6d7] bg-white p-4">
+            <button type="button" onClick={() => navigate('/seller/products')} className="flex-1 rounded-xl border border-[#c3c6d7] bg-white px-4 py-3 font-semibold text-[#191c1e]">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading} className="flex-1 rounded-xl bg-[#004ac6] px-4 py-3 font-semibold text-white shadow-md disabled:opacity-60">
+              {loading ? 'Saving...' : 'Publish Product'}
+            </button>
+          </div>
+          <div className="h-24 w-full" />
         </div>
       </form>
     </div>

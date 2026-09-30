@@ -6,6 +6,7 @@ import { AppProviders } from '../features/shared/app/AppProviders';
 import { AppChrome } from '../features/shared/app/AppChrome';
 import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { serializeJsonLd } from '../lib/product-description';
 import { cn } from "@/lib/utils";
 
 const inter = Inter({
@@ -41,6 +42,8 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: '#2563EB',
 };
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lofimart.vercel.app'),
@@ -90,8 +93,6 @@ function getPreconnectOrigins() {
 
   if (process.env.CLOUDINARY_CLOUD_NAME) {
     origins.add(`https://res.cloudinary.com`);
-    origins.add(`https://api.cloudinary.com`);
-    origins.add(`https://widget.cloudinary.com`);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -159,7 +160,7 @@ export default function RootLayout({
           id="lofimart-structured-data"
           type="application/ld+json"
           strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
         />
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-preconnect`} rel="preconnect" href={origin} crossOrigin="" />

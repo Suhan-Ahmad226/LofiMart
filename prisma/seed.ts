@@ -1,5 +1,5 @@
-import bcrypt from 'bcryptjs';
-import { prisma } from '../src/services/database/prisma';
+import { prisma } from '../src/features/shared/services/database/prisma';
+import { createSupabaseServerClient } from '../src/app/api/auth/supabase/shared';
 
 const SEED_ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@amarshop.local';
 const SEED_SELLER_EMAIL = process.env.SEED_SELLER_EMAIL || 'seller@amarshop.local';
@@ -12,15 +12,46 @@ async function upsertUser(input: {
   role: 'admin' | 'seller' | 'customer';
   password: string;
 }) {
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const supabase = createSupabaseServerClient(true);
+  let supabaseAuthId: string | null = null;
+
+  try {
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const existing = existingUsers.users?.find((u: any) => u.email?.toLowerCase() === input.email.toLowerCase());
+
+    if (existing) {
+      supabaseAuthId = existing.id;
+      await supabase.auth.admin.updateUserById(existing.id, {
+        password: input.password,
+        user_metadata: { name: input.name, role: input.role },
+        email_confirm: true,
+      });
+    } else {
+      const { data: created, error: createError } = await supabase.auth.admin.createUser({
+        email: input.email,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: { name: input.name, role: input.role },
+      });
+
+      if (createError || !created?.user) {
+        throw createError ?? new Error('Failed to create Supabase user');
+      }
+
+      supabaseAuthId = created.user.id;
+    }
+  } catch (err: any) {
+    console.warn('[seed] Supabase auth user creation may have failed for', input.email, err?.message);
+  }
 
   return prisma.user.upsert({
     where: { email: input.email },
     update: {
       name: input.name,
       role: input.role,
-      sellerStatus: input.role === 'seller' ? 'active' : 'active',
-      passwordHash,
+      sellerStatus: 'active',
+      supabaseAuthId,
+      passwordHash: null,
       emailVerified: true,
       emailVerifiedAt: new Date(),
     },
@@ -28,8 +59,9 @@ async function upsertUser(input: {
       email: input.email,
       name: input.name,
       role: input.role,
-      sellerStatus: input.role === 'seller' ? 'active' : 'active',
-      passwordHash,
+      sellerStatus: 'active',
+      supabaseAuthId,
+      passwordHash: null,
       emailVerified: true,
       emailVerifiedAt: new Date(),
     },

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { ShoppingBag, Heart, MapPin, Package, Clock, AlertCircle, Bell, Coins, ArrowRight, Truck } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
@@ -5,6 +7,7 @@ import { useWishlist } from '../../../features/shop/state/WishlistContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
 import { DashboardStatsSkeleton, ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
+import { DashboardHeader, DashboardKpiCard, DashboardSection, DashboardStatsGrid } from '@/features/shared/ui/dashboard';
 
 type NotificationItem = {
   id: string;
@@ -212,164 +215,161 @@ export const CustomerDashboard = () => {
           </div>
         </div>
       ) : null}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
-        {stats.map((stat, i) => (
-          <div
-            key={i}
-            className="bg-white p-6 rounded-2xl border border-black/5 shadow-sm flex items-center space-x-4 transition-transform duration-200 hover:-translate-y-0.5"
-          >
-            <div className="p-3 bg-gray-50 rounded-xl">{stat.icon}</div>
-            <div>
-              <p className="text-sm text-gray-500">{stat.label}</p>
-              <p className="text-2xl font-bold">{stat.value}</p>
-            </div>
-          </div>
+
+      <DashboardHeader
+        greeting={user?.name ? `Hello, ${user.name}` : undefined}
+        title="Your account"
+        description="Track orders, wishlist, and rewards."
+      />
+
+      <DashboardStatsGrid columns={5}>
+        {stats.map((stat) => (
+          <DashboardKpiCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} />
         ))}
-      </div>
+      </DashboardStatsGrid>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold">Order Snapshot</h3>
-              <p className="mt-1 text-sm text-gray-500">See what needs attention before your next checkout.</p>
-            </div>
-            <Link to="/account/orders" className="text-sm font-bold text-primary hover:underline">
-              View orders
-            </Link>
+      <DashboardSection
+        title="Order Snapshot"
+        description="See what needs attention before your next checkout."
+        action={
+          <Link to="/account/orders" className="text-sm font-bold text-primary hover:underline">
+            View orders
+          </Link>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl bg-amber-50 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Processing</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.processing}</p>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-amber-50 px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Processing</p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.processing}</p>
-            </div>
-            <div className="rounded-2xl bg-sky-50 px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">On the way</p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.shipped}</p>
-            </div>
-            <div className="rounded-2xl bg-emerald-50 px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Delivered</p>
-              <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.delivered}</p>
-            </div>
+          <div className="rounded-2xl bg-sky-50 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-700">On the way</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.shipped}</p>
           </div>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              to="/account/wallet"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
-            >
-              <Coins size={15} />
-              Open rewards
-            </Link>
-            <Link
-              to="/account/notifications"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
-            >
-              <Bell size={15} />
-              Check notifications
-            </Link>
+          <div className="rounded-2xl bg-emerald-50 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Delivered</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{orderBreakdown.delivered}</p>
           </div>
         </div>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            to="/account/wallet"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
+          >
+            <Coins size={15} />
+            Open rewards
+          </Link>
+          <Link
+            to="/account/notifications"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
+          >
+            <Bell size={15} />
+            Check notifications
+          </Link>
+        </div>
+      </DashboardSection>
 
-        <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold">Delivery Profile</h3>
-              <p className="mt-1 text-sm text-gray-500">This information will auto-fill at checkout, and you can still edit it before placing an order.</p>
-            </div>
-            <Link to="/account/settings?section=profile" className="text-sm font-bold text-primary hover:underline">
-              Manage
-            </Link>
+      <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold">Delivery Profile</h3>
+            <p className="mt-1 text-sm text-gray-500">This information will auto-fill at checkout, and you can still edit it before placing an order.</p>
           </div>
-          {defaultAddress || profileSummary ? (
-            <div className="mt-5 rounded-2xl bg-secondary/20 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-slate-950">{profileSummary?.name || defaultAddress?.name || 'Customer profile'}</p>
-                  <p className="mt-1 text-sm text-slate-500">{profileSummary?.phone || defaultAddress?.phone || 'Phone not added yet'}</p>
-                  {profileSummary?.alternate_phone || defaultAddress?.alternate_phone ? (
-                    <p className="mt-1 text-sm text-slate-500">Alt: {profileSummary?.alternate_phone || defaultAddress?.alternate_phone}</p>
-                  ) : null}
-                  <p className="mt-1 text-sm text-slate-500">{profileSummary?.email || user?.email || 'Email not available'}</p>
-                </div>
-                <MapPin className="text-primary" size={18} />
+          <Link to="/account/settings?section=profile" className="text-sm font-bold text-primary hover:underline">
+            Manage
+          </Link>
+        </div>
+        {defaultAddress || profileSummary ? (
+          <div className="mt-5 rounded-2xl bg-secondary/20 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-semibold text-slate-950">{profileSummary?.name || defaultAddress?.name || 'Customer profile'}</p>
+                <p className="mt-1 text-sm text-slate-500">{profileSummary?.phone || defaultAddress?.phone || 'Phone not added yet'}</p>
+                {profileSummary?.alternate_phone || defaultAddress?.alternate_phone ? (
+                  <p className="mt-1 text-sm text-slate-500">Alt: {profileSummary?.alternate_phone || defaultAddress?.alternate_phone}</p>
+                ) : null}
+                <p className="mt-1 text-sm text-slate-500">{profileSummary?.email || user?.email || 'Email not available'}</p>
               </div>
-              {defaultAddress ? (
-                <p className="mt-4 text-sm leading-6 text-slate-600">{buildAddressSummary(defaultAddress)}</p>
-              ) : (
-                <p className="mt-4 text-sm leading-6 text-slate-500">
-                  Add your delivery address once and future checkout will fill it automatically.
-                </p>
-              )}
+              <MapPin className="text-primary" size={18} />
             </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/10 p-5 text-sm text-slate-500">
-              Add your first delivery address to make checkout faster and shipping estimates more accurate.
-            </div>
-          )}
-
-          <div className="mt-5 space-y-3">
-            <Link
-              to="/account/settings?section=profile"
-              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
-            >
-              <span>Update name, phone, or email</span>
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              to="/account/settings?section=addresses"
-              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
-            >
-              <span>{defaultAddress ? 'Update saved address' : 'Add delivery address'}</span>
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              to="/shop"
-              className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
-            >
-              <span>Continue shopping</span>
-              <Truck size={16} />
-            </Link>
+            {defaultAddress ? (
+              <p className="mt-4 text-sm leading-6 text-slate-600">{buildAddressSummary(defaultAddress)}</p>
+            ) : (
+              <p className="mt-4 text-sm leading-6 text-slate-500">
+                Add your delivery address once and future checkout will fill it automatically.
+              </p>
+            )}
           </div>
+        ) : (
+          <div className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/10 p-5 text-sm text-slate-500">
+            Add your first delivery address to make checkout faster and shipping estimates more accurate.
+          </div>
+        )}
+
+        <div className="mt-5 space-y-3">
+          <Link
+            to="/account/settings?section=profile"
+            className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
+          >
+            <span>Update name, phone, or email</span>
+            <ArrowRight size={16} />
+          </Link>
+          <Link
+            to="/account/settings?section=addresses"
+            className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
+          >
+            <span>{defaultAddress ? 'Update saved address' : 'Add delivery address'}</span>
+            <ArrowRight size={16} />
+          </Link>
+          <Link
+            to="/shop"
+            className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-secondary"
+          >
+            <span>Continue shopping</span>
+            <Truck size={16} />
+          </Link>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-bold text-lg">Recent Orders</h3>
-          <Link to="/account/orders" className="text-primary text-sm font-bold hover:underline">View All</Link>
-        </div>
+      <DashboardSection
+        title="Recent Orders"
+        description="Your latest orders and their current status."
+        action={
+          <Link to="/account/orders" className="text-sm font-bold text-primary hover:underline">
+            View all
+          </Link>
+        }
+      >
         <div className="divide-y divide-gray-100">
           {orders.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              No orders found.
-            </div>
+            <div className="py-12 text-center text-sm text-slate-500">No orders found.</div>
           ) : (
             orders.slice(0, 5).map((order) => (
-              <div key={order.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Package className="text-gray-400" />
+              <div key={order.id} className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary/40">
+                    <Package className="text-primary" size={20} />
                   </div>
                   <div>
-                    <p className="font-bold text-sm">Order #{order.id}</p>
-                    <p className="text-xs text-gray-500">Placed on {new Date(order.created_at).toLocaleDateString()}</p>
+                    <p className="font-bold text-sm text-slate-950">Order #{order.id}</p>
+                    <p className="text-xs text-slate-500">Placed on {new Date(order.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
-              <div className="flex flex-wrap items-center gap-4 sm:gap-8">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-8">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Status</p>
-                    <div className="flex items-center space-x-1 text-primary">
+                    <p className="text-xs text-slate-500">Status</p>
+                    <div className="flex items-center gap-1 text-primary">
                       <Clock size={14} />
                       <span className="text-xs font-bold uppercase tracking-wider">{order.status}</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Total</p>
-                    <p className="font-bold text-sm">{formatPrice(order.total)}</p>
+                    <p className="text-xs text-slate-500">Total</p>
+                    <p className="font-bold text-sm text-slate-950">{formatPrice(order.total)}</p>
                   </div>
-                  <Link 
+                  <Link
                     to={`/account/orders/${order.id}`}
-                    className="bg-bg-light text-gray-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-200 transition-all"
+                    className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary/20 hover:text-primary"
                   >
                     Details
                   </Link>
@@ -378,7 +378,7 @@ export const CustomerDashboard = () => {
             ))
           )}
         </div>
-      </div>
+      </DashboardSection>
     </div>
   );
 };

@@ -5,6 +5,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const webhookHits = new Map<string, { count: number; resetAt: number }>();
+const processedUpdateIds = new Set<number>();
+const MAX_PROCESSED_IDS = 1000;
 
 function rateLimit(request: NextRequest) {
   const ip =
@@ -37,6 +39,18 @@ export async function POST(request: NextRequest) {
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
   if (!update || typeof update.update_id !== 'number') {
     return NextResponse.json({ error: 'Invalid Telegram update' }, { status: 400 });
+  }
+
+  if (processedUpdateIds.has(update.update_id)) {
+    return NextResponse.json({ ok: true, already_processed: true });
+  }
+
+  processedUpdateIds.add(update.update_id);
+  if (processedUpdateIds.size > MAX_PROCESSED_IDS) {
+    const oldestId = processedUpdateIds.values().next().value;
+    if (oldestId !== undefined) {
+      processedUpdateIds.delete(oldestId);
+    }
   }
 
   await processTelegramUpdate(update);

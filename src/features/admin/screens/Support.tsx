@@ -4,9 +4,13 @@ import { useUser } from '../../../features/shared/state/UserContext';
 import toast from '@/lib/toast';
 import { CenteredLoader, EmptyState, FormNotice } from '@/features/shared/ui/FeedbackState';
 import { openMailto } from '../../../lib/browser-actions';
+import { useSearchParams } from '../../../lib/navigation';
 
 export const AdminSupportPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlMessage = searchParams.get('message') || '';
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -39,19 +43,13 @@ export const AdminSupportPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    const nextMessageId = params.get('message');
-
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-    if (nextMessageId) {
-      setFocusedMessageId(nextMessageId);
+    if (urlMessage) {
+      setFocusedMessageId(urlMessage);
     }
-  }, []);
+  }, [urlMessage, urlSearch]);
 
   const handleStatusChange = async (id: number, status: string) => {
     try {

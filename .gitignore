@@ -4,3 +4,7 @@ dist/
 coverage/
 .env
 .env.local
+*.tsbuildinfo
+*.log
+eslint-full.json
+eslint-report.json

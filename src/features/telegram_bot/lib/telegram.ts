@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getServerEnv } from '../../../lib/env';
 import type { TelegramInlineKeyboardButton } from '../types';
 
@@ -116,5 +117,13 @@ export function validateTelegramWebhookSecret(headers: Headers) {
     return process.env.NODE_ENV !== 'production';
   }
 
-  return headers.get('x-telegram-bot-api-secret-token') === expected;
+  const provided = headers.get('x-telegram-bot-api-secret-token') || '';
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const providedBuffer = Buffer.from(provided, 'utf8');
+
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuffer, providedBuffer);
 }

@@ -54,11 +54,11 @@ export async function ensureTelegramInvoice(orderId: string) {
     frontendUrl,
   ).toString();
 
-  const invoice = await (prisma.invoice as any).upsert({
+  const invoice = await prisma.invoice.upsert({
     where: { orderId: order.id },
     create: {
-      orderId: order.id,
-      userId: order.userId,
+      order: { connect: { id: order.id } },
+      ...(order.userId ? { user: { connect: { id: order.userId } } } : {}),
       status: order.paymentStatus === 'paid' ? 'paid' : 'draft',
       subtotal: order.total,
       total: order.total,

@@ -22,6 +22,20 @@ function createRedisClient() {
   });
 }
 
+export function createBullConnection() {
+  const { REDIS_URL, REDIS_CONNECT_TIMEOUT_MS } = getServerEnv();
+
+  return new Redis(REDIS_URL, {
+    maxRetriesPerRequest: null,
+    connectTimeout: REDIS_CONNECT_TIMEOUT_MS,
+    enableReadyCheck: true,
+    retryStrategy(times) {
+      if (times > 2) return null;
+      return Math.min(times * 250, 1000);
+    },
+  });
+}
+
 export function getRedis() {
   if (!globalThis.__amarshopRedis__) {
     globalThis.__amarshopRedis__ = createRedisClient();

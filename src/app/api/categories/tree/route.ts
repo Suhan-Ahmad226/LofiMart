@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -30,12 +29,17 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(categories);
+    return NextResponse.json(categories, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
+      },
+    });
   } catch (error) {
     console.error('GET /api/categories/tree error:', error);
     return NextResponse.json([], {
       headers: {
         'X-Data-Source': 'fallback',
+        'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
       },
     });
   }

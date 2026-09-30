@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { requireApiUser } from '../_compat/shared';
 import { serializeProduct } from '../products/shared';
+import { buildPrismaPagination } from '@/server/middleware/pagination';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,13 +11,50 @@ export async function GET(request: NextRequest) {
   const user = await requireApiUser(request);
   if (user instanceof NextResponse) return user;
 
-  const items = await prisma.wishlistItem.findMany({
-    where: { userId: String(user.id) },
-    include: { product: true },
-    orderBy: { createdAt: 'desc' },
+  const searchParams = request.nextUrl.searchParams;
+  const wantsPagination =
+    searchParams.has('page') ||
+    searchParams.has('pageSize') ||
+    searchParams.has('limit') ||
+    searchParams.has('offset');
+
+  const where = { userId: String(user.id) };
+
+  if (!wantsPagination) {
+    const items = await prisma.wishlistItem.findMany({
+      where,
+      include: { product: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json(items.map((item) => serializeProduct(item.product)));
+  }
+
+  const { skip, take, meta } = buildPrismaPagination(request as any, {
+    defaultLimit: 8,
+    maxLimit: 100,
   });
 
-  return NextResponse.json(items.map((item) => serializeProduct(item.product)));
+  const [wishlistItems, total] = await Promise.all([
+    prisma.wishlistItem.findMany({
+      where,
+      include: { product: true },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.wishlistItem.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    items: wishlistItems.map((item) => serializeProduct(item.product)),
+    pagination: {
+      page: meta.page,
+      limit: meta.limit,
+      total,
+      hasMore: skip + wishlistItems.length < total,
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {

@@ -7,9 +7,9 @@ import toast from '@/lib/toast';
 interface CompareContextType {
   items: Product[];
   toggleCompare: (product: Product) => { added: boolean; reason?: string };
-  removeFromCompare: (productId: number) => void;
+  removeFromCompare: (productId: Product['id']) => void;
   clearCompare: () => void;
-  isInCompare: (productId: number) => boolean;
+  isInCompare: (productId: Product['id']) => boolean;
 }
 
 const CompareContext = createContext<CompareContextType | undefined>(undefined);
@@ -59,7 +59,7 @@ export const CompareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return { added: true };
   };
 
-  const removeFromCompare = (productId: number) => {
+  const removeFromCompare = (productId: Product['id']) => {
     const removed = items.find((item) => item.id === productId);
     setItems((current) => current.filter((item) => item.id !== productId));
     if (removed) {
@@ -76,7 +76,7 @@ export const CompareProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setItems([]);
     toast.success('Compare list cleared');
   };
-  const isInCompare = (productId: number) => items.some((item) => item.id === productId);
+  const isInCompare = (productId: Product['id']) => items.some((item) => item.id === productId);
 
   return (
     <CompareContext.Provider value={{ items, toggleCompare, removeFromCompare, clearCompare, isInCompare }}>

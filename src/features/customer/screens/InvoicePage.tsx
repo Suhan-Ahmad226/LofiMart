@@ -124,7 +124,7 @@ export const CustomerInvoicePage = () => {
   }, [order?.items]);
 
   const generatedAt = useMemo(() => new Date().toLocaleString(), []);
-  const paymentReference = order?.payment_intent_id || order?.tracking_id || order?.order_code || order?.id || null;
+  const paymentReference = order?.tracking_id || order?.order_code || order?.id || null;
 
   const handleDownloadPdf = async () => {
     if (!order) return;

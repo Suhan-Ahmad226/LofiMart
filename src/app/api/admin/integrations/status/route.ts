@@ -79,20 +79,6 @@ export async function GET(request: NextRequest) {
       'Supports courier booking, store mapping, and delivery estimates.',
     ),
     item(
-      'redx',
-      'RedX courier',
-      hasAll(['REDX_API_KEY', 'REDX_SECRET_KEY', 'REDX_BASE_URL']) ? 'ready' : 'partial',
-      hasAll(['REDX_API_KEY', 'REDX_SECRET_KEY', 'REDX_BASE_URL']) ? 'API configured' : 'Manual mode',
-      'Optional courier integration for shipping operations.',
-    ),
-    item(
-      'steadfast',
-      'Steadfast courier',
-      hasAll(['STEADFAST_API_KEY', 'STEADFAST_SECRET_KEY']) ? 'ready' : 'partial',
-      hasAll(['STEADFAST_API_KEY', 'STEADFAST_SECRET_KEY']) ? 'API configured' : 'Manual mode',
-      'Optional courier integration for delivery operations.',
-    ),
-    item(
       'google-analytics',
       'Google Analytics 4',
       process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? 'ready' : 'missing',

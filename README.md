@@ -2,23 +2,22 @@
 
 A large-scale multi-vendor ecommerce platform built with **Next.js**, **Express.js**, **Prisma**, **PostgreSQL**, and **Redis**.
 
+> **Current payment model:** checkout is **Cash on Delivery only**. Online gateways (Stripe, bKash, SSLCommerz) have been removed. See [CHANGES.md](./CHANGES.md) and the [Full Audit Report](./PROJECT_FULL_AUDIT_REPORT.md).
+
 ---
 
 ## Features
 
 - **Multi-Vendor Marketplace** — Multiple sellers with independent dashboards
-- **Customer Dashboard** — Orders, wallet, wishlist, loyalty rewards
+- **Customer Dashboard** — Orders, wallet, loyalty rewards
 - **Seller Dashboard** — Products, orders, inventory, analytics, courier management
 - **Reseller Network** — Referral system, markup management, custom storefronts
-- **Admin Dashboard** — Full platform management, accounting, POS, monitoring
-- **AI Features** — Chatbot, recommendations, visual search, pricing optimization
-- **Immersive Tech** — AR try-on, 3D product viewer, room visualizer
-- **Payment Gateways** — bKash, Stripe, SSLCommerz, Cash on Delivery, Wallet
-- **Courier Integration** — Pathao, RedX, Steadfast, Paperfly
+- **Admin Dashboard** — Full platform management, monitoring, flash sales, coupons
+- **Cash on Delivery** — Checkout collects orders COD; collect-on-delivery settlement
+- **Courier Integration** — Pathao (provider registry ready for more couriers)
 - **Telegram Bot** — Order notifications, seller management via Telegram
-- **Gamification** — Login streaks, spin wheel, missions, referral rewards
-- **Accounting** — Double-entry bookkeeping, ledger, journal entries
-- **PWA** — Offline support, push notifications, install prompt
+- **Loyalty & Rewards** — Reward points, referral credits
+- **Push Notifications** — Browser push via web-push
 
 ---
 
@@ -30,10 +29,9 @@ A large-scale multi-vendor ecommerce platform built with **Next.js**, **Express.
 | Backend | Express.js (custom server) |
 | Database | PostgreSQL (Prisma ORM, 72 models) |
 | Cache | Redis (ioredis) |
-| Queue | BullMQ (9 background workers) |
+| Queue | BullMQ (10 background workers) |
 | Auth | Supabase (OAuth) + JWT + Redis sessions |
 | Media | Cloudinary |
-| AI | Google Gemini |
 | Realtime | WebSocket (ws) |
 | Container | Docker + Docker Compose |
 
@@ -66,7 +64,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Documentation
 
-Complete technical documentation is available in the [`docs/`](./docs/) folder:
+Complete technical documentation is available in the [`docs/`](./docs/) folder. The current, authoritative audit is in [**`PROJECT_FULL_AUDIT_REPORT.md`**](./PROJECT_FULL_AUDIT_REPORT.md).
 
 | Document | Description |
 |----------|-------------|
@@ -76,10 +74,8 @@ Complete technical documentation is available in the [`docs/`](./docs/) folder:
 | [Security](./docs/Security.md) | Security layers, encryption, audit logging |
 | [Authentication](./docs/Authentication.md) | Auth flows, OAuth, session management |
 | [RBAC](./docs/RBAC.md) | Roles, permissions, access control matrix |
-| [Features](./docs/Features.md) | Complete feature catalog (30+ modules) |
 | [Business Rules](./docs/Business-Rules.md) | Validation rules, constraints, workflows |
 | [Order Flow](./docs/Order-Flow.md) | Order lifecycle, multi-vendor splitting |
-| [Payment Flow](./docs/Payment-Flow.md) | Payment processing, gateway integration |
 | [Seller Flow](./docs/Seller-Flow.md) | Seller lifecycle, onboarding, operations |
 | [Error Handling](./docs/Error-Handling.md) | Error patterns, response formats |
 | [Environment Variables](./docs/Environment-Variables.md) | All env vars with security notes |
@@ -87,9 +83,9 @@ Complete technical documentation is available in the [`docs/`](./docs/) folder:
 | [Monitoring](./docs/Monitoring.md) | Health checks, logging, alerting |
 | [Setup Guide](./docs/Setup.md) | Development environment setup |
 | [Folder Structure](./docs/Folder-Structure.md) | Codebase organization |
-| [Development Phases](./docs/Phases.md) | Roadmap and feature timeline |
 | [Changelog](./docs/Changelog.md) | Version history |
-| [AI Prompts](./docs/Prompts.md) | AI integration details |
+
+> Note: `docs/Features.md`, `docs/Phases.md`, `docs/Payment-Flow.md`, `docs/PROJECT_DOCUMENTATION.md` still describe removed features (AI, AR/3D, bKash/Stripe, POS, PWA) and are kept as historical records. The current state is reflected in this README and `PROJECT_FULL_AUDIT_REPORT.md`.
 
 ---
 
@@ -99,18 +95,18 @@ Complete technical documentation is available in the [`docs/`](./docs/) folder:
 shop/
 ├── src/
 │   ├── app/            # Next.js pages + API routes
-│   ├── features/       # Feature modules (admin, seller, shop, AI, etc.)
-│   ├── modules/        # Domain modules (accounting, inventory, RBAC, etc.)
-│   ├── server/         # Express middleware, routes, security
+│   ├── features/       # Feature modules (shop, seller, admin, courier, orders, push, …)
+│   ├── modules/        # Domain modules (rbac, inventory, logistics, reservation, …)
+│   ├── server/         # Express middleware, routes, controllers, services, security
 │   ├── components/     # Shared React components
 │   ├── lib/            # Utility libraries
 │   ├── hooks/          # React hooks
 │   ├── events/         # Domain event system
-│   └── workers/        # BullMQ background workers
+│   └── workers/        # BullMQ background workers (10 queues/processors)
 ├── prisma/             # Database schema + seed
 ├── tests/              # Test suites (Vitest)
 ├── docs/               # Technical documentation
-├── server.ts           # Custom Express server (17,000+ lines)
+├── server.ts           # Express entrypoint (bootstrap lives in src/server/)
 ├── Dockerfile          # Container build
 └── docker-compose.yml  # Local development services
 ```

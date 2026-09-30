@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, Calendar, Loader2, Tag, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Tag, User } from 'lucide-react';
 import { Link, useParams } from '../../../lib/navigation';
 import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { decorateBlogPost, formatBlogDate, type BlogPost, type DecoratedBlogPost } from '../../../lib/blog';
@@ -176,10 +176,6 @@ export const BlogPostPage = () => {
                     <div className="mt-4 flex flex-col gap-3">
                       <Link to="/shop" className="inline-flex items-center justify-between rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
                         Browse products
-                        <ArrowRight size={16} />
-                      </Link>
-                      <Link to="/ai-features" className="inline-flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                        Explore AI features
                         <ArrowRight size={16} />
                       </Link>
                     </div>

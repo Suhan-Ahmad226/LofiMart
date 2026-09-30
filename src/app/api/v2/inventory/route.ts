@@ -9,14 +9,16 @@ import { withTenantContext } from '../../../../features/shared/services/database
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
-  const user = await secureApiRoute(req, {
+  const result = await secureApiRoute(req, {
     keyPrefix: 'api:v2:inventory',
     requireAuth: true,
     roles: ['admin', 'seller'],
     limit: 120,
   });
-  if (user instanceof NextResponse) return user;
+  if (result instanceof NextResponse) return result;
+  if (!result.authorized || !result.user) return apiSuccess({ error: 'Unauthorized' }, { status: 401 });
 
+  const user = result.user;
   const sellerId = String(user.id);
   const inventory = await withTenantContext(
     { tenantId: typeof user.tenantId === 'string' ? user.tenantId : undefined, bypass: user.role === 'admin' },

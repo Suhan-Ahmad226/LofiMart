@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (user instanceof NextResponse) return user;
 
   const orders = await prisma.order.findMany({
-    where: { userId: String(user.id), NOT: { status: 'draft' } },
+    where: { userId: String(user.id) },
     include: {
       items: {
         include: {
@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
       refCode: body.refCode ? String(body.refCode) : undefined,
       shippingAddress: body.shippingAddress || body.fullAddressSummary || null,
       couponCode: body.couponCode ? String(body.couponCode) : undefined,
-      deliveryFee: Number(body.deliveryFee || 0),
       items,
     });
 

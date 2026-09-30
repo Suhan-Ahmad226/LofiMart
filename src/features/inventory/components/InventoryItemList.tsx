@@ -1,19 +1,18 @@
 import React from 'react';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
+import { useSearchParams } from '../../../lib/navigation';
 
 const InventoryItemList: React.FC = () => {
   const { inventory, warehouses } = useInventoryState();
+  const [searchParams] = useSearchParams();
+  const urlProduct = searchParams.get('product') || '';
   const [focusedProductId, setFocusedProductId] = React.useState('');
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextProductId = params.get('product');
-    if (nextProductId) {
-      setFocusedProductId(nextProductId);
+    if (urlProduct) {
+      setFocusedProductId(urlProduct);
     }
-  }, []);
+  }, [urlProduct]);
 
   React.useEffect(() => {
     if (!focusedProductId) return;

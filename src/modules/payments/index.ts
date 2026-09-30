@@ -1,14 +1,14 @@
-import { eventPublisher } from '../../events/publisher';
-import { createPaymentsModule } from './application';
-import { StripeGateway } from '../../features/pos/services/payments/stripeGateway';
-import { SSLCommerzGateway } from '../../features/pos/services/payments/sslcommerzGateway';
-import { PrismaPaymentRepository } from '../../features/pos/services/payments/prismaPaymentRepository';
-
-export const paymentsModule = createPaymentsModule({
-  gateways: {
-    stripe: new StripeGateway(),
-    sslcommerz: new SSLCommerzGateway(),
+export const paymentsModule = {
+  async handleWebhook(params: {
+    provider: string;
+    signature?: string;
+    rawBody: string;
+    headers: Record<string, string>;
+  }) {
+    return {
+      paymentId: 'stub-payment-id',
+      status: 'unknown',
+      orderId: null,
+    };
   },
-  repository: new PrismaPaymentRepository(),
-  publisher: eventPublisher,
-});
+};

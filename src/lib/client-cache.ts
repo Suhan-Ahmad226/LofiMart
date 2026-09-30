@@ -39,7 +39,7 @@ export async function getCachedClientValue<T>(
   }
 
   if (existing?.inflight) {
-    return existing.inflight;
+    return existing.inflight.catch(() => fetcher());
   }
 
   const inflight = fetcher()
@@ -59,6 +59,18 @@ export async function getCachedClientValue<T>(
     expiresAt: now + ttlMs,
     inflight,
   });
+
+  inflight
+    .finally(() => {
+      const current = clientCache.get(key);
+
+      if (current && current.inflight === inflight && !current.value) {
+        clientCache.delete(key);
+      }
+    })
+    .catch(() => {});
+
+  inflight.catch(() => {});
 
   return inflight;
 }

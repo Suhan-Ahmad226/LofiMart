@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { ensureRedis } from '../../../features/shared/services/messaging/redis';
 import { getServerEnv } from '../../../lib/env';
-import { requireApiUser, toPlainNumber } from '../products/shared';
 
-export { requireApiUser, toPlainNumber };
+export { requireApiUser, toPlainNumber } from '../products/shared';
+export type { SessionUser } from '../products/shared';
+import { toPlainNumber } from '../products/shared';
 
 export function userCartKey(userId: string | number) {
   return `${process.env.REDIS_PREFIX || 'lofimart'}:cart:${userId}`;
@@ -60,6 +61,7 @@ export function serializeUser(user: any) {
     email_verified: user.emailVerified ? 1 : 0,
     phone_verified: user.phoneVerified ? 1 : 0,
     two_factor_enabled: Boolean(user.twoFactorEnabled),
+    has_password: Boolean(user.supabaseAuthId),
     created_at: user.createdAt ? new Date(user.createdAt).toISOString() : undefined,
   };
 }
@@ -379,4 +381,11 @@ export function requireAdminRole(user: { role?: string }) {
   }
 
   return null;
+}
+
+export function requireRole(allowedRoles: string[]) {
+  return (user: any): NextResponse | null => {
+    const role = String(user?.role || '');
+    return allowedRoles.includes(role) ? null : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  };
 }

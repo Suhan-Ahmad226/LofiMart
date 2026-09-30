@@ -1,8 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0..1,0');
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', 'Segoe UI Symbol', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -77,6 +94,10 @@
   --color-text-disabled: #94A3B8;
   --color-border: #E2E8F0;
   --color-border-soft: #F1F5F9;
+
+  --shadow-card-subtle: 0 4px 20px -2px rgba(16, 24, 40, 0.06), 0 2px 6px -2px rgba(16, 24, 40, 0.04);
+  --shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-btn-shadow: 0 4px 14px 0 rgba(5, 150, 105, 0.35);
   --color-bg-light: #F8FAFC;
 }
 
@@ -703,11 +724,11 @@
     display: flex;
     align-items: stretch;
     gap: 0;
-    min-height: calc(100vh - 56px);
+    min-height: calc(100vh - 64px);
   }
 
   .seller-topbar-shell__row {
-    min-height: 56px;
+    min-height: 64px;
   }
 
   .seller-mobile-trigger {
@@ -731,13 +752,13 @@
   .seller-sidebar-wrap {
     align-self: stretch;
     flex-shrink: 0;
-    height: calc(100vh - 56px);
-    max-height: calc(100vh - 56px);
+    height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px);
   }
 
   .seller-sidebar-shell {
-    height: calc(100vh - 56px);
-    max-height: calc(100vh - 56px);
+    height: calc(100vh - 64px);
+    max-height: calc(100vh - 64px);
     min-height: 0;
     border-right: 1px solid var(--color-border);
     background: var(--color-surface-card);
@@ -746,6 +767,12 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .seller-sidebar-shell--mobile {
+    height: 100%;
+    max-height: none;
+    border-right: 0;
   }
 
   .seller-section-toggle {
@@ -844,9 +871,26 @@
       min-height: auto;
       padding: 0.875rem;
     }
+
+    .seller-main-content > * {
+      max-width: 100%;
+    }
   }
 
   @media (max-width: 639px) {
+    .seller-topbar-shell__row > div {
+      padding-inline: 0.75rem;
+    }
+
+    .seller-main-content {
+      padding: 0.75rem;
+    }
+
+    .seller-sidebar-shell--mobile .seller-sidebar-shell {
+      height: 100%;
+      max-height: none;
+    }
+
     body {
       background-image:
         radial-gradient(circle at top, rgba(37, 99, 235, 0.05), transparent 22%),
@@ -951,26 +995,24 @@
   }
 
   .product-card {
-    @apply overflow-hidden rounded-[1.65rem] border border-slate-200/80 bg-white shadow-sm transition duration-200;
+    @apply overflow-hidden rounded-2xl border border-emerald-500/20 bg-white shadow-card-subtle hover:shadow-card-hover hover:border-emerald-500/50;
   }
 
-  .product-card:hover {
-    box-shadow: 0 24px 48px -34px rgba(15, 23, 42, 0.35);
-    transform: translateY(-2px);
+  .product-card {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .product-card__media {
-    @apply relative aspect-[0.94] overflow-hidden bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)];
+    @apply relative aspect-[4/5] overflow-hidden bg-slate-50/70;
   }
 
   .product-card__body {
-    @apply space-y-3 p-4 sm:p-5;
+    @apply space-y-3 p-4;
   }
 
   .product-card__title {
-    @apply line-clamp-2 min-h-[2.75rem] font-semibold text-slate-900 transition-colors hover:text-primary;
-    font-size: var(--text-product-title);
-    line-height: var(--leading-product-title, 1.35);
+    @apply line-clamp-2 text-sm font-bold text-slate-900 transition-colors hover:text-emerald-600;
+    line-height: 1.35;
   }
 
   .product-card__meta {
@@ -979,14 +1021,30 @@
   }
 
   .product-card__price {
-    @apply font-bold text-slate-950;
+    @apply font-extrabold text-emerald-600;
     font-size: var(--text-product-price);
   }
 
   .product-card__cta {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 font-semibold text-primary-foreground transition hover:bg-primary-dark;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 font-semibold text-white transition hover:bg-emerald-700;
     font-size: var(--text-button);
     line-height: var(--leading-button, 1.25);
+  }
+
+  .product-card-compact {
+    @apply min-w-[86px] bg-white p-1.5 sm:min-w-[118px];
+  }
+
+  .card-transition {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .action-btn-transition {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .action-btn-transition:active {
+    transform: scale(0.92);
   }
 
   .dashboard-nav-link:hover {
@@ -1125,11 +1183,7 @@
     box-shadow: 0 18px 34px -22px rgba(245, 158, 11, 0.55);
   }
 
-  .product-card {
-    @apply bg-white rounded-xl border border-border overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1;
-    container-type: inline-size;
-    will-change: transform, box-shadow;
-  }
+  /* .product-card styles are applied via Tailwind utility classes in ProductCard.tsx */
 
   .responsive-grid {
     display: grid;
@@ -1144,8 +1198,8 @@
   }
 
   .responsive-hero {
-    aspect-ratio: 48 / 19;
-    min-height: 0;
+    aspect-ratio: auto;
+    min-height: clamp(20rem, 82vw, 27rem);
   }
 
   .responsive-hero-title {
@@ -1194,21 +1248,7 @@
     min-width: 2.75rem;
   }
 
-  @container (max-width: 220px) {
-    .product-card .product-card__body {
-      padding: 0.75rem;
-    }
-
-    .product-card .product-card__title {
-      min-height: 2.3rem;
-      font-size: var(--text-caption);
-      line-height: 1.2;
-    }
-
-    .product-card .product-card__price {
-      font-size: var(--text-body-sm);
-    }
-  }
+  /* Container query responsive styles for product cards */
 
   .page-shell {
     animation: page-rise 560ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -1311,11 +1351,6 @@
     .responsive-grid,
     .responsive-grid-tight {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .responsive-hero {
-      aspect-ratio: 48 / 19;
-      min-height: 0;
     }
   }
 

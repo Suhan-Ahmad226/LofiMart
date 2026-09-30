@@ -78,7 +78,7 @@ This changelog tracks all significant changes to the LofiMart platform across ve
 - Gamification system (login streaks, spin wheel, missions)
 - Referral system with attribution tracking
 - Telegram bot for seller notifications
-- Multi-courier integration (Pathao, RedX, Steadfast, Paperfly)
+- Courier integration (Pathao, through a provider-agnostic registry)
 - Reseller network with markup management
 - Custom domain support for seller storefronts
 - Bulk product upload

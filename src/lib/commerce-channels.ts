@@ -1,10 +1,12 @@
-export const AVAILABLE_CHECKOUT_PAYMENT_METHODS = ['cod', 'bkash', 'bank', 'gateway'] as const;
+export const AVAILABLE_CHECKOUT_PAYMENT_METHODS = ['cod'] as const;
 export const AVAILABLE_MANUAL_ORDER_PAYMENT_METHODS = ['cod', 'cash', 'bkash', 'nagad', 'bank_transfer'] as const;
-export const AVAILABLE_COURIER_PROVIDERS = ['pathao', 'redx', 'steadfast', 'paperfly'] as const;
+export const AVAILABLE_COURIER_PROVIDERS = ['pathao'] as const;
 
 export const DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS = ['cod'] as const;
 export const DEFAULT_ENABLED_MANUAL_ORDER_PAYMENT_METHODS = ['cod'] as const;
 export const DEFAULT_ENABLED_COURIER_PROVIDERS = ['pathao'] as const;
+
+export const PLATFORM_FEE = 5;
 
 export type CheckoutPaymentMethod = (typeof AVAILABLE_CHECKOUT_PAYMENT_METHODS)[number];
 export type ManualOrderPaymentMethod = (typeof AVAILABLE_MANUAL_ORDER_PAYMENT_METHODS)[number];

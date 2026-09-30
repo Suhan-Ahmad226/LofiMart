@@ -16,8 +16,8 @@ interface CartContextType {
   addToCart: (product: Product, quantity?: number) => void;
   setCartItemQuantity: (product: Product, quantity: number) => void;
   replaceCart: (nextItems: CartItem[]) => void;
-  removeFromCart: (productId: number, variantKey?: string) => void;
-  updateQuantity: (productId: number, quantity: number, variantKey?: string) => void;
+  removeFromCart: (productId: Product['id'], variantKey?: string) => void;
+  updateQuantity: (productId: Product['id'], quantity: number, variantKey?: string) => void;
   clearCart: () => void;
   applyCoupon: (coupon: Coupon) => void;
   removeCoupon: () => void;
@@ -189,7 +189,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const res = await api.get('/cart');
+        const res = await api.get<{ items: CartItem[] }>('/cart');
         const serverItems = Array.isArray(res.data?.items) ? (res.data.items as CartItem[]) : [];
         const mergedItems = mergeCartItems(serverItems, guestItems);
         const needsServerUpdate =
@@ -300,11 +300,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAppliedCoupon(null);
   };
 
-  const removeFromCart = (productId: number, variantKey?: string) => {
+  const removeFromCart = (productId: Product['id'], variantKey?: string) => {
     setItems(prev => prev.filter(item => !(item.id === productId && (item.selected_variant_key || '') === (variantKey || ''))));
   };
 
-  const updateQuantity = (productId: number, quantity: number, variantKey?: string) => {
+  const updateQuantity = (productId: Product['id'], quantity: number, variantKey?: string) => {
     if (quantity < 1) return;
     setItems(prev => prev.map(item =>
       item.id === productId && (item.selected_variant_key || '') === (variantKey || '') ? { ...item, quantity } : item

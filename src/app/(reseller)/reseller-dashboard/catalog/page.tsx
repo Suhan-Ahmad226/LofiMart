@@ -1,3 +1,3 @@
 'use client';
 
-export { ResellerCatalog as default } from '../../../../features/customer/screens/ResellerCatalog';
+export { ResellerCatalog as default } from '../../../../features/reseller/screens/ResellerCatalog';

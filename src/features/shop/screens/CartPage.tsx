@@ -1,13 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronRight, Heart, Home, Info, Minus, Plus, ShoppingCart, Star, Trash2 } from 'lucide-react';
-import { Link } from '@/lib/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronRight, Heart, Home, Info, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from '@/lib/navigation';
 import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { useCart } from '@/features/shop/state/CartContext';
 import { useWishlist } from '@/features/shop/state/WishlistContext';
 import { cn, formatPrice } from '@/lib/utils';
+import { PLATFORM_FEE } from '@/lib/commerce-channels';
+import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import type { CartItem, Product } from '@/types';
 
-const PLATFORM_FEE = 5;
+const DEALS_PAGE_SIZE = 8;
 
 type SellerGroup = {
   id: string;
@@ -30,6 +32,18 @@ function getProductList(payload: unknown): Product[] {
   return [];
 }
 
+function getPaginationHasMore(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const record = payload as Record<string, unknown>;
+  const pagination =
+    record.pagination && typeof record.pagination === 'object'
+      ? (record.pagination as Record<string, unknown>)
+      : null;
+  if (!pagination) return false;
+  const value = pagination.hasMore ?? pagination.has_more;
+  return typeof value === 'boolean' ? value : Boolean(value);
+}
+
 function getCartItemKey(item: Pick<CartItem, 'id' | 'selected_variant_key'>) {
   return `${item.id}:${item.selected_variant_key || 'base'}`;
 }
@@ -44,9 +58,7 @@ function getSellerName(item: CartItem) {
 }
 
 function getVariantLabel(item: CartItem) {
-  if (item.selected_variant_summary) return item.selected_variant_summary;
-  if (item.category) return `Color-${item.category}`;
-  return 'Color-Not Specified';
+  return item.selected_variant_summary || 'Standard';
 }
 
 function groupItemsBySeller(items: CartItem[]) {
@@ -191,7 +203,7 @@ const CartProduct = ({
           </Link>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            {item.rating ? (
+            {item.verification_badge ? (
               <span className="rounded bg-[#173b6c] px-1.5 py-0.5 text-[11px] font-semibold text-white">Verified</span>
             ) : null}
             <span className="rounded-full bg-[#F1F5F9] px-3 py-1 text-[#0f172a]">
@@ -203,12 +215,6 @@ const CartProduct = ({
 
           <div className="mt-7 flex flex-wrap items-center gap-2">
             <QuantityControl item={item} onUpdate={onUpdateQuantity} />
-            <button
-              type="button"
-              className="h-[30px] rounded-full border border-[#ff8bc8] px-4 text-xs text-[#2563EB] transition hover:bg-[#fff0f8]"
-            >
-              More Items Like This
-            </button>
           </div>
         </div>
 
@@ -277,133 +283,113 @@ const SellerBlock = ({
 
       <div className="flex min-h-[62px] items-center justify-between px-3">
         <span className="text-sm text-[#16A34A]">Standard Delivery</span>
-        <span className="rounded-full border border-[#7ee7ad] bg-white px-3 py-2 text-xs text-[#16A34A]">No Product Selected</span>
       </div>
     </section>
-  );
-};
-
-const CompactProductCard = ({
-  product,
-  onAddToCart,
-  onWishlist,
-  wishlisted,
-}: {
-  product: Product;
-  onAddToCart: (product: Product) => void;
-  onWishlist: (product: Product) => void;
-  wishlisted: boolean;
-}) => {
-  const discount = product.old_price && product.old_price > product.price ? Math.round(((product.old_price - product.price) / product.old_price) * 100) : 0;
-
-  return (
-    <article className="min-w-[86px] bg-white p-1.5 sm:min-w-[118px]">
-      <Link to={`/product/${product.slug}`} className="block aspect-square overflow-hidden bg-[#f7f8fb]">
-        <img
-          src={product.image || '/icon.svg'}
-          alt={product.name}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-        />
-      </Link>
-      <Link to={`/product/${product.slug}`} className="mt-1.5 block min-h-[28px] text-[10px] leading-[14px] text-[#111827] hover:text-[#2563EB]">
-        <span className="line-clamp-2">{product.name}</span>
-      </Link>
-      <div className="mt-1 flex items-start justify-between gap-1">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-semibold text-[#2563EB]">{formatPrice(product.price)}</span>
-            {discount > 0 ? <span className="text-[9px] text-[#2563EB]">-{discount}%</span> : null}
-          </div>
-          {product.old_price && product.old_price > product.price ? (
-            <p className="text-[9px] text-[#8a94a6] line-through">{formatPrice(product.old_price)}</p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={() => onWishlist(product)}
-          aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-          className="shrink-0 text-[#2563EB] transition hover:text-[#2563EB]"
-        >
-          <Heart size={14} fill={wishlisted ? 'currentColor' : 'none'} aria-hidden="true" />
-        </button>
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-1">
-        <div className="flex items-center gap-0.5 text-[#ff9800]">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Star key={index} size={8} fill="currentColor" aria-hidden="true" />
-          ))}
-          <span className="ml-0.5 text-[8px] text-[#98a2b3]">({product.reviews_count || 0})</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => onAddToCart(product)}
-          aria-label={`Add ${product.name} to cart`}
-          className="text-[#2563EB] transition hover:text-[#2563EB]"
-        >
-          <ShoppingCart size={13} aria-hidden="true" />
-        </button>
-      </div>
-    </article>
   );
 };
 
 const ProductRailSection = ({
   title,
   products,
-  onAddToCart,
-  onWishlist,
-  isWishlisted,
   onLoadMore,
   hasMore = false,
+  loadingMore = false,
+  loadError = false,
+  onRetry,
 }: {
   title: string;
   products: Product[];
-  onAddToCart: (product: Product) => void;
-  onWishlist: (product: Product) => void;
-  isWishlisted: (productId: number) => boolean;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  loadingMore?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
 }) => {
-  if (products.length === 0) return null;
+  const showFooter = (onLoadMore != null && hasMore) || Boolean(loadError && onRetry);
+  if (products.length === 0 && !showFooter) return null;
 
   return (
     <section className="bg-white">
-      <h2 className="border-b border-[#eef0f3] px-2 py-2 text-xs font-medium text-black">{title}</h2>
-      <div className="grid grid-cols-2 gap-2 px-2 py-2 min-[430px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-        {products.map((product) => (
-          <CompactProductCard
-            key={`${title}-${product.id}`}
-            product={product}
-            onAddToCart={onAddToCart}
-            onWishlist={onWishlist}
-            wishlisted={isWishlisted(product.id)}
-          />
-        ))}
-      </div>
-      {onLoadMore && hasMore ? (
-        <div className="flex justify-center border-t border-[#eef0f3] px-2 py-3">
-          <button
-            type="button"
-            onClick={onLoadMore}
-            className="h-9 rounded-full border border-[#2563EB] px-6 text-sm font-semibold text-[#2563EB] transition hover:bg-[#fff0f8]"
-          >
-            Load More
-          </button>
+      <header className="flex items-center gap-2 border-b border-[#eef0f3] px-3 py-3">
+        <span className="h-4 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#9b3bb0] to-[#2563EB]" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-black">{title}</h2>
+      </header>
+      {products.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 px-3 py-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          {products.map((product) => (
+            <ProductCard
+              key={`${title}-${product.id}`}
+              product={product}
+            />
+          ))}
+        </div>
+      ) : null}
+      {showFooter ? (
+        <div className="flex flex-col items-center gap-2 border-t border-[#eef0f3] px-2 py-3">
+          {loadError ? (
+            <>
+              <p className="text-[13px] text-[#b91c1c]" role="alert">
+                Couldn't load more products.
+              </p>
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={loadingMore}
+                className="h-9 rounded-full border border-[#2563EB] px-6 text-sm font-semibold text-[#2563EB] transition hover:bg-[#fff0f8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Try Again
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              className="h-9 rounded-full border border-[#2563EB] px-6 text-sm font-semibold text-[#2563EB] transition hover:bg-[#fff0f8] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingMore ? 'Loading...' : 'Load More'}
+            </button>
+          )}
         </div>
       ) : null}
     </section>
   );
 };
 
+const ProductRailSkeleton = ({ title, count = 8 }: { title: string; count?: number }) => (
+  <section className="bg-white">
+    <header className="flex items-center gap-2 border-b border-[#eef0f3] px-3 py-3">
+      <span className="h-4 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#9b3bb0] to-[#2563EB]" aria-hidden="true" />
+      <h2 className="text-sm font-semibold text-black">{title}</h2>
+    </header>
+    <div className="grid grid-cols-2 gap-3 px-3 py-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="rounded-lg border border-slate-200 bg-white p-2">
+          <Skeleton className="aspect-square w-full rounded-md" />
+          <Skeleton className="mt-3 h-3 w-4/5 rounded" />
+          <Skeleton className="mt-2 h-3 w-3/5 rounded" />
+          <Skeleton className="mt-3 h-9 w-full rounded-md" />
+        </div>
+      ))}
+    </div>
+  </section>
+);
+
 export const CartPage = () => {
-  const { items, addToCart, removeFromCart, updateQuantity, isReady } = useCart();
+  const { items, removeFromCart, updateQuantity, replaceCart, isReady } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
+  const navigate = useNavigate();
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
-  const [recommendations, setRecommendations] = useState<Product[]>([]);
-  const [visibleDealCount, setVisibleDealCount] = useState(12);
+  const [deals, setDeals] = useState<Product[]>([]);
+  const [dealsHasMore, setDealsHasMore] = useState(false);
+  const [dealsInitialLoading, setDealsInitialLoading] = useState(true);
+  const [dealsInitialError, setDealsInitialError] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [dealsLoadError, setDealsLoadError] = useState(false);
+
+  const nextDealsPageRef = useRef(1);
+  const loadMoreInFlightRef = useRef(false);
+  const loadMoreControllerRef = useRef<AbortController | null>(null);
 
   const groups = useMemo(() => groupItemsBySeller(items), [items]);
 
@@ -412,60 +398,76 @@ export const CartPage = () => {
 
   const selectedItems = useMemo(() => items.filter((item) => selectedKeys.has(getCartItemKey(item))), [items, selectedKeys]);
   const productTotal = useMemo(() => selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [selectedItems]);
-  const totalPayment = selectedItems.length > 0 ? productTotal + PLATFORM_FEE : PLATFORM_FEE;
-  const fallbackProducts = useMemo<Product[]>(() => items.map(({ quantity: _quantity, ...product }) => product), [items]);
-  const recommendationProducts = recommendations.length > 0 ? recommendations : fallbackProducts;
-  const recentlyViewedProducts = useMemo(() => recommendationProducts.slice(0, 6), [recommendationProducts]);
-  const dealProducts = useMemo(() => recommendationProducts.slice(6, 30), [recommendationProducts]);
-  const visibleDealProducts = useMemo(() => {
-    const products = dealProducts.length > 0 ? dealProducts : recommendationProducts;
-    return products.slice(0, visibleDealCount);
-  }, [dealProducts, recommendationProducts, visibleDealCount]);
-  const hasMoreDeals = (dealProducts.length > 0 ? dealProducts : recommendationProducts).length > visibleDealCount;
+  const totalPayment = productTotal + PLATFORM_FEE;
+
+  const fetchDealsPage = useCallback(
+    async (page: number, signal?: AbortSignal) => {
+      const response = await fetch(`/api/products?page=${page}&limit=${DEALS_PAGE_SIZE}`, {
+        signal,
+      });
+      if (!response.ok) throw new Error('Failed to load deals');
+      const payload = await response.json().catch(() => null);
+      return {
+        products: getProductList(payload),
+        hasMore: getPaginationHasMore(payload),
+      };
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
+    let cancelled = false;
 
     void (async () => {
       try {
-        const response = await fetch('/api/products?limit=30', {
-          signal: controller.signal,
-          cache: 'no-store',
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) return;
-        if (!controller.signal.aborted) {
-          setRecommendations(getProductList(payload));
-        }
+        const { products, hasMore } = await fetchDealsPage(1, controller.signal);
+        if (cancelled || controller.signal.aborted) return;
+        setDeals(products);
+        setDealsHasMore(hasMore);
+        nextDealsPageRef.current = 2;
       } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          setRecommendations([]);
+        if (cancelled || controller.signal.aborted || (error as Error).name === 'AbortError') return;
+        setDeals([]);
+        setDealsHasMore(false);
+        setDealsInitialError(true);
+      } finally {
+        if (!cancelled && !controller.signal.aborted) {
+          setDealsInitialLoading(false);
         }
       }
     })();
 
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [fetchDealsPage]);
+
+  useEffect(() => {
+    return () => loadMoreControllerRef.current?.abort();
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
 
     queueMicrotask(() => {
       if (cancelled) return;
 
       setSelectedKeys((current) => {
-        const validKeys = new Set(allKeys);
-        const next = new Set<string>();
+        if (allKeys.length === 0 || current.size === 0) {
+          return current.size === 0 && allKeys.length > 0 ? new Set(allKeys) : current;
+        }
 
+        let next: Set<string> | null = null;
         for (const key of current) {
-          if (validKeys.has(key)) next.add(key);
+          if (!allKeys.includes(key)) {
+            if (!next) next = new Set(current);
+            next.delete(key);
+          }
         }
 
-        if (current.size === 0 && allKeys.length > 0) {
-          return new Set(allKeys);
-        }
-
-        return next;
+        return next ?? current;
       });
     });
 
@@ -518,7 +520,7 @@ export const CartPage = () => {
       const max = Number.isFinite(stock) && stock > 0 ? stock : Number.POSITIVE_INFINITY;
       const nextQuantity = Math.min(Math.max(1, quantity), max);
       if (nextQuantity !== item.quantity) {
-        updateQuantity(item.id, nextQuantity, item.selected_variant_key);
+        updateQuantity(item.id, nextQuantity, item.selected_variant_key ?? undefined);
       }
     },
     [updateQuantity],
@@ -526,7 +528,7 @@ export const CartPage = () => {
 
   const handleRemove = useCallback(
     (item: CartItem) => {
-      removeFromCart(item.id, item.selected_variant_key);
+      removeFromCart(item.id, item.selected_variant_key ?? undefined);
       setSelectedKeys((current) => {
         const next = new Set(current);
         next.delete(getCartItemKey(item));
@@ -538,10 +540,20 @@ export const CartPage = () => {
 
   const handleDeleteSelected = useCallback(() => {
     for (const item of selectedItems) {
-      removeFromCart(item.id, item.selected_variant_key);
+      removeFromCart(item.id, item.selected_variant_key ?? undefined);
     }
     setSelectedKeys(new Set());
   }, [removeFromCart, selectedItems]);
+
+  const handleCheckout = useCallback(() => {
+    if (selectedItems.length === 0) return;
+    if (selectedItems.length === items.length) {
+      navigate('/checkout');
+      return;
+    }
+    replaceCart(selectedItems);
+    navigate('/checkout');
+  }, [items.length, navigate, replaceCart, selectedItems]);
 
   const handleWishlist = useCallback(
     (item: CartItem) => {
@@ -552,18 +564,85 @@ export const CartPage = () => {
     [addToWishlist, isInWishlist],
   );
 
-  const handleRecommendationWishlist = useCallback(
-    (product: Product) => {
-      if (!isInWishlist(product.id)) {
-        void addToWishlist(product);
-      }
-    },
-    [addToWishlist, isInWishlist],
-  );
-
   const handleLoadMoreDeals = useCallback(() => {
-    setVisibleDealCount((count) => count + 12);
-  }, []);
+    if (loadMoreInFlightRef.current || isLoadingMore || !dealsHasMore) return;
+
+    setDealsLoadError(false);
+
+    const page = nextDealsPageRef.current;
+    loadMoreInFlightRef.current = true;
+    setIsLoadingMore(true);
+
+    const controller = new AbortController();
+    loadMoreControllerRef.current = controller;
+
+    void (async () => {
+      try {
+        const { products, hasMore } = await fetchDealsPage(page, controller.signal);
+        if (controller.signal.aborted) return;
+
+        setDeals((current) => {
+          const seen = new Map(current.map((product) => [product.id, product]));
+          for (const product of products) {
+            if (!seen.has(product.id)) seen.set(product.id, product);
+          }
+          return Array.from(seen.values());
+        });
+        setDealsHasMore(hasMore);
+        nextDealsPageRef.current = page + 1;
+      } catch (error) {
+        if (!controller.signal.aborted && (error as Error).name !== 'AbortError') {
+          setDealsLoadError(true);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingMore(false);
+        }
+        loadMoreInFlightRef.current = false;
+        if (loadMoreControllerRef.current === controller) {
+          loadMoreControllerRef.current = null;
+        }
+      }
+    })();
+  }, [fetchDealsPage, isLoadingMore, dealsHasMore]);
+
+  const handleRetryDeals = useCallback(() => {
+    if (loadMoreInFlightRef.current) return;
+
+    setDealsInitialError(false);
+    setDealsLoadError(false);
+
+    loadMoreInFlightRef.current = true;
+    setIsLoadingMore(true);
+
+    const controller = new AbortController();
+    loadMoreControllerRef.current = controller;
+
+    void (async () => {
+      try {
+        const { products, hasMore } = await fetchDealsPage(1, controller.signal);
+        if (controller.signal.aborted) return;
+
+        setDeals(products);
+        setDealsHasMore(hasMore);
+        nextDealsPageRef.current = 2;
+      } catch (error) {
+        if (!controller.signal.aborted && (error as Error).name !== 'AbortError') {
+          setDeals([]);
+          setDealsHasMore(false);
+          setDealsInitialError(true);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingMore(false);
+        }
+        loadMoreInFlightRef.current = false;
+        if (loadMoreControllerRef.current === controller) {
+          loadMoreControllerRef.current = null;
+        }
+      }
+    })();
+  }, [fetchDealsPage]);
 
   if (!isReady) return <CartSkeleton />;
 
@@ -572,7 +651,7 @@ export const CartPage = () => {
       <main className="min-h-screen bg-[#f5f5f5] px-2 py-6">
         <div className="mx-auto max-w-xl rounded bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf6ff] text-[#6366F1]">
-            <Home size={28} aria-hidden="true" />
+            <ShoppingCart size={28} aria-hidden="true" />
           </div>
           <h1 className="mt-5 text-xl font-semibold text-black">Your cart is empty</h1>
           <p className="mt-2 text-sm text-[#667085]">Add products to see them here.</p>
@@ -653,33 +732,32 @@ export const CartPage = () => {
                 <span className="font-semibold">{formatPrice(totalPayment)}</span>
               </div>
             </div>
-            <Link
-              to="/checkout"
-              className="mt-10 flex h-[33px] w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#9b3bb0_0%,#2563EB_100%)] text-sm font-semibold text-white transition hover:opacity-95"
+            <button
+              type="button"
+              onClick={handleCheckout}
+              disabled={selectedItems.length === 0}
+              className="mt-10 flex h-[33px] w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#9b3bb0_0%,#2563EB_100%)] text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Checkout
-            </Link>
+            </button>
           </div>
         </aside>
       </div>
 
       <div className="mt-3 space-y-3 px-2 pb-6 sm:px-3">
-        <ProductRailSection
-          title="Recently viewed product"
-          products={recentlyViewedProducts}
-          onAddToCart={addToCart}
-          onWishlist={handleRecommendationWishlist}
-          isWishlisted={isInWishlist}
-        />
-        <ProductRailSection
-          title="Deals you can't miss"
-          products={visibleDealProducts}
-          onAddToCart={addToCart}
-          onWishlist={handleRecommendationWishlist}
-          isWishlisted={isInWishlist}
-          onLoadMore={handleLoadMoreDeals}
-          hasMore={hasMoreDeals}
-        />
+        {dealsInitialLoading ? (
+          <ProductRailSkeleton title="Deals you can't miss" />
+        ) : (
+          <ProductRailSection
+            title="Deals you can't miss"
+            products={deals}
+            onLoadMore={handleLoadMoreDeals}
+            onRetry={deals.length > 0 ? handleLoadMoreDeals : handleRetryDeals}
+            hasMore={deals.length > 0 && dealsHasMore}
+            loadingMore={isLoadingMore}
+            loadError={deals.length > 0 ? dealsLoadError : dealsInitialError}
+          />
+        )}
       </div>
     </main>
   );

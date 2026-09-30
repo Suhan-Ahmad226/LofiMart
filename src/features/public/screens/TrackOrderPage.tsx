@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Search, Package, Truck, CheckCircle, Clock } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
+import { useSearchParams } from '../../../lib/navigation';
 
 interface TrackingStep {
   label: string;
@@ -44,6 +45,9 @@ interface TrackingResult {
 }
 
 export const TrackOrderPage = () => {
+  const [searchParams] = useSearchParams();
+  const urlOrder = (searchParams.get('order') || searchParams.get('search') || '').toUpperCase();
+  const urlShipment = searchParams.get('shipment') || '';
   const [orderId, setOrderId] = useState('');
   const [tracking, setTracking] = useState(false);
   const [result, setResult] = useState<TrackingResult | null>(null);
@@ -67,9 +71,8 @@ export const TrackOrderPage = () => {
     };
   };
 
-  const handleTrack = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetValue = orderId.trim();
+  const runTrack = useCallback(async (code: string) => {
+    const targetValue = code.trim();
     if (!targetValue) return;
     setTracking(true);
     setResult(null);
@@ -105,24 +108,24 @@ export const TrackOrderPage = () => {
     } finally {
       setTracking(false);
     }
+  }, []);
+
+  const handleTrack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runTrack(orderId);
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!urlOrder) return;
+    setOrderId(urlOrder);
+    void runTrack(urlOrder);
+  }, [runTrack, urlOrder]);
 
-    const params = new URLSearchParams(window.location.search);
-    const nextOrder = params.get('order') || params.get('search');
-    const nextShipment = params.get('shipment');
-
-    if (nextOrder) {
-      setOrderId(nextOrder.toUpperCase());
-      void handleTrack({ preventDefault() {} } as React.FormEvent);
+  useEffect(() => {
+    if (urlShipment) {
+      setFocusedShipmentId(urlShipment);
     }
-
-    if (nextShipment) {
-      setFocusedShipmentId(nextShipment);
-    }
-  }, []);
+  }, [urlShipment]);
 
   useEffect(() => {
     if (!result || !focusedShipmentId) return;

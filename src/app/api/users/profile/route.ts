@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { getProfilePayload, requireApiUser } from '../../_compat/shared';
+import { deleteMedia, enqueueMediaDelete, parseCloudinaryAssetUrl } from '@/lib/media';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,10 +36,59 @@ export async function PATCH(request: NextRequest) {
     data.responseTimeHours = body.response_time_hours == null ? null : Number(body.response_time_hours);
   }
 
-  await prisma.user.update({
+  const current = await prisma.user.findUnique({
+    where: { id: String(user.id) },
+    select: { storefrontBannerUrl: true },
+  });
+
+  const updated = await prisma.user.update({
     where: { id: String(user.id) },
     data,
   });
+
+  if (
+    'storefrontBannerUrl' in data &&
+    current?.storefrontBannerUrl &&
+    current.storefrontBannerUrl !== updated.storefrontBannerUrl
+  ) {
+    try {
+      await deleteMedia({ url: current.storefrontBannerUrl });
+    } catch {
+      await enqueueMediaDelete({
+        url: current.storefrontBannerUrl,
+        reason: 'profile-storefront-banner-replaced',
+        entityType: 'User',
+        entityId: String(user.id),
+      });
+    }
+  }
+
+  const parsedBanner = parseCloudinaryAssetUrl(updated.storefrontBannerUrl);
+  if (parsedBanner) {
+    await prisma.mediaAsset.upsert({
+      where: { publicId_resourceType: { publicId: parsedBanner.publicId, resourceType: parsedBanner.resourceType } },
+      create: {
+        url: updated.storefrontBannerUrl!,
+        publicId: parsedBanner.publicId,
+        resourceType: parsedBanner.resourceType,
+        ownerType: 'User',
+        ownerId: String(user.id),
+        entityType: 'User',
+        entityId: String(user.id),
+        fieldName: 'storefrontBannerUrl',
+      },
+      update: {
+        url: updated.storefrontBannerUrl!,
+        ownerType: 'User',
+        ownerId: String(user.id),
+        entityType: 'User',
+        entityId: String(user.id),
+        fieldName: 'storefrontBannerUrl',
+        status: 'active',
+        deletedAt: null,
+      },
+    });
+  }
 
   const payload = await getProfilePayload(String(user.id));
   return NextResponse.json(payload);

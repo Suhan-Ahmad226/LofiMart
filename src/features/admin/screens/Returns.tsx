@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2, Search, ShieldAlert, Undo2, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
+import { useSearchParams } from '../../../lib/navigation';
 import toast from '@/lib/toast';
 
 type ReturnRequestRecord = {
@@ -59,6 +60,9 @@ function getStatusTone(status: string) {
 
 export const AdminReturnsPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlRequest = searchParams.get('request') || '';
   const [requests, setRequests] = useState<ReturnRequestRecord[]>([]);
   const [summary, setSummary] = useState<ReturnSummary>({ total: 0, pending: 0, approved: 0, rejected: 0, refunded: 0 });
   const [loading, setLoading] = useState(true);
@@ -103,19 +107,13 @@ export const AdminReturnsPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    const nextRequest = params.get('request');
-
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-    if (nextRequest) {
-      setFocusedRequestId(nextRequest);
+    if (urlRequest) {
+      setFocusedRequestId(urlRequest);
     }
-  }, []);
+  }, [urlRequest, urlSearch]);
 
   const filteredRequests = useMemo(() => {
     const term = search.trim().toLowerCase();

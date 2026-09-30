@@ -1,23 +1,27 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
+interface CacheEntry<T = unknown> {
+  data: T;
+  timestamp: number;
+  ttl?: number;
+}
+
+interface OfflineQueueEntry {
+  id: string;
+  type: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  url: string;
+  data: unknown;
+  timestamp: number;
+}
+
 interface CacheStore extends DBSchema {
   cache: {
     key: string;
-    value: {
-      data: any;
-      timestamp: number;
-      ttl?: number;
-    };
+    value: CacheEntry;
   };
   offline_queue: {
     key: string;
-    value: {
-      id: string;
-      type: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-      url: string;
-      data: any;
-      timestamp: number;
-    };
+    value: OfflineQueueEntry;
     indexes: { 'by-timestamp': number };
   };
 }
@@ -26,7 +30,7 @@ interface OfflineQueuedRequest {
   id: string;
   type: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   url: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -59,7 +63,7 @@ export const initOfflineStorage = async (): Promise<void> => {
 // Cache Operations
 export const offlineStorage = {
   // Cache get
-  async get<T = any>(key: string): Promise<T | null> {
+  async get<T = unknown>(key: string): Promise<T | null> {
     if (!db) await initOfflineStorage();
     try {
       const item = await db?.get('cache', key);
@@ -79,7 +83,7 @@ export const offlineStorage = {
   },
 
   // Cache set
-  async set<T = any>(key: string, data: T, ttl?: number): Promise<void> {
+  async set<T = unknown>(key: string, data: T, ttl?: number): Promise<void> {
     if (!db) await initOfflineStorage();
     try {
       await db?.put('cache', {
@@ -113,7 +117,7 @@ export const offlineStorage = {
   },
 
   // Queue operations
-  async queueRequest(type: 'POST' | 'PUT' | 'DELETE' | 'PATCH', url: string, data?: any): Promise<string> {
+  async queueRequest(type: 'POST' | 'PUT' | 'DELETE' | 'PATCH', url: string, data?: unknown): Promise<string> {
     if (!db) await initOfflineStorage();
     const id = `${Date.now()}-${Math.random()}`;
     try {
@@ -143,7 +147,7 @@ export const offlineStorage = {
   },
 
   // Process queue (sync when online)
-  async processQueue(onlineCallback?: (request: any) => Promise<any>): Promise<void> {
+  async processQueue(onlineCallback?: (request: OfflineQueuedRequest) => Promise<unknown>): Promise<void> {
     if (!db) await initOfflineStorage();
     try {
       const requests = (await offlineStorage.getQueuedRequests()) ?? [];

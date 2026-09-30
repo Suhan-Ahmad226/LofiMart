@@ -32,6 +32,7 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
   const { addToCart, items } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
+  const oldPrice = product.old_price ?? 0;
   const isWishlisted = isInWishlist(product.id);
   const isAlreadyInCart = items.some(
     (item) =>
@@ -39,9 +40,9 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
       (item.selected_variant_key || '') === (product.selected_variant_key || ''),
   );
   const discount =
-    product.old_price > product.price
+    oldPrice > product.price
       ? Math.round(
-          ((product.old_price - product.price) / product.old_price) * 100,
+          ((oldPrice - product.price) / oldPrice) * 100,
         )
       : 0;
 
@@ -179,9 +180,9 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
                   <span className="text-2xl font-bold text-primary">
                     {formatPrice(product.price)}
                   </span>
-                  {product.old_price > product.price && (
+                  {oldPrice > product.price && (
                     <span className="text-sm text-slate-400 line-through">
-                      {formatPrice(product.old_price)}
+                      {formatPrice(oldPrice)}
                     </span>
                   )}
                 </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from '@/lib/toast';
 import { CheckCircle2, EyeOff, Loader2, MessageSquare, Search, ShieldCheck, SquarePen, XCircle } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
+import { useSearchParams } from '../../../lib/navigation';
 
 type AdminCommunityPost = {
   id: string;
@@ -54,6 +55,8 @@ type AdminCommunityReport = {
 
 export const AdminCommunityPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlReport = searchParams.get('report') || '';
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<AdminCommunityPost[]>([]);
   const [comments, setComments] = useState<AdminCommunityComment[]>([]);
@@ -88,13 +91,10 @@ export const AdminCommunityPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const nextReport = params.get('report');
-    if (nextReport) {
-      setFocusedReportId(nextReport);
+    if (urlReport) {
+      setFocusedReportId(urlReport);
     }
-  }, []);
+  }, [urlReport]);
 
   const filteredPosts = useMemo(() => {
     const term = query.trim().toLowerCase();

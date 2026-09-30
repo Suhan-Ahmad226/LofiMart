@@ -18,8 +18,20 @@ export interface Warehouse {
     secondaryPhone?: string;
     otpNumber?: string;
   };
-  pathao?: {
-    storeId?: number;
+  /**
+   * The warehouse's link to a courier pickup point.
+   *
+   * Provider-neutral on purpose: the courier's own ids and the pickup point it
+   * assigned us both arrive as opaque values from whichever courier is mapped. A
+   * second courier gets a second mapping rather than a second set of columns here.
+   */
+  courier?: {
+    provider: string;
+    storeId: string;
+    storeName?: string;
+    /** `pending` while the courier reviews the pickup point, then `active`. */
+    storeStatus?: string;
+    storeActive?: boolean;
     cityId?: number;
     zoneId?: number;
     areaId?: number;

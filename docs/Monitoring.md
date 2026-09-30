@@ -129,7 +129,7 @@ Each of the 9 BullMQ workers reports:
 GET /api/admin/integrations/status
 ```
 
-Returns health status of all external integrations (email, SMS, push, Google auth, Stripe, SSLCommerz, Pathao, RedX, Steadfast).
+Returns health status of all external integrations (email, SMS, push, Google auth, Stripe, SSLCommerz, Pathao).
 
 ---
 

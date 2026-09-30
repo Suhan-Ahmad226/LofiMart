@@ -64,8 +64,7 @@ graph TB
         Stripe["Stripe<br/>(Card Payments)"]
         SSLCommerz["SSLCommerz<br/>(Gateway)"]
         Pathao["Pathao Courier"]
-        RedX["RedX Courier"]
-        Steadfast["Steadfast Courier"]
+
         TelegramAPI["Telegram Bot API"]
     end
 
@@ -91,8 +90,7 @@ graph TB
     Express --> Stripe
     Express --> SSLCommerz
     Modules --> Pathao
-    Modules --> RedX
-    Modules --> Steadfast
+
     WS --> Redis
 ```
 
@@ -287,7 +285,7 @@ graph TB
         AuthFeatures["Auth Features<br/>(Login, Register)"]
         InventoryFeatures["Inventory Features<br/>(Warehouses, Stock)"]
         ResellerFeatures["Reseller Features<br/>(Catalog, Earnings)"]
-        CourierFeatures["Courier Features<br/>(Pathao, RedX, Steadfast)"]
+        CourierFeatures["Courier Features<br/>(Pathao)"]
     end
 
     subgraph "Shared Components (features/shared/)"

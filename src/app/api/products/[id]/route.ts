@@ -8,6 +8,7 @@ import {
   serializeProduct,
   userCanManageProduct,
 } from '../shared';
+import { associateProductMedia, collectProductMedia, deleteManyMedia, enqueueMediaDelete, parseCloudinaryAssetUrl } from '@/lib/media';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,10 +31,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     });
 
     if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Product not found' }, { status: 404, headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' } });
     }
 
-    return NextResponse.json(serializeProduct(product));
+    return NextResponse.json(serializeProduct(product), {
+      headers: {
+        'Cache-Control': 'public, max-age=120, s-maxage=600, stale-while-revalidate=1800',
+      },
+    });
   } catch (error) {
     console.error('GET /api/products/[id] error:', error);
     return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
@@ -52,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const body = await request.json();
     const data: Record<string, unknown> = {};
+    const beforeMedia = await collectProductMedia(id);
 
     if ('name' in body) data.name = String(body.name || '').trim();
     if ('description' in body) data.description = body.description ? String(body.description) : null;
@@ -94,6 +100,35 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data,
     });
 
+    const product = await prisma.product.findUnique({
+      where: { id },
+      select: { sellerId: true, image: true, galleryImages: true, videoUrl: true, model3d: true },
+    });
+
+    if (product?.sellerId) {
+      const nextUrls = [
+        product.image,
+        product.videoUrl,
+        product.model3d,
+        ...(Array.isArray(product.galleryImages) ? product.galleryImages.filter((item): item is string => typeof item === 'string') : []),
+      ].filter((item): item is string => Boolean(item));
+      await associateProductMedia(id, product.sellerId, nextUrls);
+
+      const nextRefs = new Set(nextUrls.map((url) => parseCloudinaryAssetUrl(url)?.publicId).filter(Boolean));
+      const removed = beforeMedia.filter((item) => item.publicId && !nextRefs.has(item.publicId));
+      const cleanup = await deleteManyMedia(removed);
+      for (const failed of cleanup.errors) {
+        await enqueueMediaDelete({
+          publicId: failed.item.publicId,
+          url: failed.item.url,
+          resourceType: failed.item.resourceType,
+          reason: 'product-media-replaced',
+          entityType: 'Product',
+          entityId: id,
+        });
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('PUT /api/products/[id] error:', error);
@@ -111,7 +146,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
 
   try {
+    const media = await collectProductMedia(id);
     await prisma.product.delete({ where: { id } });
+    const cleanup = await deleteManyMedia(media);
+    for (const failed of cleanup.errors) {
+      await enqueueMediaDelete({
+        publicId: failed.item.publicId,
+        url: failed.item.url,
+        resourceType: failed.item.resourceType,
+        reason: 'product-deleted',
+        entityType: 'Product',
+        entityId: id,
+      });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/products/[id] error:', error);

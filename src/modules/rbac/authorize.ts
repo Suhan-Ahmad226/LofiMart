@@ -1,5 +1,6 @@
 import type { Permission } from './permissions';
 import type { Role } from './roles';
+import { isRole } from './roles';
 
 const rolePermissions: Record<Role, ReadonlySet<Permission>> = {
   guest: new Set<Permission>(['catalog:read']),
@@ -19,7 +20,13 @@ const rolePermissions: Record<Role, ReadonlySet<Permission>> = {
   ]),
 };
 
-export function can(role: Role, permission: Permission): boolean {
+export function can(role: unknown, permission: Permission): boolean {
+  // Fail closed on unknown roles: authorization must never crash because of an
+  // unexpected role value. An unrecognized role is denied access (403), never
+  // a server exception.
+  if (!isRole(role)) {
+    return false;
+  }
   return rolePermissions[role].has(permission);
 }
 

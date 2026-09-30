@@ -8,7 +8,7 @@ import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { getCachedClientValue } from '../../../lib/client-cache';
 
 interface FrequentlyBoughtTogetherProps {
-  productId: number;
+  productId: Product['id'];
 }
 
 export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> = ({ productId }) => {

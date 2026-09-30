@@ -8,6 +8,7 @@ import { useCart } from '../../../features/shop/state/CartContext';
 import { formatPrice } from '../../../lib/utils';
 import type { Product } from '../../../types';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
+import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { copyText } from '../../../lib/browser-actions';
 
 type StorefrontResponse = {
@@ -28,6 +29,38 @@ type StorefrontResponse = {
   products: Product[];
 };
 
+function StorefrontSkeleton() {
+  return (
+    <div className="pb-16">
+      <div className="h-52 w-full animate-pulse bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 md:h-64" />
+      <div className="mx-auto max-w-7xl px-4 py-10 md:px-6">
+        <div className="space-y-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-3">
+              <Skeleton className="h-7 w-56" />
+              <Skeleton className="h-4 w-80 max-w-full" />
+            </div>
+            <Skeleton className="h-11 w-full md:w-80" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
+                <Skeleton className="aspect-square w-full rounded-none" />
+                <div className="space-y-3 p-5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-11 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const PublicResellerStorefront = () => {
   const { code } = useParams();
   const navigate = useNavigate();
@@ -36,6 +69,7 @@ export const PublicResellerStorefront = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [data, setData] = useState<StorefrontResponse | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!code) return;
@@ -71,7 +105,7 @@ export const PublicResellerStorefront = () => {
     return () => {
       ignore = true;
     };
-  }, [code]);
+  }, [code, reloadKey]);
 
   const filteredProducts = useMemo(() => {
     const allProducts = data?.products || [];
@@ -225,14 +259,14 @@ export const PublicResellerStorefront = () => {
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
               {filteredProducts.map((product) => (
-                <div key={product.id} className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                  <div className="aspect-square overflow-hidden bg-slate-100">
+                <div key={product.id} className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/70 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/80 hover:-translate-y-1">
+                  <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 via-slate-100/70 to-slate-50">
                     <OptimizedImage
                       src={product.image}
                       alt={product.name}
                       widthHint={640}
                       heightHint={640}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
                   <div className="space-y-4 p-5">
@@ -248,7 +282,7 @@ export const PublicResellerStorefront = () => {
                       <button
                         type="button"
                         onClick={() => addProductToCart(product)}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
                         style={{ backgroundColor: accent }}
                       >
                         <ShoppingCart size={16} />

@@ -90,7 +90,7 @@ src/
     ai/                       AI (components + hooks + screens)
     auth/                     Auth (components + screens + services)
     bazaar/                   Marketplace discovery
-    courier/                  Courier adapters (Pathao, RedX, Steadfast, Manual)
+    courier/                  Courier core, provider registry, and Pathao adapter
     customer/                 Customer dashboard screens
     inventory/                Inventory (components + hooks + services + state)
     pos/                      POS payment gateways

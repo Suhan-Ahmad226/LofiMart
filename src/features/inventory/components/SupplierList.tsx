@@ -1,21 +1,20 @@
 import React from 'react';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
+import { useSearchParams } from '../../../lib/navigation';
 
 const SupplierList: React.FC = () => {
   const { suppliers } = useInventoryState();
+  const [searchParams] = useSearchParams();
+  const urlSupplier = searchParams.get('supplier') || '';
+  const urlSection = searchParams.get('section') || '';
   const [focusedSupplierId, setFocusedSupplierId] = React.useState('');
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSupplierId = params.get('supplier');
-    const nextSection = params.get('section');
-    if (nextSupplierId) {
-      setFocusedSupplierId(nextSupplierId);
+    if (urlSupplier) {
+      setFocusedSupplierId(urlSupplier);
     }
 
-    if (nextSection === 'suppliers' || nextSupplierId) {
+    if (urlSection === 'suppliers' || urlSupplier) {
       const timeoutId = window.setTimeout(() => {
         document.getElementById('inventory-suppliers-section')?.scrollIntoView({
           behavior: 'smooth',
@@ -25,7 +24,7 @@ const SupplierList: React.FC = () => {
 
       return () => window.clearTimeout(timeoutId);
     }
-  }, []);
+  }, [urlSection, urlSupplier]);
 
   React.useEffect(() => {
     if (!focusedSupplierId) return;

@@ -12,12 +12,15 @@ import {
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '../../../lib/bangladesh-address';
+import { useNavigate, useSearchParams } from '../../../lib/navigation';
 import { CenteredLoader, FormNotice } from '@/features/shared/ui/FeedbackState';
 
 type ProfileManagerProps = {
   role: 'customer' | 'seller' | 'reseller';
   title: string;
   description: string;
+  enabledSections?: SectionId[];
+  showPageHeader?: boolean;
 };
 
 type SectionId = 'profile' | 'addresses' | 'verification' | 'notifications' | 'payout' | 'security';
@@ -137,8 +140,11 @@ function buildAddressSummary(address: {
   return buildBangladeshAddressLine(address);
 }
 
-export function ProfileManager({ role, title, description }: ProfileManagerProps) {
-  const { token, user, setUser } = useUser();
+export function ProfileManager({ role, title, description, enabledSections, showPageHeader = true }: ProfileManagerProps) {
+  const { token, user, setUser, logout } = useUser();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSection = (searchParams.get('section') as SectionId | null) || '';
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
@@ -156,6 +162,9 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
   const [addressForm, setAddressForm] = useState(emptyAddress);
   const [payoutForm, setPayoutForm] = useState(emptyPayoutMethod);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+  const [setPasswordState, setSetPasswordState] = useState<'idle' | 'otp' | 'done'>('idle');
+  const [setPasswordPin, setSetPasswordPin] = useState('');
+  const [setPasswordNew, setSetPasswordNew] = useState('');
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
   const [verificationFiles, setVerificationFiles] = useState<Record<string, File | null>>({
     front: null,
@@ -170,7 +179,11 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
   });
   const [focusedSection, setFocusedSection] = useState<SectionId | ''>('');
   const [openSections, setOpenSections] = useState<SectionId[]>(() =>
-    role === 'customer' ? ['profile', 'addresses', 'security'] : ['profile', 'addresses', 'payout'],
+    enabledSections
+      ? enabledSections
+      : role === 'customer'
+        ? ['profile', 'addresses', 'security']
+        : ['profile', 'addresses', 'payout'],
   );
 
   const showVerification = role === 'seller' || role === 'reseller';
@@ -211,13 +224,10 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const nextSection = params.get('section') as SectionId | null;
-    if (nextSection) {
-      setFocusedSection(nextSection);
+    if (urlSection) {
+      setFocusedSection(urlSection);
     }
-  }, []);
+  }, [urlSection]);
 
   const payoutMethods = profile?.payout_methods || [];
   const addresses = profile?.addresses || [];
@@ -231,7 +241,7 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
   );
 
   useEffect(() => {
-    if (!focusedSection || typeof window === 'undefined') return;
+    if (enabledSections || !focusedSection || typeof window === 'undefined') return;
     setOpenSections((current) => (current.includes(focusedSection) ? current : [...current, focusedSection]));
     window.requestAnimationFrame(() => {
       document.getElementById(`profile-section-${focusedSection}`)?.scrollIntoView({
@@ -239,7 +249,7 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
         block: 'center',
       });
     });
-  }, [focusedSection, profile]);
+  }, [enabledSections, focusedSection, profile]);
 
   const toggleSection = (sectionId: SectionId) => {
     setOpenSections((current) =>
@@ -275,7 +285,15 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
       if (!response.ok) throw new Error(data.error || 'Failed to update profile');
       setMessage('Profile updated successfully.');
       setProfile((current: any) => ({ ...current, user: data.user }));
-      if (user) setUser({ ...user, name: data.user.name, phone: data.user.phone, alternate_phone: data.user.alternate_phone });
+      if (user) {
+        setUser({
+          ...user,
+          name: data.user.name,
+          phone: data.user.phone,
+          alternate_phone: data.user.alternate_phone,
+          avatar_url: data.user.avatar_url,
+        });
+      }
     });
   };
 
@@ -294,7 +312,15 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
       if (!response.ok) throw new Error(data.error || 'Failed to upload avatar');
       setMessage('Profile image updated.');
       setProfile((current: any) => ({ ...current, user: data.user }));
-      if (user) setUser({ ...user, name: data.user.name, phone: data.user.phone, alternate_phone: data.user.alternate_phone });
+      if (user) {
+        setUser({
+          ...user,
+          name: data.user.name,
+          phone: data.user.phone,
+          alternate_phone: data.user.alternate_phone,
+          avatar_url: data.user.avatar_url,
+        });
+      }
     });
   };
 
@@ -444,8 +470,65 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to update password');
       setPasswordForm({ currentPassword: '', newPassword: '' });
-      setMessage('Password updated. Other sessions were revoked.');
-      await fetchProfile();
+      // The server revokes every session (including the one this request used)
+      // the moment the password changes. Clear client auth state and send the
+      // user to the login page instead of fetching the profile with a now-revoked
+      // session (that would surface a confusing 401 in the UI).
+      logout();
+      navigate('/login?notice=password_changed', { replace: true });
+    });
+  };
+
+  const passwordIdentifier = profile?.user?.email || user?.email;
+
+  const requestSetPassword = async () => {
+    if (!passwordIdentifier) {
+      setError('Email address is missing from the profile.');
+      return;
+    }
+    await runAction(async () => {
+      const response = await fetch('/api/auth/request-set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ identifier: passwordIdentifier }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send verification code');
+      setSetPasswordState('otp');
+      setMessage('A verification code was sent. Enter it below to set your password.');
+    });
+  };
+
+  const submitSetPassword = async () => {
+    if (!passwordIdentifier) {
+      setError('Email address is missing from the profile.');
+      return;
+    }
+    if (setPasswordNew.length < 8) {
+      setError('Use at least 8 characters for your password.');
+      return;
+    }
+    await runAction(async () => {
+      const response = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          identifier: passwordIdentifier,
+          pin: setPasswordPin,
+          password: setPasswordNew,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to set password');
+      setSetPasswordState('done');
+      setSetPasswordPin('');
+      setSetPasswordNew('');
+      // The server revokes every session (including the one this request used)
+      // the moment the password is set. Clear client auth state and send the user
+      // to the login page instead of fetching the profile with a now-revoked
+      // session (that would surface a confusing 401 in the UI).
+      logout();
+      navigate('/login?notice=password_set', { replace: true });
     });
   };
 
@@ -457,11 +540,7 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to send verification code');
-      setMessage(
-        data.phoneVerificationCode
-          ? `Phone verification code sent. Dev code: ${data.phoneVerificationCode}`
-          : 'Phone verification code sent.',
-      );
+      setMessage('Phone verification code sent.');
     });
   };
 
@@ -504,21 +583,26 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
     return <CenteredLoader label="Loading your profile workspace..." className="min-h-[320px]" />;
   }
 
+  const visibleSection = (id: SectionId) => !enabledSections || enabledSections.includes(id);
+
   return (
     <div className="space-y-8">
-      <div className="surface-card p-8">
-        <div>
+      {showPageHeader ? (
+        <div className="surface-card p-8">
           <div>
-            <h1 className="text-3xl font-bold">{title}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-500">{description}</p>
+            <div>
+              <h1 className="text-3xl font-bold">{title}</h1>
+              <p className="mt-2 max-w-3xl text-sm text-gray-500">{description}</p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {message ? <FormNotice tone="success">{message}</FormNotice> : null}
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
 
       <div className="space-y-6">
+        {visibleSection('profile') ? (
         <SectionShell
           id="profile"
           title={role === 'customer' ? 'Personal details' : 'Profile and business basics'}
@@ -669,7 +753,9 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
             </button>
           </form>
         </SectionShell>
+        ) : null}
 
+        {visibleSection('addresses') ? (
         <SectionShell
           id="addresses"
           title="Delivery profile and addresses"
@@ -821,8 +907,9 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
             </div>
           </form>
         </SectionShell>
+        ) : null}
 
-        {showVerification ? (
+        {showVerification && visibleSection('verification') ? (
           <SectionShell
             id="verification"
             title="Verification"
@@ -893,7 +980,7 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
           </SectionShell>
         ) : null}
 
-        {showPayouts ? (
+        {showPayouts && visibleSection('payout') ? (
           <SectionShell
             id="payout"
             title="Payments and payouts"
@@ -913,7 +1000,6 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
                 >
                   <option value="bank_account">Bank account</option>
                   <option value="mobile_banking">Mobile banking</option>
-                  <option value="stripe">Stripe</option>
                   <option value="paypal">PayPal</option>
                 </select>
                 <input
@@ -1003,34 +1089,119 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
           </SectionShell>
         ) : null}
 
+        {visibleSection('security') ? (
         <SectionShell
           id="security"
           title="Security and privacy"
-          description="Update your password and control data export or privacy requests."
+          description="Set or update your password and control data export or privacy requests."
           icon={<Lock size={20} />}
           focused={focusedSection === 'security'}
           open={openSections.includes('security')}
           onToggle={toggleSection}
         >
-          <form onSubmit={changePassword} className="space-y-4">
-            <input
-              value={passwordForm.currentPassword}
-              onChange={(e) => setPasswordForm((current) => ({ ...current, currentPassword: e.target.value }))}
-              placeholder="Current password"
-              type="password"
-              className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <input
-              value={passwordForm.newPassword}
-              onChange={(e) => setPasswordForm((current) => ({ ...current, newPassword: e.target.value }))}
-              placeholder="New password"
-              type="password"
-              className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
-            />
-            <button type="submit" disabled={submitting} className="btn-primary px-6 py-3">
-              Update password
-            </button>
-          </form>
+          {profile?.user?.has_password ? (
+            <form onSubmit={changePassword} className="space-y-4">
+              <div>
+                <label htmlFor="current-password" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Current password
+                </label>
+                <input
+                  id="current-password"
+                  name="currentPassword"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm((current) => ({ ...current, currentPassword: e.target.value }))}
+                  placeholder="Enter your current password"
+                  type="password"
+                  autoComplete="current-password"
+                  className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label htmlFor="new-password" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  New password
+                </label>
+                <input
+                  id="new-password"
+                  name="newPassword"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm((current) => ({ ...current, newPassword: e.target.value }))}
+                  placeholder="At least 8 characters"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <p className="mt-1.5 text-xs text-slate-400">Use at least 8 characters. Mix letters, numbers and symbols for a stronger password.</p>
+              </div>
+              <button type="submit" disabled={submitting} className="btn-primary px-6 py-3">
+                Update password
+              </button>
+            </form>
+          ) : setPasswordState === 'done' ? (
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700">
+              You now have a password. Next time you can sign in with your email and password.
+            </div>
+          ) : setPasswordState === 'otp' ? (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                We sent a verification code to your email. Enter it and choose your new password.
+              </p>
+              <div>
+                <label htmlFor="set-password-pin" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Verification code
+                </label>
+                <input
+                  id="set-password-pin"
+                  name="setPasswordPin"
+                  value={setPasswordPin}
+                  onChange={(e) => setSetPasswordPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="6-digit code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label htmlFor="set-password-new" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  New password
+                </label>
+                <input
+                  id="set-password-new"
+                  name="setPasswordNew"
+                  value={setPasswordNew}
+                  onChange={(e) => setSetPasswordNew(e.target.value)}
+                  placeholder="At least 8 characters"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="w-full rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={() => void submitSetPassword()} disabled={submitting} className="btn-primary px-6 py-3">
+                  Set password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void requestSetPassword()}
+                  disabled={submitting}
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700"
+                >
+                  Resend code
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                This account currently has no password — sign in works through a linked Google or Facebook account.
+                Set a password to also sign in with your email.
+              </p>
+              <button type="button" onClick={() => void requestSetPassword()} disabled={submitting} className="btn-primary px-6 py-3">
+                Set a password
+              </button>
+            </div>
+          )}
 
           <div className="mt-8 space-y-3">
             <div className="flex flex-wrap gap-3">
@@ -1051,6 +1222,7 @@ export function ProfileManager({ role, title, description }: ProfileManagerProps
             </div>
           </div>
         </SectionShell>
+        ) : null}
       </div>
     </div>
   );

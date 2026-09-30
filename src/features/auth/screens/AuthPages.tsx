@@ -15,36 +15,35 @@ import {
   User,
 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
+import OtpInput from '@/features/auth/components/OtpInput';
 import { AuthAlert, AuthShell, InputField, PasswordVisibilityButton } from '@/features/auth/components/AuthUI';
 import {
   buildAuthCallbackUrl,
-  exchangeSupabaseSession,
-  getSupabaseBrowserClient,
   getPasswordStrength,
+  getSupabaseBrowserClient,
   hasSupabaseBrowserEnv,
+  loginWithPassword,
   mapAuthMessage,
   normalizeRedirectTarget,
   rememberPendingOAuthRedirect,
+  requestEmailVerification,
   resolvePostAuthDestination,
+  resendOtpCode,
+  verifyOtpCode,
   type AccountRole,
 } from '../../../lib/auth-ui';
 
 const bdPhoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
 
-function formatBangladeshPhone(input: string) {
-  const digits = String(input || '').replace(/[^0-9]/g, '');
-  if (!digits) return input;
-  // remove leading country code if present
-  let local = digits;
-  if (local.startsWith('88')) local = local.slice(2);
-  if (local.startsWith('0')) local = local.slice(1);
-  // ensure we have 10 or 11 digits remaining starting with 1
-  if (!local || !local.startsWith('1')) return input;
-  // local now like 1XXXXXXXXX (10 digits after removing leading 0?)
-  // Pad if necessary
-  const part1 = local.slice(0, 4);
-  const part2 = local.slice(4);
-  return `+880 ${part1}${part2 ? '-' + part2 : ''}`;
+function GoogleGIcon({ className = 'h-4 w-4 shrink-0' }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
 }
 
 type RoleConfig = {
@@ -91,24 +90,97 @@ export const LoginPage = () => {
   const supabaseReady = hasSupabaseBrowserEnv();
   const [searchParams] = useSearchParams();
   const redirectTarget = normalizeRedirectTarget(searchParams.get('redirect'));
+  const authError = searchParams.get('auth_error');
   const queryError = searchParams.get('error');
   const queryNotice = searchParams.get('notice');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [needsVerification, setNeedsVerification] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryPin, setRecoveryPin] = useState('');
+  const [recoverySending, setRecoverySending] = useState(false);
+  const [recoveryResendCooldown, setRecoveryResendCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const navigate = useNavigate();
-  const { login, isAuthenticated, isReady, user } = useUser();
+  const { login, logout, isAuthenticated, isReady, user } = useUser();
 
   useEffect(() => {
+    if (recoveryResendCooldown <= 0) return;
+    const timerId = window.setTimeout(() => setRecoveryResendCooldown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timerId);
+  }, [recoveryResendCooldown]);
+
+  useEffect(() => {
+    // When the login page was reached because a protected route's server-side
+    // authentication check failed (`auth_error=session_expired`), do NOT bounce
+    // an apparently-authenticated localStorage user straight back to that route.
+    // That bounce is the original infinite redirect loop. Suppress it here so
+    // the login form remains usable.
+    if (authError) {
+      return;
+    }
+
     if (!isReady || !isAuthenticated || !user) {
       return;
     }
 
     navigate(resolvePostAuthDestination(user.role, redirectTarget), { replace: true });
-  }, [isAuthenticated, isReady, navigate, redirectTarget, user]);
+  }, [authError, isAuthenticated, isReady, navigate, redirectTarget, user]);
+
+  useEffect(() => {
+    // Auth-failure arrival: sessions are Supabase cookie sessions now, restored
+    // on every page load by the browser client, so the old token-refresh
+    // endpoints (/api/auth/csrf, /api/auth/refresh) no longer exist. Check the
+    // live Supabase session directly. If it is still valid, restore the local
+    // profile and continue to the destination (no loop). If it is gone, clear
+    // all stale client state so localStorage is never treated as proof of a
+    // live session, and keep the login form usable.
+    if (!authError) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const recover = async () => {
+      setRecovering(true);
+      try {
+        const supabase = await getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getUser();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (data?.user) {
+          const response = await fetch('/api/users/profile', { credentials: 'include' });
+          const payload = await response.json().catch(() => null);
+          if (response.ok && payload?.user) {
+            const recoveredUser = payload.user;
+            login({ ...recoveredUser, name: recoveredUser.name || '' });
+            navigate(resolvePostAuthDestination(recoveredUser.role, redirectTarget), { replace: true });
+            return;
+          }
+        }
+
+        logout();
+      } catch {
+        logout();
+      } finally {
+        if (!cancelled) {
+          setRecovering(false);
+        }
+      }
+    };
+
+    void recover();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authError, login, logout, navigate, redirectTarget]);
 
   useEffect(() => {
     if (queryError) {
@@ -117,49 +189,103 @@ export const LoginPage = () => {
     if (queryNotice === 'logged_out') {
       toast.success('You have been signed out successfully.');
     }
+    if (queryNotice === 'password_changed') {
+      toast.success('Password updated. Please sign in with your new password.');
+    }
+    if (queryNotice === 'password_set') {
+      toast.success('Password set. Please sign in with your new password.');
+    }
+    if (queryNotice === 'set_password') {
+      toast.success('Your email is verified. Use "Forgot password?" to create a password, then sign in.');
+    }
   }, [queryError, queryNotice]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setNeedsVerification(false);
+const startEmailVerification = async (identifierOverride?: string) => {
+      setError('');
+      setRecoverySending(true);
+      try {
+        const identifierToUse = (identifierOverride ?? recoveryEmail).trim();
+        await requestEmailVerification({ identifier: identifierToUse });
+        setRecoveryResendCooldown(60);
+      } catch (err: unknown) {
+        setError(mapAuthMessage(err));
+      } finally {
+        setRecoverySending(false);
+      }
+    };
 
-    if (!supabaseReady) {
-      setError('Supabase authentication is not configured for this environment yet.');
+  const handleRecoveryVerify = async (pinOverride?: string) => {
+    const pin = (pinOverride ?? recoveryPin).trim();
+    setError('');
+    if (pin.length < 6) {
+      setError('Enter the full 6-digit verification code.');
       return;
     }
 
-    setLoading(true);
-
+    setRecoverySending(true);
     try {
-      const supabase = await getSupabaseBrowserClient();
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      try {
+        await verifyOtpCode({ identifier: recoveryEmail, purpose: 'verify_email', pin });
+      } catch (verifyErr: unknown) {
+        const code = (verifyErr as { code?: string })?.code;
+        if (code === 'INVALID' || code === 'EXPIRED' || code === 'MAX_ATTEMPTS') {
+          setRecoveryPin('');
+        }
+        setError(mapAuthMessage(verifyErr));
+        return;
+      }
+
+      toast.success('Email verified. Signing you in...');
+
+      const data = await loginWithPassword({
+        identifier: identifier.trim(),
         password,
+        redirectTarget: redirectTarget || undefined,
       });
-      if (signInError) {
-        throw new Error(signInError.message || 'Login failed');
-      }
-
-      const sessionToken = signInData.session?.access_token;
-      if (!sessionToken) {
-        throw new Error('Supabase session was not created');
-      }
-
-      const data = await exchangeSupabaseSession({ accessToken: sessionToken });
-      login(data.user, data.token, data.refreshToken);
+      login(data.user);
       toast.success(`Welcome back${data.user?.name ? `, ${data.user.name}` : ''}.`);
       navigate(resolvePostAuthDestination(data.user.role, redirectTarget), { replace: true });
-    } catch (err: any) {
-      const message = mapAuthMessage(err?.message ?? err ?? 'Unable to sign in right now.');
-      if (String(message).toLowerCase().includes('verify')) {
-        setNeedsVerification(true);
-      }
-      setError(message);
+    } catch {
+      setNeedsVerification(false);
+      setRecoveryPin('');
+      setError('Your email is verified. Please sign in with your email and password.');
     } finally {
-      setLoading(false);
+      setRecoverySending(false);
     }
   };
+
+const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+      setNeedsVerification(false);
+
+      if (!identifier.trim() || !password) {
+        setError('Email or phone number and password are required.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const data = await loginWithPassword({ identifier, password, redirectTarget: redirectTarget || undefined });
+        login(data.user);
+        toast.success(`Welcome back${data.user?.name ? `, ${data.user.name}` : ''}.`);
+        navigate(resolvePostAuthDestination(data.user.role, redirectTarget), { replace: true });
+      } catch (err: unknown) {
+        if ((err as { code?: string })?.code === 'EMAIL_NOT_VERIFIED') {
+          const pendingEmail = (err as { identifier?: string })?.identifier || identifier.trim();
+           setNeedsVerification(true);
+           setRecoveryEmail(pendingEmail);
+           setRecoveryPin('');
+           setRecoveryResendCooldown(0);
+           void startEmailVerification(pendingEmail);
+          return;
+        }
+        setError(mapAuthMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <AuthShell
@@ -205,21 +331,81 @@ export const LoginPage = () => {
           </AuthAlert>
         )}
         {error && <AuthAlert tone="error">{error}</AuthAlert>}
-        {needsVerification && (
-          <AuthAlert tone="warning">
-            Please verify your email first. Check your inbox for the verification link, then sign in again.
+        {isAuthenticated && user && authError && (
+          <AuthAlert tone="info">
+            You are already signed in as <span className="font-semibold">{user.name || user.email}</span>. Signing in as someone else here switches you over cleanly.
           </AuthAlert>
         )}
 
+        {needsVerification ? (
+          <div className="space-y-5">
+             <AuthAlert tone="warning">
+               Your email is not verified yet. Enter the 6-digit code sent to{' '}
+               <span className="font-semibold">{recoveryEmail}</span> to verify it and finish signing in.
+             </AuthAlert>
+
+            <div className="space-y-4">
+              <OtpInput
+                value={recoveryPin}
+                onChange={setRecoveryPin}
+                autoFocus
+                ariaLabel="Email verification code"
+                onComplete={(next) => {
+                  if (next.length === 6) void handleRecoveryVerify(next);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void handleRecoveryVerify()}
+                disabled={recoverySending || recoveryPin.length < 6}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
+              >
+                {recoverySending ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Verify and sign in</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => void startEmailVerification()}
+                disabled={recoverySending || recoveryResendCooldown > 0}
+                className="font-semibold text-fuchsia-300 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {recoveryResendCooldown > 0 ? `Resend code in ${recoveryResendCooldown}s` : 'Resend code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                setNeedsVerification(false);
+                setRecoveryPin('');
+                setError('');
+                }}
+                className="font-semibold text-slate-400 transition hover:text-slate-200 hover:underline"
+              >
+                Back to sign in
+              </button>
+            </div>
+          </div>
+        ) : (
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <InputField
               icon={<Mail size={18} />}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              autoComplete="email"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="Email address or phone number"
+              autoComplete="username"
             />
             <InputField
               icon={<Lock size={18} />}
@@ -246,10 +432,15 @@ export const LoginPage = () => {
 
           <button
             type="submit"
-            disabled={loading || !supabaseReady}
+            disabled={loading || recovering || !supabaseReady}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
           >
-            {loading ? (
+            {recovering ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                <span>Restoring your session...</span>
+              </>
+            ) : loading ? (
               <>
                 <Loader2 className="animate-spin" size={18} />
                 <span>Signing in...</span>
@@ -262,6 +453,7 @@ export const LoginPage = () => {
             )}
           </button>
         </form>
+        )}
 
         <div className="space-y-4">
           <div className="relative">
@@ -293,15 +485,15 @@ export const LoginPage = () => {
                     },
                   });
                   if (oauthError) throw oauthError;
-                } catch (err: any) {
-                  setError(mapAuthMessage(err?.message || err || 'Google sign-in failed'));
+                } catch (err: unknown) {
+                  setError(mapAuthMessage(err));
                   setLoading(false);
                 }
               }}
               disabled={!supabaseReady}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-violet-400/40 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <img src="https://www.google.com/favicon.ico" className="h-4 w-4" alt="Google" />
+              <GoogleGIcon />
               <span>Google</span>
             </button>
             <button
@@ -323,8 +515,8 @@ export const LoginPage = () => {
                     },
                   });
                   if (oauthError) throw oauthError;
-                } catch (err: any) {
-                  setError(mapAuthMessage(err?.message || err || 'Facebook sign-in failed'));
+                } catch (err: unknown) {
+                  setError(mapAuthMessage(err));
                   setLoading(false);
                 }
               }}
@@ -352,12 +544,14 @@ export const RegisterPage = () => {
   const supabaseReady = hasSupabaseBrowserEnv();
   const [searchParams] = useSearchParams();
   const redirectTarget = normalizeRedirectTarget(searchParams.get('redirect'));
+  const authError = searchParams.get('auth_error');
   const roleParam = searchParams.get('role');
   const referralCode = searchParams.get('ref') || '';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [skipPassword, setSkipPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<AccountRole | null>(null);
@@ -365,8 +559,18 @@ export const RegisterPage = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsOtp, setNeedsOtp] = useState(false);
+  const [otpPin, setOtpPin] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
-  const { login, isAuthenticated, isReady, user } = useUser();
+  const { isAuthenticated, isReady, user } = useUser();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timerId = window.setTimeout(() => setResendCooldown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timerId);
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (roleParam === 'customer' || roleParam === 'seller' || roleParam === 'reseller') {
@@ -375,12 +579,16 @@ export const RegisterPage = () => {
   }, [roleParam]);
 
   useEffect(() => {
+    if (authError) {
+      return;
+    }
+
     if (!isReady || !isAuthenticated || !user) {
       return;
     }
 
     navigate(resolvePostAuthDestination(user.role, redirectTarget), { replace: true });
-  }, [isAuthenticated, isReady, navigate, redirectTarget, user]);
+  }, [authError, isAuthenticated, isReady, navigate, redirectTarget, user]);
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
 
@@ -394,41 +602,44 @@ export const RegisterPage = () => {
       return;
     }
 
-    if (password.length < 8) {
+    if (!skipPassword && password.length < 8) {
       setError('Use at least 8 characters for your password.');
+      return;
+    }
+
+    if (!role) {
+      setError('Choose your account type before continuing.');
       return;
     }
 
     const normalizedPhone = String(phone || '').replace(/[^0-9+]/g, '');
     if (!normalizedPhone || !bdPhoneRegex.test(normalizedPhone)) {
-      setError('Enter a valid Bangladesh phone number (e.g. +8801234567890).');
-      return;
-    }
-
-    if (!role) {
-      setError('Please choose whether you are registering as a customer, seller, or reseller.');
+      setError('Enter a valid Bangladesh phone number (e.g. +8801712345678).');
       return;
     }
 
     setLoading(true);
 
-    const registerStage: 'server-register' | null = 'server-register';
-
     try {
+      const registerPayloadBody: Record<string, unknown> = {
+        email,
+        phone,
+        name,
+        role,
+        referralCode,
+        redirectTo: redirectTarget
+          ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirectTarget)}`
+          : `${window.location.origin}/login`,
+      };
+
+      if (!skipPassword) {
+        registerPayloadBody.password = password;
+      }
+
       const registerResponse = await fetch('/api/auth/supabase/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            email,
-            phone,
-            password,
-            role,
-            name,
-            referralCode,
-            redirectTo: redirectTarget
-              ? `${window.location.origin}/login?redirect=${encodeURIComponent(redirectTarget)}`
-              : `${window.location.origin}/login`,
-          }),
+        body: JSON.stringify(registerPayloadBody),
       });
       const registerPayload = await registerResponse.json().catch(() => null);
 
@@ -438,37 +649,80 @@ export const RegisterPage = () => {
         );
       }
 
-      if (registerPayload?.token && registerPayload?.user) {
-        login(registerPayload.user, registerPayload.token, registerPayload.refreshToken);
-        toast.success(`Welcome${registerPayload.user?.name ? `, ${registerPayload.user.name}` : ''}. Your account is ready.`);
-        navigate(resolvePostAuthDestination(registerPayload.user.role, redirectTarget), { replace: true });
+      if (registerPayload?.requiresVerification) {
+        setNeedsOtp(true);
+        if (registerPayload?.resumingAccount) {
+          setMessage(
+            'An account with this email and phone already existed but was never verified. We resumed it and sent a fresh code to verify it now.'
+          );
+          toast.success('Existing account resumed. Verify to continue.');
+        } else {
+          setMessage('A verification code was sent to your email. Enter it below to activate your account.');
+          toast.success('Account created. Verify your code to continue.');
+        }
         return;
       }
 
       toast.success('Account created. Please verify your email to continue.');
       setMessage(
-        `Your ${role} account was created. Please verify your email from your inbox, then sign in to continue${redirectTarget ? ` to ${redirectTarget}` : ''}.`,
+        `Your account was created. Please verify your email from your inbox, then sign in to continue${redirectTarget ? ` to ${redirectTarget}` : ''}.`,
       );
       return;
-    } catch (err: any) {
-      const normalizedMessage = mapAuthMessage(err?.message ?? err);
+    } catch (err: unknown) {
+      const normalizedMessage = mapAuthMessage(err);
 
-      if (
-        normalizedMessage &&
-        normalizedMessage !== 'Authentication could not be completed right now.'
-      ) {
-        setError(normalizedMessage);
-        return;
-      }
-
-      if (registerStage === 'server-register') {
-        setError('We could not create your account right now. Please try again in a moment.');
-        return;
-      }
-
-      setError('Unable to create your account right now.');
+      setError(
+        normalizedMessage === 'Authentication could not be completed right now.'
+          ? 'We could not create your account right now. Please try again in a moment.'
+          : normalizedMessage,
+      );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async (pinOverride?: string) => {
+    const pin = (pinOverride ?? otpPin).trim();
+    setError('');
+    if (!pin || pin.length < 6) {
+      setError('Enter the full 6-digit OTP.');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      await verifyOtpCode({ identifier: email, purpose: 'register', pin });
+
+      toast.success(
+        skipPassword ? 'Email verified. Set a password to sign in.' : 'Email verified.',
+      );
+      const loginQuery = new URLSearchParams();
+      if (redirectTarget) loginQuery.set('redirect', redirectTarget);
+      if (skipPassword) loginQuery.set('notice', 'set_password');
+      navigate(`/login${loginQuery.size ? `?${loginQuery.toString()}` : ''}`, { replace: true });
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'INVALID' || code === 'EXPIRED' || code === 'MAX_ATTEMPTS') {
+        setOtpPin('');
+      }
+      setError(mapAuthMessage(err));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOtpResend = async () => {
+    setError('');
+    setOtpLoading(true);
+    try {
+      const result = await resendOtpCode({ identifier: email, purpose: 'register' });
+      const seconds = typeof result?.resendInSeconds === 'number' ? result.resendInSeconds : 60;
+      setResendCooldown(seconds);
+      setMessage('A new verification code was sent to your email.');
+    } catch (err: unknown) {
+      setError(mapAuthMessage(err));
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -518,6 +772,60 @@ export const RegisterPage = () => {
         {error && <AuthAlert tone="error">{error}</AuthAlert>}
         {message && <AuthAlert tone="success">{message}</AuthAlert>}
 
+        {needsOtp ? (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-white">Verify your account</p>
+              <p className="text-sm leading-6 text-slate-400">
+                We sent a 6-digit verification code to {email}. The code expires in 5 minutes.
+              </p>
+            </div>
+
+            <OtpInput
+              value={otpPin}
+              onChange={setOtpPin}
+              autoFocus={false}
+              ariaLabel="Registration verification code"
+              onComplete={(next) => {
+                if (next.length === 6) {
+                  setOtpPin(next);
+                  void handleOtpVerify(next);
+                }
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => void handleOtpVerify()}
+              disabled={otpLoading || otpPin.length < 6}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition hover:-translate-y-0.5 hover:from-violet-500 hover:to-fuchsia-500 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60"
+            >
+              {otpLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <span>Verify</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">Didn&apos;t receive it?</span>
+              <button
+                type="button"
+                onClick={handleOtpResend}
+                disabled={otpLoading || resendCooldown > 0}
+                className="font-semibold text-fuchsia-300 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+              </button>
+            </div>
+          </div>
+        ) : (
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <InputField
@@ -541,29 +849,54 @@ export const RegisterPage = () => {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+880 1234-567890"
+              placeholder="+880 1712-345678"
               autoComplete="tel"
             />
-            <InputField
-              icon={<Lock size={18} />}
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create password"
-              autoComplete="new-password"
-            >
-              <PasswordVisibilityButton
-                visible={showPassword}
-                onClick={() => setShowPassword((value) => !value)}
-                label={showPassword ? 'Hide password' : 'Show password'}
-              />
-            </InputField>
-            <div className="space-y-2">
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                <div className={`h-full rounded-full transition-all ${strength.tone} ${strength.width}`} />
+            {skipPassword ? (
+              <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 px-4 py-3 text-sm text-fuchsia-100">
+                <p>
+                  You can verify your account with a code during signup, then set a password from your profile anytime.{' '}
+                  <span className="font-semibold">Set a password now</span> for easier sign-in later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSkipPassword(false)}
+                  className="mt-2 font-semibold text-fuchsia-300 hover:underline"
+                >
+                  Set a password now instead
+                </button>
               </div>
-              <p className="text-xs text-slate-400">{strength.label}. Use uppercase, numbers, and symbols for stronger protection.</p>
-            </div>
+            ) : (
+              <>
+                <InputField
+                  icon={<Lock size={18} />}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create password"
+                  autoComplete="new-password"
+                >
+                  <PasswordVisibilityButton
+                    visible={showPassword}
+                    onClick={() => setShowPassword((value) => !value)}
+                    label={showPassword ? 'Hide password' : 'Show password'}
+                  />
+                </InputField>
+                <div className="space-y-2">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className={`h-full rounded-full transition-all ${strength.tone} ${strength.width}`} />
+                  </div>
+                  <p className="text-xs text-slate-400">{strength.label}. Use uppercase, numbers, and symbols for stronger protection.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSkipPassword(true)}
+                  className="text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                >
+                  Skip for now - verify with a code instead
+                </button>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -674,15 +1007,15 @@ export const RegisterPage = () => {
                       },
                     });
                     if (oauthError) throw oauthError;
-                  } catch (err: any) {
-                    setError(mapAuthMessage(err?.message || err || 'Google sign-up failed'));
+                  } catch (err: unknown) {
+                    setError(mapAuthMessage(err));
                     setLoading(false);
                   }
                 }}
                 disabled={loading || !supabaseReady}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-100 shadow-sm transition hover:border-violet-400/40 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? <Loader2 className="shrink-0 animate-spin" size={18} /> : <img src="https://www.google.com/favicon.ico" className="h-4 w-4 shrink-0" alt="Google" />}
+                {loading ? <Loader2 className="shrink-0 animate-spin" size={18} /> : <GoogleGIcon />}
                 <span>Google</span>
               </button>
 
@@ -708,8 +1041,8 @@ export const RegisterPage = () => {
                       },
                     });
                     if (oauthError) throw oauthError;
-                  } catch (err: any) {
-                    setError(mapAuthMessage(err?.message || err || 'Facebook sign-up failed'));
+                  } catch (err: unknown) {
+                    setError(mapAuthMessage(err));
                     setLoading(false);
                   }
                 }}
@@ -726,6 +1059,7 @@ export const RegisterPage = () => {
             </div>
           </div>
         </form>
+        )}
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm text-slate-300 md:text-left">
           Already have an account?{' '}

@@ -40,13 +40,17 @@ export const usePWAInstall = (): UsePWAInstallReturn => {
     }
 
     const handleBeforeInstallPrompt = (event: Event) => {
+      if (isDismissedRecently) {
+        return;
+      }
+
       const installEvent = event as BeforeInstallPromptEvent;
       installEvent.preventDefault();
       setDeferredPrompt({
         prompt: installEvent.prompt.bind(installEvent),
         userChoice: installEvent.userChoice,
       });
-      setIsInstallable(!isDismissedRecently);
+      setIsInstallable(true);
     };
 
     const handleAppInstalled = () => {

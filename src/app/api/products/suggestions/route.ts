@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
       take: 8,
     });
 
-    return NextResponse.json(suggestions);
+    return NextResponse.json(suggestions, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
   } catch (error) {
     console.error('GET /api/products/suggestions error:', error);
     return NextResponse.json([], { status: 200 });

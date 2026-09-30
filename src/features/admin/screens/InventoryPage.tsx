@@ -7,12 +7,14 @@ import InventoryDashboard from '@/features/inventory/components/InventoryDashboa
 import { useInventoryActions } from '@/features/inventory/hooks/useInventoryActions';
 import { useInventorySync } from '@/features/inventory/hooks/useInventorySync';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
-import { Link } from '../../../lib/navigation';
+import { Link, useSearchParams } from '../../../lib/navigation';
 
 const InventoryPage: React.FC = () => {
   const { loadAll } = useInventoryActions();
   const { status } = useInventorySync(true);
   const { error, loading, inventory, warehouses, purchaseOrders } = useInventoryState();
+  const [searchParams] = useSearchParams();
+  const urlProduct = searchParams.get('product') || '';
   const [queueFilter, setQueueFilter] = React.useState<'all' | 'critical'>('all');
   const [queueView, setQueueView] = React.useState<'items' | 'warehouses'>('items');
   const [queueSort, setQueueSort] = React.useState<'severity' | 'pending_po' | 'warehouse'>('severity');
@@ -22,6 +24,7 @@ const InventoryPage: React.FC = () => {
   const [nextRefreshInSeconds, setNextRefreshInSeconds] = React.useState(60);
   const [itemRenderCount, setItemRenderCount] = React.useState(8);
   const [warehouseRenderCount, setWarehouseRenderCount] = React.useState(6);
+  const [inventoryTab, setInventoryTab] = React.useState<'all' | 'low' | 'out' | 'warehouses'>('all');
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -67,14 +70,10 @@ const InventoryPage: React.FC = () => {
   }, [autoRefreshEnabled]);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextProductId = params.get('product');
-    if (nextProductId) {
-      setFocusedProductId(nextProductId);
+    if (urlProduct) {
+      setFocusedProductId(urlProduct);
     }
-  }, []);
+  }, [urlProduct]);
 
   const lowStockQueue = React.useMemo(() => {
     return inventory
@@ -185,6 +184,9 @@ const InventoryPage: React.FC = () => {
     [visibleLowStockQueue],
   );
 
+  const outOfStockCount = inventory.filter((item) => item.quantity <= 0).length;
+  const lowStockCount = lowStockQueue.length;
+
   const freshness = React.useMemo(() => {
     if (!lastRefreshedAt) {
       return {
@@ -288,20 +290,20 @@ const InventoryPage: React.FC = () => {
   }, [queueFilter, queueView, queueSort]);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-full bg-[#f8f2fa] p-4 text-[#1d1b20] md:p-6">
+      <div className="mx-auto max-w-[1480px]">
+      <div className="mb-6 flex flex-col gap-4 border-b border-[#cbc4d2]/60 pb-5 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Inventory Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {lastRefreshedAt
-              ? `Restock queue last updated ${new Date(lastRefreshedAt).toLocaleString()}`
-              : 'Restock queue waiting for first refresh'}
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#1d1b20]">Inventory Management</h1>
+          <p className="mt-1 text-sm text-[#494551]">Monitor stock, warehouses, suppliers and purchase orders.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-[#63597c]">
+            <span className="inline-flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${status === 'live' ? 'bg-emerald-500' : 'bg-amber-500'}`} /> Live sync</span>
+            <span className="text-[#7a7582]">{lastRefreshedAt ? `Updated ${new Date(lastRefreshedAt).toLocaleTimeString()}` : 'Waiting for first update'}</span>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-gray-500">Realtime sync:</span>
           <span
-            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               status === 'live'
                 ? 'bg-green-100 text-green-700'
                 : status === 'local'
@@ -317,25 +319,39 @@ const InventoryPage: React.FC = () => {
           </span>
           <button
             onClick={() => void loadAll().then(() => setLastRefreshedAt(new Date().toISOString()))}
-            className="px-3 py-1 rounded-md bg-gray-900 text-white hover:bg-gray-800 transition"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#4f378a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6750a4]"
             disabled={loading}
           >
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {loading ? 'Refreshing...' : 'Refresh ↻'}
           </button>
         </div>
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          ['Total Products', inventory.length, 'text-[#1d1b20]'],
+          ['Low Stock', lowStockCount, 'text-amber-700'],
+          ['Critical', restockMetrics.criticalItems, 'text-rose-700'],
+          ['Pending PO', restockMetrics.pendingPoItems, 'text-[#4f378a]'],
+        ].map(([label, value, tone]) => (
+          <div key={String(label)} className="rounded-xl bg-white px-4 py-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7a7582]">{label}</p>
+            <p className={`mt-2 text-2xl font-extrabold ${tone}`}>{value}</p>
+          </div>
+        ))}
       </div>
       {error ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       ) : null}
-      <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm md:p-5">
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm md:p-5">
         <div className="mobile-sticky-toolbar flex flex-col gap-3 p-3 md:flex-row md:items-start md:justify-between md:p-0">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Restock suggested queue</h2>
-            <p className="text-sm text-slate-600">
-              Items below their reorder threshold appear here so ops can jump straight into purchase-order follow-up.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-lg text-amber-600">⚠</span>
+              <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#1d1b20]">Restock Queue</h2>
+            </div>
+            <p className="mt-2 text-sm text-[#494551]">Items below their reorder threshold need purchase-order follow-up.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${freshness.tone}`}>
@@ -410,9 +426,9 @@ const InventoryPage: React.FC = () => {
             </select>
             <Link
               to="/admin/inventory?section=po"
-              className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="rounded-lg bg-[#4f378a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#6750a4]"
             >
-              Open PO section
+              View All →
             </Link>
             <button
               type="button"
@@ -425,7 +441,7 @@ const InventoryPage: React.FC = () => {
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <div className="rounded-xl border border-white/70 bg-white/80 px-3 py-3 md:px-4">
+          <div className="rounded-lg border border-[#ece6ee] bg-[#f8f2fa] px-3 py-3 md:px-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visible Items</p>
             <p className="mt-2 text-xl font-bold text-slate-950 md:text-2xl">{restockMetrics.totalItems}</p>
           </div>
@@ -603,11 +619,56 @@ const InventoryPage: React.FC = () => {
           </>
         )}
       </div>
+      <section className="mb-6 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 border-b border-[#ece6ee] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#1d1b20]">Inventory</h2>
+            <p className="mt-1 text-sm text-[#494551]">Search and manage every stock record across your warehouses.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['all', 'All Items'],
+              ['low', 'Low Stock'],
+              ['out', `Out of Stock (${outOfStockCount})`],
+              ['warehouses', 'Warehouses'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setInventoryTab(value as typeof inventoryTab)}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                  inventoryTab === value ? 'bg-[#4f378a] text-white' : 'bg-[#f2ecf4] text-[#63597c] hover:bg-[#e6e0e9]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 rounded-lg border border-[#cbc4d2]/70 bg-[#f8f2fa] px-4 py-3 text-sm text-[#7a7582]">Search product / SKU...</div>
+          <button type="button" className="rounded-lg bg-[#f2ecf4] px-4 py-2.5 text-sm font-semibold text-[#63597c] hover:bg-[#e6e0e9]">Filters</button>
+        </div>
+      </section>
+      <section className="mb-6 rounded-xl bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[#1d1b20]">Quick Access</h2>
+            <p className="mt-1 text-sm text-[#494551]">Jump to the operational areas used most often.</p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link to="/admin/inventory?section=warehouses" className="rounded-lg bg-[#f2ecf4] px-4 py-4 text-sm font-bold text-[#4f378a] transition hover:bg-[#e9ddff]">Warehouses <span className="float-right">→</span></Link>
+          <Link to="/admin/inventory?section=suppliers" className="rounded-lg bg-[#f2ecf4] px-4 py-4 text-sm font-bold text-[#4f378a] transition hover:bg-[#e9ddff]">Suppliers <span className="float-right">→</span></Link>
+          <Link to="/admin/inventory?section=po" className="rounded-lg bg-[#f2ecf4] px-4 py-4 text-sm font-bold text-[#4f378a] transition hover:bg-[#e9ddff]">Purchase Orders <span className="float-right">→</span></Link>
+        </div>
+      </section>
       <InventoryDashboard />
       <WarehouseList />
       <SupplierList />
       <PurchaseOrderList />
       <InventoryItemList />
+    </div>
     </div>
   );
 };

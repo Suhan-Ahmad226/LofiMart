@@ -1,6 +1,19 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 export { prisma } from '../features/shared/services/database/prisma';
+export {
+  getCurrentUser,
+  requireUser,
+  requireApiUser,
+  requireDashboardAccess,
+  requireRole,
+  requirePermission,
+  secureApiRoute,
+  type AuthenticatedUser,
+  type DashboardAccessResult,
+  type Role,
+  type SecureApiResult,
+} from '@/server/auth';
 
 function getSupabaseUrl() {
   return process.env.NEXT_PUBLIC_SUPABASE_URL!;

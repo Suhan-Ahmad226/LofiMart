@@ -1,23 +1,26 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from '../../../lib/navigation';
 import { Search, Loader2 } from 'lucide-react';
-import { Product } from '../../../types';
-import { ProductCard } from '@/features/shop/components/ProductCard';
+import type { Product } from '../../../types';
+import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import { ProductGridSkeleton } from '@/features/shared/ui/DataSkeletons';
 import { EmptyState } from '@/features/shared/ui/FeedbackState';
 import { getCachedClientValue } from '../../../lib/client-cache';
+import type { SearchPageData } from './SearchPage.data';
 
-export const SearchPage = () => {
+export const SearchPage = ({ initialData }: { initialData?: SearchPageData }) => {
   const RECENT_SEARCHES_KEY = 'amarshop_recent_searches';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(initialData?.initialProducts ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState('');
   const [searchDraft, setSearchDraft] = useState(query);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>(initialData?.trendingSearches ?? []);
 
   useEffect(() => {
     setSearchDraft(query);
@@ -45,8 +48,12 @@ export const SearchPage = () => {
   }, [query]);
 
   useEffect(() => {
-    let cancelled = false;
+    if (initialData?.trendingSearches?.length) {
+      setTrendingSearches(initialData.trendingSearches);
+      return;
+    }
 
+    let cancelled = false;
     const loadDiscovery = async () => {
       try {
         const payload = await getCachedClientValue('search-discovery:v1', 10 * 60 * 1000, async () => {
@@ -70,9 +77,21 @@ export const SearchPage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialData?.trendingSearches]);
 
   useEffect(() => {
+    if (initialData && query.trim().length > 0) {
+      setProducts(initialData.initialProducts);
+      setLoading(false);
+      return;
+    }
+
+    if (!query.trim()) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
 
     setLoading(true);
@@ -105,7 +124,7 @@ export const SearchPage = () => {
       });
 
     return () => controller.abort();
-  }, [query]);
+  }, [query, initialData]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -190,7 +209,7 @@ export const SearchPage = () => {
               Browse all categories
             </Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {products.map((product) => (
               <div key={product.id}>
                 <ProductCard product={product} />

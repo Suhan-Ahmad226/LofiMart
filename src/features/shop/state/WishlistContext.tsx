@@ -6,8 +6,8 @@ import toast from '@/lib/toast';
 interface WishlistContextType {
   items: Product[];
   addToWishlist: (product: Product) => Promise<void>;
-  removeFromWishlist: (productId: number) => Promise<void>;
-  isInWishlist: (productId: number) => boolean;
+  removeFromWishlist: (productId: Product['id']) => Promise<void>;
+  isInWishlist: (productId: Product['id']) => boolean;
   toggleWishlist: (product: Product) => Promise<void>;
 }
 
@@ -18,7 +18,7 @@ const GUEST_WISHLIST_SNAPSHOT_KEY = 'guest_wishlist_snapshot';
 const GUEST_WISHLIST_SNAPSHOT_OWNER_KEY = 'guest_wishlist_snapshot_owner';
 
 function dedupeWishlist(products: Product[]) {
-  const seen = new Set<number>();
+  const seen = new Set<Product['id']>();
   return products.filter((product) => {
     if (seen.has(product.id)) {
       return false;
@@ -178,7 +178,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const removeFromWishlist = async (productId: number) => {
+  const removeFromWishlist = async (productId: Product['id']) => {
     const removed = items.find((it) => it.id === productId);
     const notifyRemoved = () => {
       if (!removed) return;
@@ -210,7 +210,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const isInWishlist = (productId: number) => {
+  const isInWishlist = (productId: Product['id']) => {
     return items.some(item => item.id === productId);
   };
 

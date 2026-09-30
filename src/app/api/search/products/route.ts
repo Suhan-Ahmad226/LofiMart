@@ -3,7 +3,6 @@ import { prisma } from '@/lib/server';
 import { getPublicPublishedProductWhere, productSellerInclude, serializeProduct } from '../../products/shared';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,12 +30,20 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json(products.map(serializeProduct));
+    return NextResponse.json(
+      products.map(serializeProduct),
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=120, s-maxage=600, stale-while-revalidate=1800',
+        },
+      },
+    );
   } catch (error) {
     console.error('GET /api/search/products error:', error);
     return NextResponse.json([], {
       headers: {
         'X-Data-Source': 'fallback',
+        'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
       },
     });
   }

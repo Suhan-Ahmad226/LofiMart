@@ -11,14 +11,16 @@ import { withTenantContext } from '../../../../../features/shared/services/datab
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
-  const user = await secureApiRoute(req, {
+  const result = await secureApiRoute(req, {
     keyPrefix: 'api:v2:seller:inventory-alerts',
     requireAuth: true,
     roles: ['seller'],
     limit: 60,
   });
-  if (user instanceof NextResponse) return user;
+  if (result instanceof NextResponse) return result;
+  if (!result.authorized || !result.user) return apiSuccess({ error: 'Unauthorized' }, { status: 401 });
 
+  const user = result.user;
   const sellerId = String(user.id);
   const threshold = getServerEnv().LOW_STOCK_THRESHOLD;
   const items = await withTenantContext(

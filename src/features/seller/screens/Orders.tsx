@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Download, Loader2, Clock3, Truck, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '../../../lib/utils';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { Link } from '../../../lib/navigation';
+import { Link, useSearchParams } from '../../../lib/navigation';
 import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 
 export const SellerOrdersPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,14 +58,10 @@ export const SellerOrdersPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-  }, []);
+  }, [urlSearch]);
 
   const getStatusStyle = (status: string) => {
     switch (status) {

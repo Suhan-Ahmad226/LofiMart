@@ -4,10 +4,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, MapPin, Phone, Plus, RefreshCw, Save, Store, Trash2, Truck } from 'lucide-react';
 import toast from '@/lib/toast';
 import { inventoryApi } from '@/features/inventory/services/inventoryApi';
+import api from '../../../lib/api';
 import { Warehouse } from '../../../types/inventory';
+import { useSearchParams } from '../../../lib/navigation';
 
-type PathaoOption = {
-  id: number;
+type CourierOption = {
+  /**
+   * Courier-native id, kept as a string.
+   *
+   * A string even though Pathao's are integers: the point of the generic location
+   * and pickup-point endpoints is that the next courier's ids are not assumed to
+   * be numeric, and parsing them here would reintroduce that assumption.
+   */
+  id: string;
   name: string;
   extra?: string;
   cityId?: number;
@@ -30,10 +39,10 @@ type WarehouseFormState = {
   otpNumber: string;
   maxItems: string;
   maxWeightKg: string;
-  pathaoStoreId: string;
-  pathaoCityId: string;
-  pathaoZoneId: string;
-  pathaoAreaId: string;
+  storeId: string;
+  cityId: string;
+  zoneId: string;
+  areaId: string;
   insideDhakaFee: string;
   outsideDhakaFee: string;
   insideDhakaEta: string;
@@ -55,10 +64,10 @@ const emptyForm: WarehouseFormState = {
   otpNumber: '',
   maxItems: '',
   maxWeightKg: '',
-  pathaoStoreId: '',
-  pathaoCityId: '',
-  pathaoZoneId: '',
-  pathaoAreaId: '',
+  storeId: '',
+  cityId: '',
+  zoneId: '',
+  areaId: '',
   insideDhakaFee: '',
   outsideDhakaFee: '',
   insideDhakaEta: '1-2 business days',
@@ -82,10 +91,10 @@ function warehouseToForm(warehouse: Warehouse | null): WarehouseFormState {
     otpNumber: warehouse.contact?.otpNumber || '',
     maxItems: warehouse.capacity?.maxItems ? String(warehouse.capacity.maxItems) : '',
     maxWeightKg: warehouse.capacity?.maxWeightKg ? String(warehouse.capacity.maxWeightKg) : '',
-    pathaoStoreId: warehouse.pathao?.storeId ? String(warehouse.pathao.storeId) : '',
-    pathaoCityId: warehouse.pathao?.cityId ? String(warehouse.pathao.cityId) : '',
-    pathaoZoneId: warehouse.pathao?.zoneId ? String(warehouse.pathao.zoneId) : '',
-    pathaoAreaId: warehouse.pathao?.areaId ? String(warehouse.pathao.areaId) : '',
+    storeId: warehouse.courier?.storeId ? String(warehouse.courier.storeId) : '',
+    cityId: warehouse.courier?.cityId ? String(warehouse.courier.cityId) : '',
+    zoneId: warehouse.courier?.zoneId ? String(warehouse.courier.zoneId) : '',
+    areaId: warehouse.courier?.areaId ? String(warehouse.courier.areaId) : '',
     insideDhakaFee: warehouse.shipping?.insideDhakaFee != null ? String(warehouse.shipping.insideDhakaFee) : '',
     outsideDhakaFee: warehouse.shipping?.outsideDhakaFee != null ? String(warehouse.shipping.outsideDhakaFee) : '',
     insideDhakaEta: warehouse.shipping?.insideDhakaEta || '1-2 business days',
@@ -96,24 +105,35 @@ function warehouseToForm(warehouse: Warehouse | null): WarehouseFormState {
 }
 
 export const SellerPickupLocationsPage = () => {
+  const [searchParams] = useSearchParams();
+  const urlWarehouse = searchParams.get('warehouse') || '';
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [form, setForm] = useState<WarehouseFormState>(emptyForm);
-  const [cities, setCities] = useState<PathaoOption[]>([]);
-  const [zones, setZones] = useState<PathaoOption[]>([]);
-  const [areas, setAreas] = useState<PathaoOption[]>([]);
-  const [stores, setStores] = useState<PathaoOption[]>([]);
+  const [cities, setCities] = useState<CourierOption[]>([]);
+  const [zones, setZones] = useState<CourierOption[]>([]);
+  const [areas, setAreas] = useState<CourierOption[]>([]);
+  const [stores, setStores] = useState<CourierOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatingStore, setCreatingStore] = useState(false);
   const [loadingStoreInfo, setLoadingStoreInfo] = useState(false);
-  const [testingPrice, setTestingPrice] = useState(false);
-  const [pathaoStoreInfo, setPathaoStoreInfo] = useState<any | null>(null);
-  const [pathaoPriceQuote, setPathaoPriceQuote] = useState<any | null>(null);
+  const [linkedStoreInfo, setLinkedStoreInfo] = useState<CourierOption | null>(null);
   const [removingId, setRemovingId] = useState('');
   const [focusedWarehouseId, setFocusedWarehouseId] = useState('');
   const [removeConfirmId, setRemoveConfirmId] = useState('');
+
+  /**
+   * The courier this screen configures, resolved from the registry.
+   *
+   * `null` until it loads, which is why every courier call below is guarded on it
+   * — a screen that assumed a courier existed would either 404 or, worse, silently
+   * save a mapping against the wrong one.
+   */
+  const [courier, setCourier] = useState<{ code: string; name: string; shortLabel: string } | null>(
+    null,
+  );
 
   const selectedWarehouse = useMemo(
     () => warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) || null,
@@ -121,8 +141,8 @@ export const SellerPickupLocationsPage = () => {
   );
 
   const selectedStore = useMemo(
-    () => stores.find((store) => String(store.id) === String(form.pathaoStoreId || '')) || null,
-    [stores, form.pathaoStoreId],
+    () => stores.find((store) => String(store.id) === String(form.storeId || '')) || null,
+    [stores, form.storeId],
   );
 
   const suggestedStore = useMemo(() => {
@@ -163,12 +183,9 @@ export const SellerPickupLocationsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || warehouses.length === 0) return;
+    if (!urlWarehouse || warehouses.length === 0 || typeof window === 'undefined') return;
 
-    const warehouseId = new URLSearchParams(window.location.search).get('warehouse');
-    if (!warehouseId) return;
-
-    const matched = warehouses.find((warehouse) => warehouse.id === warehouseId);
+    const matched = warehouses.find((warehouse) => warehouse.id === urlWarehouse);
     if (!matched) return;
 
     setSelectedWarehouseId(matched.id);
@@ -180,7 +197,7 @@ export const SellerPickupLocationsPage = () => {
         block: 'center',
       });
     });
-  }, [warehouses]);
+  }, [urlWarehouse, warehouses]);
 
   useEffect(() => {
     let ignore = false;
@@ -188,31 +205,46 @@ export const SellerPickupLocationsPage = () => {
     const loadMeta = async () => {
       try {
         setLoadingMeta(true);
+
+        // The courier is resolved from the registry, not hardcoded, so this screen
+        // is correct for whichever courier is live.
+        const providerResponse = await api.get<{ code: string; name: string; shortLabel: string }[]>(
+          '/logistics/providers',
+        );
+        const provider = providerResponse.data?.[0] ?? null;
+        if (ignore) return;
+
+        if (!provider) {
+          setCities([]);
+          setStores([]);
+          toast.error('No courier is available yet. Contact support to enable one.');
+          return;
+        }
+
+        setCourier(provider);
+
         const [cityPayload, storePayload] = await Promise.all([
-          inventoryApi.fetchPathaoCities(),
-          inventoryApi.fetchPathaoStores(),
+          inventoryApi.fetchCourierLocations({ provider: provider.code, level: 'city' }),
+          inventoryApi.fetchCourierStores({ provider: provider.code }),
         ]);
 
         if (ignore) return;
 
-        const cityRows = Array.isArray(cityPayload?.data?.data) ? cityPayload.data.data : [];
-        const storeRows = Array.isArray(storePayload?.data?.data) ? storePayload.data.data : [];
-
-        setCities(cityRows.map((item: any) => ({ id: Number(item.city_id), name: String(item.city_name || '') })));
+        setCities((cityPayload?.nodes ?? []).map((node) => ({ id: node.id, name: node.name })));
         setStores(
-          storeRows.map((item: any) => ({
-            id: Number(item.store_id),
-            name: String(item.store_name || ''),
-            extra: item.is_active === 1 ? 'active' : 'inactive',
-            cityId: Number(item.city_id || 0) || undefined,
-            zoneId: Number(item.zone_id || 0) || undefined,
-            address: String(item.store_address || ''),
-            active: item.is_active === 1,
+          (storePayload?.remoteStores ?? []).map((store) => ({
+            id: store.externalStoreId,
+            name: store.externalStoreName || store.externalStoreId,
+            extra: store.active ? 'active' : 'inactive',
+            cityId: store.metadata?.cityId ?? undefined,
+            zoneId: store.metadata?.zoneId ?? undefined,
+            address: store.metadata?.address ?? undefined,
+            active: store.active,
           })),
         );
       } catch {
         if (!ignore) {
-          toast.error('Failed to load Pathao reference data.');
+          toast.error('Failed to load courier reference data.');
         }
       } finally {
         if (!ignore) {
@@ -229,25 +261,26 @@ export const SellerPickupLocationsPage = () => {
 
   useEffect(() => {
     setForm(warehouseToForm(selectedWarehouse));
-    setPathaoStoreInfo(null);
-    setPathaoPriceQuote(null);
+    setLinkedStoreInfo(null);
   }, [selectedWarehouse]);
 
   useEffect(() => {
     let ignore = false;
 
     const loadZones = async () => {
-      const cityId = Number(form.pathaoCityId);
-      if (!Number.isFinite(cityId) || cityId <= 0) {
+      if (!courier || !form.cityId) {
         setZones([]);
         return;
       }
 
       try {
-        const payload = await inventoryApi.fetchPathaoZones(cityId);
+        const payload = await inventoryApi.fetchCourierLocations({
+          provider: courier.code,
+          level: 'zone',
+          parentId: form.cityId,
+        });
         if (ignore) return;
-        const rows = Array.isArray(payload?.data?.data) ? payload.data.data : [];
-        setZones(rows.map((item: any) => ({ id: Number(item.zone_id), name: String(item.zone_name || '') })));
+        setZones((payload?.nodes ?? []).map((node) => ({ id: node.id, name: node.name })));
       } catch {
         if (!ignore) {
           setZones([]);
@@ -259,27 +292,34 @@ export const SellerPickupLocationsPage = () => {
     return () => {
       ignore = true;
     };
-  }, [form.pathaoCityId]);
+  }, [form.cityId, courier]);
 
   useEffect(() => {
     let ignore = false;
 
     const loadAreas = async () => {
-      const zoneId = Number(form.pathaoZoneId);
-      if (!Number.isFinite(zoneId) || zoneId <= 0) {
+      if (!courier || !form.zoneId) {
         setAreas([]);
         return;
       }
 
       try {
-        const payload = await inventoryApi.fetchPathaoAreas(zoneId);
+        const payload = await inventoryApi.fetchCourierLocations({
+          provider: courier.code,
+          level: 'area',
+          parentId: form.zoneId,
+        });
         if (ignore) return;
-        const rows = Array.isArray(payload?.data?.data) ? payload.data.data : [];
         setAreas(
-          rows.map((item: any) => ({
-            id: Number(item.area_id),
-            name: String(item.area_name || '').trim(),
-            extra: item.home_delivery_available ? 'home delivery' : 'pickup only',
+          (payload?.nodes ?? []).map((node) => ({
+            id: node.id,
+            name: node.name,
+            extra:
+              node.homeDeliveryAvailable === false
+                ? 'pickup only'
+                : node.pickupAvailable === false
+                  ? 'home delivery only'
+                  : undefined,
           })),
         );
       } catch {
@@ -293,7 +333,7 @@ export const SellerPickupLocationsPage = () => {
     return () => {
       ignore = true;
     };
-  }, [form.pathaoZoneId]);
+  }, [form.zoneId, courier]);
 
   const upsertWarehouse = async () => {
     const payload: Omit<Warehouse, 'id'> = {
@@ -311,12 +351,6 @@ export const SellerPickupLocationsPage = () => {
         email: form.email.trim() || undefined,
         secondaryPhone: form.secondaryPhone.trim() || undefined,
         otpNumber: form.otpNumber.trim() || undefined,
-      },
-      pathao: {
-        storeId: form.pathaoStoreId ? Number(form.pathaoStoreId) : undefined,
-        cityId: form.pathaoCityId ? Number(form.pathaoCityId) : undefined,
-        zoneId: form.pathaoZoneId ? Number(form.pathaoZoneId) : undefined,
-        areaId: form.pathaoAreaId ? Number(form.pathaoAreaId) : undefined,
       },
       shipping: {
         insideDhakaFee: form.insideDhakaFee ? Number(form.insideDhakaFee) : undefined,
@@ -338,6 +372,11 @@ export const SellerPickupLocationsPage = () => {
       return;
     }
 
+    if (!courier) {
+      toast.error('No courier is available to link this pickup location to.');
+      return;
+    }
+
     try {
       setSaving(true);
       let nextWarehouse: Warehouse;
@@ -347,11 +386,17 @@ export const SellerPickupLocationsPage = () => {
         nextWarehouse = await inventoryApi.createWarehouse(payload);
       }
 
-      await inventoryApi.updateWarehousePathaoConfig(nextWarehouse.id, {
-        storeId: form.pathaoStoreId ? Number(form.pathaoStoreId) : null,
-        cityId: form.pathaoCityId ? Number(form.pathaoCityId) : null,
-        zoneId: form.pathaoZoneId ? Number(form.pathaoZoneId) : null,
-        areaId: form.pathaoAreaId ? Number(form.pathaoAreaId) : null,
+      // The courier link is a separate write: it is keyed by provider, so it
+      // cannot live inside the warehouse payload without a second courier
+      // overwriting the first courier's mapping.
+      await inventoryApi.updateWarehouseCourierConfig(nextWarehouse.id, {
+        provider: courier.code,
+        // A `pending:` value is a placeholder for a pickup point the courier has
+        // not yet issued an id for, so it is never persisted as a real id.
+        storeId: form.storeId && !form.storeId.startsWith('pending:') ? form.storeId : null,
+        cityId: form.cityId ? Number(form.cityId) : null,
+        zoneId: form.zoneId ? Number(form.zoneId) : null,
+        areaId: form.areaId ? Number(form.areaId) : null,
         contactName: form.contactName,
         secondaryContact: form.secondaryPhone,
         otpNumber: form.otpNumber,
@@ -390,90 +435,133 @@ export const SellerPickupLocationsPage = () => {
     }
   };
 
-  const handleCreateStore = async () => {
+  const handleRegisterPickupPoint = async () => {
     if (!selectedWarehouse) {
       toast.error('Save the pickup location first.');
+      return;
+    }
+    if (!courier) {
+      toast.error('No courier is available to register a pickup point with.');
+      return;
+    }
+
+    const cityId = Number(form.cityId);
+    const zoneId = Number(form.zoneId);
+    const areaId = Number(form.areaId);
+
+    // Required, not defaulted. A pickup point registered against a guessed
+    // location has the courier collecting from the wrong hub with nothing to
+    // detect it.
+    if (!cityId || !zoneId || !areaId) {
+      toast.error('Choose the city, zone and area before registering a pickup point.');
       return;
     }
 
     try {
       setCreatingStore(true);
-      const payload = await inventoryApi.createPathaoStore({ warehouseId: selectedWarehouse.id });
-      const nextStoreId = Number(payload?.store_id || 0);
+      const payload = await inventoryApi.createCourierStore({
+        provider: courier.code,
+        warehouseId: selectedWarehouse.id,
+        cityId,
+        zoneId,
+        areaId,
+      });
+
+      const nextStoreId = typeof payload.externalStoreId === 'string' ? payload.externalStoreId : '';
       if (nextStoreId) {
-        setForm((current) => ({ ...current, pathaoStoreId: String(nextStoreId) }));
+        setForm((current) => ({ ...current, storeId: nextStoreId }));
       }
-      toast.success(nextStoreId ? `Pathao store created and linked: ${nextStoreId}` : 'Pathao store request sent successfully.');
+
+      // "Registered" and "bookable" are different states: the courier reviews new
+      // pickup points, and reporting success without saying so would have a seller
+      // promise a service that cannot be booked yet.
+      toast.success(
+        payload.bookable
+          ? `${courier.name} pickup point is approved and linked: ${nextStoreId}`
+          : `${courier.name} pickup point submitted. It becomes bookable once the courier approves it.`,
+      );
+      await loadWarehouses();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Failed to create Pathao store.');
+      toast.error(error?.response?.data?.error || 'Failed to register the pickup point.');
     } finally {
       setCreatingStore(false);
     }
   };
 
-  const handleLoadStoreInfo = async () => {
-    const storeId = Number(form.pathaoStoreId);
-    if (!Number.isFinite(storeId) || storeId <= 0) {
-      toast.error('Select or create a linked Pathao store first.');
+  /**
+   * Confirms the linked pickup point still exists at the courier.
+   *
+   * Reads the courier's own store list rather than trusting our mapping, so a
+   * pickup point deactivated on the courier's side is visible here instead of
+   * failing later as a rejected booking.
+   *
+   * This replaces a raw "price test" panel. That panel called the courier's price
+   * endpoint directly from the browser, which showed a number that nothing
+   * guaranteed was the number a customer would be charged — the authoritative
+   * figure is the server-side quote used at checkout. Removing it closes a
+   * "quoted one price, charged another" gap rather than losing a real capability.
+   */
+  const handleVerifyLink = async () => {
+    if (!form.storeId) {
+      toast.error('Register or select a pickup point first.');
+      return;
+    }
+    if (!courier) {
+      toast.error('No courier is available to verify against.');
       return;
     }
 
     try {
       setLoadingStoreInfo(true);
-      const payload = await inventoryApi.fetchPathaoStoreInfo(storeId);
-      setPathaoStoreInfo(payload?.data || payload || null);
-      toast.success(`Loaded Pathao store ${storeId}.`);
+      const payload = await inventoryApi.fetchCourierStores({ provider: courier.code });
+      const found = (payload?.remoteStores ?? []).find(
+        (store) => store.externalStoreId === form.storeId,
+      );
+
+      setLinkedStoreInfo(
+        found
+          ? {
+              id: found.externalStoreId,
+              name: found.externalStoreName || found.externalStoreId,
+              extra: found.active ? 'active' : 'inactive',
+              address: found.metadata?.address ?? undefined,
+              active: found.active,
+            }
+          : null,
+      );
+
+      if (found) {
+        toast.success(
+          found.active
+            ? `${courier.name} still lists pickup point ${found.externalStoreId}.`
+            : `${courier.name} lists pickup point ${found.externalStoreId}, but it is not active. Bookings will be rejected.`,
+        );
+      } else {
+        toast.error(
+          `${courier.name} does not list pickup point ${form.storeId}. It may have been removed on their side.`,
+        );
+      }
     } catch (error: any) {
-      setPathaoStoreInfo(null);
-      toast.error(error?.response?.data?.error || 'Failed to load Pathao store info.');
+      setLinkedStoreInfo(null);
+      toast.error(error?.response?.data?.error || 'Failed to verify the pickup point.');
     } finally {
       setLoadingStoreInfo(false);
     }
   };
 
-  const handleRunPriceTest = async () => {
-    const storeId = Number(form.pathaoStoreId);
-    const cityId = Number(form.pathaoCityId);
-    const zoneId = Number(form.pathaoZoneId);
-
-    if (!Number.isFinite(storeId) || storeId <= 0 || !Number.isFinite(cityId) || cityId <= 0 || !Number.isFinite(zoneId) || zoneId <= 0) {
-      toast.error('Linked store, Pathao city, and Pathao zone are required for a price test.');
-      return;
-    }
-
-    try {
-      setTestingPrice(true);
-      const payload = await inventoryApi.calculatePathaoPrice({
-        store_id: storeId,
-        item_type: 2,
-        delivery_type: 48,
-        item_weight: 0.5,
-        recipient_city: cityId,
-        recipient_zone: zoneId,
-      });
-      setPathaoPriceQuote(payload?.data || payload || null);
-      toast.success('Pathao price test completed.');
-    } catch (error: any) {
-      setPathaoPriceQuote(null);
-      toast.error(error?.response?.data?.error || 'Failed to calculate Pathao price.');
-    } finally {
-      setTestingPrice(false);
-    }
-  };
-
   const handleApplySuggestedStore = () => {
     if (!suggestedStore) {
-      toast.error('No suitable Pathao store suggestion found yet.');
+      toast.error('No suitable pickup point suggestion found yet.');
       return;
     }
 
     setForm((current) => ({
       ...current,
-      pathaoStoreId: String(suggestedStore.id),
-      pathaoCityId: current.pathaoCityId || (suggestedStore.cityId ? String(suggestedStore.cityId) : ''),
-      pathaoZoneId: current.pathaoZoneId || (suggestedStore.zoneId ? String(suggestedStore.zoneId) : ''),
+      storeId: String(suggestedStore.id),
+      cityId: current.cityId || (suggestedStore.cityId ? String(suggestedStore.cityId) : ''),
+      zoneId: current.zoneId || (suggestedStore.zoneId ? String(suggestedStore.zoneId) : ''),
     }));
-    toast.success(`Suggested Pathao store ${suggestedStore.name} applied.`);
+    toast.success(`Suggested pickup point ${suggestedStore.name} applied.`);
   };
 
   if (loading) {
@@ -491,7 +579,7 @@ export const SellerPickupLocationsPage = () => {
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary/70">Pickup operations</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-950">Pickup locations and warehouse mapping</h1>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">
-            Manage seller pickup points, save courier contact details, and keep Pathao store mapping ready for live shipment booking.
+            Manage seller pickup points, save courier contact details, and keep the courier pickup point mapped for live shipment booking.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -557,12 +645,12 @@ export const SellerPickupLocationsPage = () => {
                   </div>
                   <div className="space-y-2 text-right">
                     <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
-                      warehouse.pathao?.storeId ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      warehouse.courier?.storeId ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                     }`}>
-                      {warehouse.pathao?.storeId ? `Store ${warehouse.pathao.storeId}` : 'Store pending'}
+                      {warehouse.courier?.storeId ? `Pickup point ${warehouse.courier.storeId}` : 'Store pending'}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {warehouse.pathao?.cityId && warehouse.pathao?.zoneId && warehouse.pathao?.areaId ? 'Area mapped' : 'Map Pathao area'}
+                      {warehouse.courier?.cityId && warehouse.courier?.zoneId && warehouse.courier?.areaId ? 'Area mapped' : 'Map courier area'}
                     </div>
                     {focused ? (
                       <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">
@@ -724,17 +812,17 @@ export const SellerPickupLocationsPage = () => {
           <div className="mt-8 rounded-2xl border border-rose-100 bg-rose-50/60 p-4 md:p-5">
             <div className="flex items-center gap-2 font-semibold text-rose-700">
               <Store size={16} />
-              <span>Pathao pickup mapping</span>
+              <span>Courier pickup mapping</span>
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              Map this pickup location to Pathao city, zone, area, and store before enabling live auto-booking.
+              Map this pickup location to a courier city, zone, area, and pickup point before enabling live auto-booking.
             </p>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2 md:gap-4">
               <label className="space-y-2 text-sm">
                 <span className="font-medium text-slate-700">Linked store ID</span>
-                <select value={form.pathaoStoreId} onChange={(e) => setForm((c) => ({ ...c, pathaoStoreId: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
-                  <option value="">No linked Pathao store</option>
+                <select value={form.storeId} onChange={(e) => setForm((c) => ({ ...c, storeId: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
+                  <option value="">No linked pickup point</option>
                   {stores.map((store) => (
                     <option key={store.id} value={store.id}>
                       {store.name} ({store.id}) {store.extra ? `- ${store.extra}` : ''}
@@ -743,10 +831,10 @@ export const SellerPickupLocationsPage = () => {
                 </select>
               </label>
               <label className="space-y-2 text-sm">
-                <span className="font-medium text-slate-700">Pathao city</span>
+                <span className="font-medium text-slate-700">Courier city</span>
                 <select
-                  value={form.pathaoCityId}
-                  onChange={(e) => setForm((c) => ({ ...c, pathaoCityId: e.target.value, pathaoZoneId: '', pathaoAreaId: '' }))}
+                  value={form.cityId}
+                  onChange={(e) => setForm((c) => ({ ...c, cityId: e.target.value, zoneId: '', areaId: '' }))}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                 >
                   <option value="">Select city</option>
@@ -756,10 +844,10 @@ export const SellerPickupLocationsPage = () => {
                 </select>
               </label>
               <label className="space-y-2 text-sm">
-                <span className="font-medium text-slate-700">Pathao zone</span>
+                <span className="font-medium text-slate-700">Courier zone</span>
                 <select
-                  value={form.pathaoZoneId}
-                  onChange={(e) => setForm((c) => ({ ...c, pathaoZoneId: e.target.value, pathaoAreaId: '' }))}
+                  value={form.zoneId}
+                  onChange={(e) => setForm((c) => ({ ...c, zoneId: e.target.value, areaId: '' }))}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                 >
                   <option value="">Select zone</option>
@@ -769,10 +857,10 @@ export const SellerPickupLocationsPage = () => {
                 </select>
               </label>
               <label className="space-y-2 text-sm">
-                <span className="font-medium text-slate-700">Pathao area</span>
+                <span className="font-medium text-slate-700">Courier area</span>
                 <select
-                  value={form.pathaoAreaId}
-                  onChange={(e) => setForm((c) => ({ ...c, pathaoAreaId: e.target.value }))}
+                  value={form.areaId}
+                  onChange={(e) => setForm((c) => ({ ...c, areaId: e.target.value }))}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                 >
                   <option value="">Select area</option>
@@ -783,7 +871,7 @@ export const SellerPickupLocationsPage = () => {
               </label>
             </div>
 
-            {suggestedStore && String(suggestedStore.id) !== String(form.pathaoStoreId || '') ? (
+            {suggestedStore && String(suggestedStore.id) !== String(form.storeId || '') ? (
               <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -792,7 +880,7 @@ export const SellerPickupLocationsPage = () => {
                       {suggestedStore.name} ({suggestedStore.id})
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {suggestedStore.address || 'No Pathao store address returned'}{suggestedStore.extra ? ` â€¢ ${suggestedStore.extra}` : ''}
+                      {suggestedStore.address || 'No address returned by the courier'}{suggestedStore.extra ? ` â€¢ ${suggestedStore.extra}` : ''}
                     </p>
                   </div>
                   <button
@@ -822,61 +910,51 @@ export const SellerPickupLocationsPage = () => {
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => void handleCreateStore()}
-                disabled={creatingStore || !selectedWarehouse || !form.pathaoCityId || !form.pathaoZoneId || !form.pathaoAreaId}
+                onClick={() => void handleRegisterPickupPoint()}
+                disabled={creatingStore || !selectedWarehouse || !form.cityId || !form.zoneId || !form.areaId}
                 className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
               >
                 {creatingStore ? <Loader2 className="animate-spin" size={16} /> : <Store size={16} />}
-                <span>{creatingStore ? 'Creating store...' : 'Create Pathao store'}</span>
+                <span>{creatingStore ? 'Registering...' : 'Register pickup point'}</span>
               </button>
               <button
                 type="button"
-                onClick={() => void handleLoadStoreInfo()}
-                disabled={loadingStoreInfo || !form.pathaoStoreId}
+                onClick={() => void handleVerifyLink()}
+                disabled={loadingStoreInfo || !form.storeId}
                 className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 {loadingStoreInfo ? <Loader2 className="animate-spin" size={16} /> : <Building2 size={16} />}
-                <span>{loadingStoreInfo ? 'Checking store...' : 'Verify linked store'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleRunPriceTest()}
-                disabled={testingPrice || !form.pathaoStoreId || !form.pathaoCityId || !form.pathaoZoneId}
-                className="inline-flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:opacity-50"
-              >
-                {testingPrice ? <Loader2 className="animate-spin" size={16} /> : <Truck size={16} />}
-                <span>{testingPrice ? 'Running quote...' : 'Run price test'}</span>
+                <span>{loadingStoreInfo ? 'Checking...' : 'Verify pickup point'}</span>
               </button>
               {loadingMeta ? (
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-slate-500">
                   <Loader2 className="animate-spin" size={14} />
-                  <span>Loading Pathao reference data...</span>
+                  <span>Loading courier reference data...</span>
                 </div>
               ) : null}
             </div>
 
-            {pathaoStoreInfo ? (
-              <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
-                <p className="font-semibold">Verified Pathao store</p>
-                <p className="mt-1">{pathaoStoreInfo.store_name || pathaoStoreInfo.name || `Store ${form.pathaoStoreId}`}</p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  Address: {pathaoStoreInfo.store_address || pathaoStoreInfo.address || 'Pathao returned no address'}
+            {linkedStoreInfo ? (
+              <div
+                className={`mt-4 rounded-2xl border p-4 text-sm ${
+                  linkedStoreInfo.active
+                    ? 'border-emerald-100 bg-emerald-50 text-emerald-900'
+                    : 'border-amber-200 bg-amber-50 text-amber-900'
+                }`}
+              >
+                <p className="font-semibold">
+                  {courier?.name ?? 'Courier'} still lists this pickup point
                 </p>
-                <p className="mt-1 text-xs text-emerald-700">
-                  Status: {Number(pathaoStoreInfo.is_active) === 1 ? 'Active' : 'Pending or inactive'}
+                <p className="mt-1">{linkedStoreInfo.name}</p>
+                <p className="mt-1 text-xs opacity-80">
+                  Address: {linkedStoreInfo.address || 'The courier returned no address'}
                 </p>
-              </div>
-            ) : null}
-
-            {pathaoPriceQuote ? (
-              <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 p-4 text-sm text-sky-900">
-                <p className="font-semibold">Latest Pathao price test</p>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <div className="rounded-xl bg-white/70 px-3 py-2">Final price: BDT {pathaoPriceQuote.final_price ?? pathaoPriceQuote.price ?? 'N/A'}</div>
-                  <div className="rounded-xl bg-white/70 px-3 py-2">COD enabled: {Number(pathaoPriceQuote.cod_enabled) === 1 ? 'Yes' : 'No'}</div>
-                  <div className="rounded-xl bg-white/70 px-3 py-2">Base price: BDT {pathaoPriceQuote.price ?? 'N/A'}</div>
-                  <div className="rounded-xl bg-white/70 px-3 py-2">Additional charge: BDT {pathaoPriceQuote.additional_charge ?? 0}</div>
-                </div>
+                <p className="mt-1 text-xs opacity-80">
+                  {/* Inactive is called out rather than styled as success: the
+                      courier still knows the pickup point, but bookings against it
+                      will be refused. */}
+                  Status: {linkedStoreInfo.active ? 'Active and bookable' : 'Listed but not active'}
+                </p>
               </div>
             ) : null}
           </div>

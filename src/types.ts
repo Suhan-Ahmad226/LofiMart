@@ -16,18 +16,18 @@ export interface ProductSpecification {
 }
 
 export interface Product {
-  id: number;
+  id: string | number;
   sku?: string | null;
   name: string;
   slug: string;
   description: string;
   price: number;
-  old_price: number;
+  old_price: number | null;
   image: string | null;
   gallery_images?: string[];
   video_url?: string | null;
-  model_3d?: string;
-  category: string;
+  model_3d?: string | null;
+  category: string | null;
   stock: number;
   rating: number;
   reviews_count: number;
@@ -40,14 +40,16 @@ export interface Product {
   product_status?: 'draft' | 'published';
   is_published?: boolean;
   published_at?: string | null;
-  reseller_ref_code?: string;
+  reseller_ref_code?: string | null;
   reseller_sale_price?: number | null;
-  selected_variant_key?: string;
-  selected_variant_summary?: string;
-  selected_variant_sku?: string;
-  seller_id?: number;
-  seller_name?: string;
+  selected_variant_key?: string | null;
+  selected_variant_summary?: string | null;
+  selected_variant_sku?: string | null;
+  seller_id?: string | number | null;
+  seller_name?: string | null;
+  seller_avatar_url?: string | null;
   store_name?: string | null;
+  storefront_slug?: string | null;
   seller_rating?: number | null;
   response_time_hours?: number | null;
   verification_badge?: boolean;

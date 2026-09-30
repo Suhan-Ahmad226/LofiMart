@@ -1,2 +1,5 @@
 export { DashboardLayout } from './DashboardLayout';
-export { Footer, Header, MobileBottomNav, ScrollToTopButton } from './Layout';
+export { Header } from './Header';
+export { Footer } from './Footer';
+export { MobileBottomNav } from './MobileBottomNav';
+export { ScrollToTopButton } from './ScrollToTopButton';

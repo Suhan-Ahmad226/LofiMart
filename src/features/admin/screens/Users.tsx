@@ -3,6 +3,7 @@ import { Ban, Search, Shield, ShieldCheck, Trash2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { CenteredLoader, EmptyState } from '@/features/shared/ui/FeedbackState';
+import { useSearchParams } from '../../../lib/navigation';
 
 interface AdminUserRecord {
   id: string;
@@ -16,6 +17,9 @@ interface AdminUserRecord {
 
 export const AdminUsersPage = () => {
   const { token, user: currentUser } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlUser = searchParams.get('user') || '';
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,19 +53,13 @@ export const AdminUsersPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    const nextUser = params.get('user');
-
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-    if (nextUser) {
-      setFocusedUserId(nextUser);
+    if (urlUser) {
+      setFocusedUserId(urlUser);
     }
-  }, []);
+  }, [urlSearch, urlUser]);
 
   const handleRoleChange = async (id: string, newRole: AdminUserRecord['role']) => {
     try {

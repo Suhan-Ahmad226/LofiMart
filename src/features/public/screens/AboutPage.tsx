@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from '../../../lib/navigation';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Shield, Truck, Clock, Heart, ArrowRight, type LucideIcon } from 'lucide-react';
 import { AnimatedIcon } from '@/features/shared/ui/AnimatedIcon';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';

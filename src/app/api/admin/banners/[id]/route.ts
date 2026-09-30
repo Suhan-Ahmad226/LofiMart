@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { requireAdminRole, requireApiUser } from '../../../_compat/shared';
+import { associateEntityMedia, collectEntityMedia, deleteManyMedia, enqueueMediaDelete, parseCloudinaryAssetUrl } from '@/lib/media';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,10 +53,22 @@ export async function PATCH(request: NextRequest, context: { params: Params }) {
     return NextResponse.json({ error: 'Title and image are required' }, { status: 400 });
   }
 
+  const current = await prisma.banner.findUnique({ where: { id }, select: { image: true } });
   const banner = await prisma.banner.update({
     where: { id },
     data,
   });
+
+  await associateEntityMedia({ ownerId: String(admin.id), entityType: 'Banner', entityId: banner.id, fieldName: 'image', urls: [banner.image] });
+  if (current?.image && current.image !== banner.image) {
+    const cleanup = await deleteManyMedia([{ url: current.image }]);
+    await Promise.all(cleanup.errors.map((failed) => enqueueMediaDelete({
+      publicId: failed.item.publicId,
+      url: failed.item.url,
+      resourceType: failed.item.resourceType,
+      reason: 'banner-replaced-old-asset',
+    })));
+  }
 
   return NextResponse.json(serializeBanner(banner));
 }
@@ -65,7 +78,18 @@ export async function DELETE(request: NextRequest, context: { params: Params }) 
   if (admin instanceof NextResponse) return admin;
 
   const { id } = await context.params;
+  const banner = await prisma.banner.findUnique({ where: { id }, select: { image: true } });
+  const media = await collectEntityMedia('Banner', id, [banner?.image]);
   await prisma.banner.delete({ where: { id } });
+  const cleanup = await deleteManyMedia(media);
+  await Promise.all(cleanup.errors.map((failed) => enqueueMediaDelete({
+    publicId: failed.item.publicId,
+    url: failed.item.url,
+    resourceType: failed.item.resourceType,
+    reason: 'banner-deleted',
+    entityType: 'Banner',
+    entityId: id,
+  })));
 
   return NextResponse.json({ success: true });
 }

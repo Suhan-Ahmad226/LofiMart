@@ -18,7 +18,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(reviews.map(serializeReview));
+    return NextResponse.json(reviews.map(serializeReview), {
+      headers: {
+        'Cache-Control': 'public, max-age=120, s-maxage=600, stale-while-revalidate=1800',
+      },
+    });
   } catch (error) {
     console.error('GET /api/products/[id]/reviews error:', error);
     return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });

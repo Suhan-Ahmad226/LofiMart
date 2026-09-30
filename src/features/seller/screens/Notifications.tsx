@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Loader2, ShieldCheck, Tag, Wallet, BadgeCheck, Users, Zap, Package, Truck } from 'lucide-react';
 import toast from '@/lib/toast';
-import { Link, useNavigate } from '../../../lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 
@@ -36,6 +36,8 @@ function refreshDashboardBadges() {
 export const SellerNotificationsPage = () => {
   const { token } = useUser();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlNotification = searchParams.get('notification') || '';
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusedNotificationId, setFocusedNotificationId] = useState('');
@@ -95,14 +97,10 @@ export const SellerNotificationsPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextNotification = params.get('notification');
-    if (nextNotification) {
-      setFocusedNotificationId(nextNotification);
+    if (urlNotification) {
+      setFocusedNotificationId(urlNotification);
     }
-  }, []);
+  }, [urlNotification]);
 
   useEffect(() => {
     if (!focusedNotificationId) return;

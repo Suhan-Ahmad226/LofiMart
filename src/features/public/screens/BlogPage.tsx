@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   BookOpen,
@@ -376,10 +376,6 @@ export const BlogPage = () => {
                     <div className="mt-5 flex flex-col gap-3">
                       <Link to="/shop" className="inline-flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100">
                         Browse products
-                        <ArrowRight size={16} />
-                      </Link>
-                      <Link to="/ai-features" className="inline-flex items-center justify-between rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                        Explore AI features
                         <ArrowRight size={16} />
                       </Link>
                     </div>

@@ -37,9 +37,9 @@ export const AdminCategoriesPage = () => {
       ]);
       if (!cRes.ok || !sRes.ok || !ssRes.ok) {
         throw new Error(
-          (categoriesData as any)?.error ||
-          (subcategoriesData as any)?.error ||
-          (subsubsData as any)?.error ||
+          (categoriesData as { error?: string } | null)?.error ||
+          (subcategoriesData as { error?: string } | null)?.error ||
+          (subsubsData as { error?: string } | null)?.error ||
           'Failed to load categories',
         );
       }

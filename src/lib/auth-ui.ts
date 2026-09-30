@@ -1,3 +1,5 @@
+import type { User } from '@/features/shared/state/UserContext';
+
 export type AccountRole = 'customer' | 'seller' | 'reseller';
 
 const AUTH_EXCHANGE_TIMEOUT_MS = 15_000;
@@ -50,13 +52,14 @@ export async function exchangeSupabaseSession(params: {
   name?: string;
   referralCode?: string;
   mode?: 'login' | 'register';
-}) {
+}): Promise<{ user: User }> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), AUTH_EXCHANGE_TIMEOUT_MS);
 
   try {
     const response = await fetch('/api/auth/supabase/exchange', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
       signal: controller.signal,
@@ -64,12 +67,22 @@ export async function exchangeSupabaseSession(params: {
 
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(extractAuthMessage(data) || 'Failed to sync Supabase session');
+      const err = new Error(extractAuthMessage(data) || 'Failed to sync Supabase session') as Error & {
+        code?: string;
+        identifier?: string;
+        purpose?: string;
+        phone?: string | null;
+      };
+      err.code = data?.code;
+      err.identifier = data?.identifier;
+      err.purpose = data?.purpose;
+      err.phone = typeof data?.phone === 'string' ? data.phone : null;
+      throw err;
     }
 
     return data;
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
+  } catch (error: unknown) {
+    if ((error as { name?: string })?.name === 'AbortError') {
       throw new Error('Authentication timed out. Please try again.');
     }
 
@@ -79,23 +92,175 @@ export async function exchangeSupabaseSession(params: {
   }
 }
 
-export function normalizeRedirectTarget(value: string | null) {
-  if (!value || !value.startsWith('/')) {
+export async function loginWithPassword(params: {
+  identifier: string;
+  password: string;
+  redirectTarget?: string;
+}): Promise<{ user: User }> {
+  const response = await fetch('/api/auth/supabase/login', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error: Error & { code?: string; identifier?: string; requiresVerification?: boolean; purpose?: string } = new Error(
+      extractAuthMessage(data) || 'Unable to sign in right now.',
+    );
+    error.code = typeof data?.code === 'string' ? data.code : undefined;
+    error.identifier = typeof data?.identifier === 'string' ? data.identifier : undefined;
+    error.requiresVerification = Boolean(data?.requiresVerification);
+    error.purpose = typeof data?.purpose === 'string' ? data.purpose : undefined;
+    throw error;
+  }
+
+  return data;
+}
+
+export function normalizeRedirectTarget(value: string | null | undefined) {
+  if (
+    typeof value !== 'string' ||
+    !value ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    value.includes('\\')
+  ) {
     return null;
   }
 
   return value;
 }
 
+export async function verifyOtpCode(params: {
+  identifier: string;
+  purpose: string;
+  pin: string;
+}) {
+  const response = await fetch('/api/auth/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error: Error & { code?: string } = new Error(extractAuthMessage(data) || 'Verification failed. Please try again.');
+    error.code = typeof data?.code === 'string' ? data.code : undefined;
+    throw error;
+  }
+
+  return data;
+}
+
+export async function resendOtpCode(params: { identifier: string; purpose: string; phone?: string }) {
+  const response = await fetch('/api/auth/resend-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error: Error & { code?: string } = new Error(extractAuthMessage(data) || 'Unable to resend the code right now.');
+    error.code = typeof data?.code === 'string' ? data.code : undefined;
+    throw error;
+  }
+
+  return data;
+}
+
+export async function requestEmailVerification(params: { identifier: string }) {
+  const response = await fetch('/api/auth/request-email-verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(extractAuthMessage(data) || 'Unable to send a verification code right now.');
+  }
+
+  return data;
+}
+
+export async function requestPasswordReset(params: { identifier: string }) {
+  const response = await fetch('/api/auth/request-reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(extractAuthMessage(data) || 'Unable to send a reset code right now.');
+  }
+
+  return data;
+}
+
+export async function resetPasswordWithOtp(params: {
+  identifier: string;
+  newPassword: string;
+  recoveryToken?: string;
+}) {
+  const response = await fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      identifier: params.identifier,
+      newPassword: params.newPassword,
+      ...(params.recoveryToken ? { token: params.recoveryToken } : {}),
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const error: Error & { code?: string } = new Error(extractAuthMessage(data) || 'Unable to reset your password right now.');
+    error.code = typeof data?.code === 'string' ? data.code : undefined;
+    throw error;
+  }
+
+  return data;
+}
+
+export function isRouteAllowedForRole(role: string, targetPath: string): boolean {
+  const normalizedPath = targetPath.toLowerCase();
+
+  if (normalizedPath.startsWith('/admin')) {
+    return role === 'admin';
+  }
+
+  if (normalizedPath.startsWith('/seller')) {
+    return role === 'seller' || role === 'admin';
+  }
+
+  if (normalizedPath.startsWith('/reseller-dashboard') || normalizedPath.startsWith('/reseller')) {
+    return role === 'reseller' || role === 'admin';
+  }
+
+  if (normalizedPath.startsWith('/account')) {
+    return role === 'customer' || role === 'admin' || role === 'seller' || role === 'reseller';
+  }
+
+  return true;
+}
+
+export function getRoleHome(role: string): string {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'seller') return '/seller/dashboard';
+  if (role === 'reseller') return '/reseller-dashboard/overview';
+  return '/account/dashboard';
+}
+
 export function resolvePostAuthDestination(userRole: string, redirectTarget: string | null) {
-  if (redirectTarget) {
+  if (redirectTarget && isRouteAllowedForRole(userRole, redirectTarget)) {
     return redirectTarget;
   }
 
-  if (userRole === 'admin') return '/admin/dashboard';
-  if (userRole === 'seller') return '/seller/dashboard';
-  if (userRole === 'reseller') return '/reseller-dashboard/overview';
-  return '/account/dashboard';
+  return getRoleHome(userRole);
 }
 
 export function buildAuthCallbackUrl(options?: {
@@ -124,10 +289,13 @@ export function buildAuthCallbackUrl(options?: {
 
   const query = params.toString();
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const origin =
-    configuredSiteUrl && typeof window !== 'undefined' && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+    configuredSiteUrl && !['localhost', '127.0.0.1'].includes(hostname)
       ? configuredSiteUrl.replace(/\/+$/, '')
-      : window.location.origin;
+      : typeof window !== 'undefined'
+        ? window.location.origin
+        : '';
 
   return `${origin}/auth/callback${query ? `?${query}` : ''}`;
 }
@@ -190,10 +358,14 @@ export function mapAuthMessage(message: unknown) {
   }
 
   if (normalized.includes('invalid login credentials')) {
-    return 'Invalid email or password. Please try again.';
+    return 'Invalid email, phone, or password. Please try again.';
   }
 
-  if (normalized.includes('email not confirmed') || normalized.includes('confirm')) {
+  if (
+    normalized.includes('email not confirmed') ||
+    normalized.includes('email not verified') ||
+    normalized.includes('confirm your email')
+  ) {
     return 'Your email is not verified yet. Please verify it first, then sign in again.';
   }
 
@@ -217,20 +389,32 @@ export function mapAuthMessage(message: unknown) {
     return 'Authentication is not configured correctly for this environment yet.';
   }
 
-  if (normalized.includes('email already exists') || normalized.includes('already registered')) {
-    return 'This email is already registered. Please sign in or verify your existing account.';
+  if (normalized.includes('email already exists') || normalized.includes('already registered') || normalized.includes('account already exists') || normalized.includes('login to continue')) {
+    return 'এই ইমেইল বা ফোন নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে। Login করুন।';
   }
 
   if (normalized.includes('email rate limit exceeded')) {
-    return 'Too many verification emails were requested recently. Please wait a few minutes and try again.';
+    return 'অনেকবার OTP পাঠানো হয়েছে। কিছুক্ষণ অপেক্ষা করুন।';
   }
 
   if (normalized.includes('over_email_send_rate_limit')) {
-    return 'Too many verification emails were requested recently. Please wait a few minutes and try again.';
+    return 'অনেকবার OTP পাঠানো হয়েছে। কিছুক্ষণ অপেক্ষা করুন।';
   }
 
   if (normalized.includes('registration failed')) {
-    return 'We could not create your authentication account right now. Please try again in a moment.';
+    return 'We could not create your account right now. Please try again in a moment.';
+  }
+
+  if (normalized.includes('otp invalid') || normalized.includes('invalid') && normalized.includes('otp') || normalized.includes('verification code is required')) {
+    return 'OTP সঠিক নয়। আবার চেষ্টা করুন।';
+  }
+
+  if (normalized.includes('supabase auth is not configured')) {
+    return 'অথেন্টিকেশন এই মুহূর্তে কনফিগার করা যায়নি। আবার চেষ্টা করুন।';
+  }
+
+  if (normalized.includes('rate limit') || normalized.includes('rate_limit') || normalized.includes('please wait')) {
+    return 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ অপেক্ষা করুন।';
   }
 
   if (normalized.includes('gateway timeout') || normalized.includes('504')) {

@@ -6,30 +6,33 @@ This directory contains comprehensive technical documentation for the LofiMart (
 
 ---
 
+> **Status note (2026-09-07):** The authoritative, current audit of the codebase is [**`PROJECT_FULL_AUDIT_REPORT.md`**](../PROJECT_FULL_AUDIT_REPORT.md) at the repo root. The 2026-09-02 audit in this folder (`PROJECT_FULL_AUDIT_REPORT.md`) and the `Features.md` / `Phases.md` / `Payment-Flow.md` / `PROJECT_DOCUMENTATION.md` / `Changelog.md` documents are **historical** — they describe removed features (AI, AR/3D, bKash/Stripe/SSLCommerz, POS, accounting, gamification, PWA page). Checkout is Cash on Delivery only. Please reconcile against `CHANGES.md` which reflects the true current state.
+
 ## Documentation Index
 
-| Document | Description | Audience |
-|----------|-------------|----------|
-| [Architecture](./Architecture.md) | System architecture, design patterns, technology stack | Engineers, Architects |
-| [Database](./Database.md) | Database schema, models, relations, multi-tenancy | Backend Engineers, DBAs |
-| [API](./API.md) | Complete API reference with endpoints and examples | Frontend Engineers, Integrators |
-| [Security](./Security.md) | Security architecture, threats, recommendations | Security Engineers |
-| [Authentication](./Authentication.md) | Auth flows, session management, OAuth | Full-stack Engineers |
-| [RBAC](./RBAC.md) | Role-based access control, permissions matrix | Full-stack Engineers |
-| [Features](./Features.md) | Complete feature catalog across all modules | Product Managers, Designers |
-| [Business Rules](./Business-Rules.md) | Business logic, validation rules, constraints | Backend Engineers, QA |
-| [Order Flow](./Order-Flow.md) | Order lifecycle, multi-vendor splitting, fulfillment | Backend Engineers |
-| [Payment Flow](./Payment-Flow.md) | Payment processing, gateway integration, refunds | Backend Engineers |
-| [Seller Flow](./Seller-Flow.md) | Seller lifecycle, onboarding, operations | Backend Engineers, Product |
-| [Error Handling](./Error-Handling.md) | Error patterns, response formats, logging | Full-stack Engineers |
-| [Environment Variables](./Environment-Variables.md) | All env vars, security notes, configuration | DevOps, Backend Engineers |
-| [Deployment](./Deployment.md) | Docker, CI/CD, infrastructure, scaling | DevOps Engineers |
-| [Monitoring](./Monitoring.md) | Health checks, logging, alerting, observability | DevOps, SRE |
-| [Setup](./Setup.md) | Development environment setup guide | New Developers |
-| [Folder Structure](./Folder-Structure.md) | Codebase organization and key files | All Engineers |
-| [Phases](./Phases.md) | Development roadmap and feature timeline | Product Managers, Leadership |
-| [Changelog](./Changelog.md) | Version history and breaking changes | All Team Members |
-| [Prompts](./Prompts.md) | AI integration details, prompts, algorithms | AI/ML Engineers |
+| Document | Description | Audience | Status |
+|----------|-------------|----------|--------|
+| [Architecture](./Architecture.md) | System architecture, design patterns, technology stack | Engineers, Architects | Current |
+| [Database](./Database.md) | Database schema, models, relations, multi-tenancy | Backend Engineers, DBAs | Current |
+| [API](./API.md) | Complete API reference with endpoints and examples | Frontend Engineers, Integrators | Current |
+| [Security](./Security.md) | Security architecture, threats, recommendations | Security Engineers | Current |
+| [Authentication](./Authentication.md) | Auth flows, session management, OAuth | Full-stack Engineers | Current |
+| [RBAC](./RBAC.md) | Role-based access control, permissions matrix | Full-stack Engineers | Current |
+| [Business Rules](./Business-Rules.md) | Business logic, validation rules, constraints | Backend Engineers, QA | Current |
+| [Order Flow](./Order-Flow.md) | Order lifecycle, multi-vendor splitting, fulfillment | Backend Engineers | Current |
+| [Seller Flow](./Seller-Flow.md) | Seller lifecycle, onboarding, operations | Backend Engineers, Product | Current |
+| [Error Handling](./Error-Handling.md) | Error patterns, response formats, logging | Full-stack Engineers | Current |
+| [Environment Variables](./Environment-Variables.md) | All env vars, security notes, configuration | DevOps, Backend Engineers | Current |
+| [Deployment](./Deployment.md) | Docker, CI/CD, infrastructure, scaling | DevOps Engineers | Current |
+| [Monitoring](./Monitoring.md) | Health checks, logging, alerting, observability | DevOps, SRE | Current |
+| [Setup](./Setup.md) | Development environment setup guide | New Developers | Current |
+| [Folder Structure](./Folder-Structure.md) | Codebase organization and key files | All Engineers | Current |
+| [Features](./Features.md) | Feature catalog (pre-cleanup; see note above) | Product Managers | Historical |
+| [Payment Flow](./Payment-Flow.md) | Payment processing, gateway integration, refunds | Backend Engineers | Historical (COD only now) |
+| [Phases](./Phases.md) | Development roadmap and feature timeline | Product Managers, Leadership | Historical |
+| [Prompts](./Prompts.md) | AI integration details, prompts, algorithms | AI/ML Engineers | Historical (AI removed) |
+| [Changelog](./Changelog.md) | Version history and breaking changes | All Team Members | Current |
+| [PROJECT_FULL_AUDIT_REPORT](./PROJECT_FULL_AUDIT_REPORT.md) | 2026-09-02 audit (superseded by repo-root audit) | All | Superseded |
 
 ---
 
@@ -110,4 +113,4 @@ All documentation includes Mermaid diagrams for:
 
 ## Last Updated
 
-July 2026
+September 2026

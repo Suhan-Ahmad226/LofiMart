@@ -271,7 +271,7 @@ class BkashApiError extends Error {
 
 ### Courier API Errors
 
-All courier adapters (Pathao, RedX, Steadfast) follow:
+All courier adapters follow:
 1. HTTP status check
 2. Response payload parsing
 3. Error message extraction

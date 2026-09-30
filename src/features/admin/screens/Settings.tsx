@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Globe, Loader2, Save, Shield, Truck } from 'lucide-react';
 import toast from '@/lib/toast';
+import { useNavigate } from '../../../lib/navigation';
 import {
   AVAILABLE_CHECKOUT_PAYMENT_METHODS,
   AVAILABLE_COURIER_PROVIDERS,
@@ -70,15 +71,16 @@ const manualPaymentLabels: Record<string, string> = {
 
 const courierLabels: Record<string, string> = {
   pathao: 'Pathao',
-  redx: 'RedX',
-  steadfast: 'Steadfast',
-  paperfly: 'Paperfly',
 };
 
 export const AdminSettingsPage = () => {
-  const { token } = useUser();
+  const { token, logout } = useUser();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [adminCurrentPassword, setAdminCurrentPassword] = useState('');
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminPasswordLoading, setAdminPasswordLoading] = useState(false);
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [courierProviders, setCourierProviders] = useState<Array<{
     code: string;
@@ -219,6 +221,36 @@ export const AdminSettingsPage = () => {
     }
   };
 
+  const handleAdminPasswordChange = async () => {
+    if (!adminCurrentPassword || !adminNewPassword) {
+      setError('Enter both your current and new password.');
+      return;
+    }
+    if (adminNewPassword.length < 8) {
+      setError('New password must be at least 8 characters.');
+      return;
+    }
+    setAdminPasswordLoading(true);
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: adminCurrentPassword, newPassword: adminNewPassword }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Failed to update password');
+      toast.success('Password updated. Please sign in again with your new password.');
+      logout();
+      navigate('/login?notice=password_changed', { replace: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update password';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setAdminPasswordLoading(false);
+    }
+  };
+
   if (fetching) {
     return <CenteredLoader label="Loading system settings..." className="min-h-[240px]" />;
   }
@@ -305,6 +337,47 @@ export const AdminSettingsPage = () => {
                 onChange={(e) => setSettings((current) => ({ ...current, autoApproveSellers: String(e.target.checked) }))}
                 className="rounded text-primary focus:ring-primary"
               />
+            </div>
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 space-y-3">
+              <div>
+                <p className="text-sm font-bold text-gray-900">Change your admin password</p>
+                <p className="text-xs text-gray-500">Updates your own admin account password. All other sessions (including this one) will be signed out automatically.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <input
+                  id="admin-current-password"
+                  name="adminCurrentPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Current password"
+                  value={adminCurrentPassword}
+                  onChange={(e) => setAdminCurrentPassword(e.target.value)}
+                  className="rounded-xl border-none bg-bg-light px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20"
+                />
+                <input
+                  id="admin-new-password"
+                  name="adminNewPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="New password"
+                  value={adminNewPassword}
+                  onChange={(e) => setAdminNewPassword(e.target.value)}
+                  className="rounded-xl border-none bg-bg-light px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleAdminPasswordChange()}
+                disabled={adminPasswordLoading}
+                className="btn-primary inline-flex items-center space-x-2 px-5 py-2 text-sm"
+              >
+                {adminPasswordLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Shield size={16} />
+                )}
+                <span>{adminPasswordLoading ? 'Updating...' : 'Update password'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -424,11 +497,6 @@ export const AdminSettingsPage = () => {
                   <p className="mt-3 text-sm text-gray-600">
                     {provider.setupMessage || 'This provider is available for shipment operations.'}
                   </p>
-                  {provider.code === 'steadfast' ? (
-                    <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                      Use Steadfast through the merchant panel, then save the tracking ID in the seller courier queue to keep customer tracking live.
-                    </div>
-                  ) : null}
                 </div>
               ))
             )}

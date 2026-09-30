@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { createClient } from '@/lib/client';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -23,7 +25,7 @@ interface UserContextType {
   user: User | null;
   token: string | null;
   refreshToken: string | null;
-  login: (user: User, token: string, refreshToken?: string | null) => void;
+  login: (user: User) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
@@ -32,194 +34,73 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-function getTokenExpiryMs(token: string): number | null {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-
-  try {
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
-    );
-
-    const exp = Number(payload.exp);
-    return Number.isFinite(exp) ? exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
+const USER_STORAGE_KEY = 'user';
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const logoutTimerRef = useRef<number | null>(null);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
-  const clearStoredSession = useCallback(() => {
-    if (typeof window === 'undefined') return;
-
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-  }, []);
-
-  const clearLogoutTimer = useCallback(() => {
-    if (logoutTimerRef.current !== null) {
-      window.clearTimeout(logoutTimerRef.current);
-      logoutTimerRef.current = null;
+  const getBrowserStorage = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
     }
   }, []);
 
-  const logout = useCallback(() => {
-    clearLogoutTimer();
-    setUser(null);
-    setToken(null);
-    setRefreshToken(null);
-    clearStoredSession();
-  }, [clearLogoutTimer, clearStoredSession]);
+  const clearStoredSession = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const storage = getBrowserStorage();
+    storage?.removeItem(USER_STORAGE_KEY);
+    storage?.removeItem('token');
+    storage?.removeItem('refreshToken');
+  }, [getBrowserStorage]);
 
-  const scheduleLogout = useCallback(
-    (accessToken: string) => {
-      clearLogoutTimer();
-      const expiryMs = getTokenExpiryMs(accessToken);
-      if (!expiryMs) return;
-
-      const delay = expiryMs - Date.now();
-      if (delay <= 0) {
-        logout();
-        return;
+  const persistUser = useCallback(
+    (nextUser: User | null) => {
+      const storage = getBrowserStorage();
+      if (!storage) return;
+      if (nextUser) {
+        storage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+      } else {
+        storage.removeItem(USER_STORAGE_KEY);
       }
-
-      logoutTimerRef.current = window.setTimeout(() => {
-        logout();
-      }, delay + 1000);
     },
-    [clearLogoutTimer, logout],
+    [getBrowserStorage],
   );
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  const setInternalUser = useCallback(
+    (nextUser: User | null) => {
+      setUserState(nextUser);
+      setToken(nextUser ? 'authenticated' : null);
+      setRefreshToken(null);
+      persistUser(nextUser);
+    },
+    [persistUser],
+  );
 
-    let active = true;
+  const logout = useCallback(() => {
+    void fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).catch(() => {});
 
-    const hydrateSession = async () => {
-      try {
-        const savedUser = localStorage.getItem('user');
-        const savedToken = localStorage.getItem('token');
-        const savedRefreshToken = localStorage.getItem('refreshToken');
-
-        if (!savedUser || !savedToken) {
-          clearStoredSession();
-          if (active) {
-            setUser(null);
-            setToken(null);
-            setRefreshToken(null);
-          }
-          return;
-        }
-
-        const parsedUser = JSON.parse(savedUser) as User;
-        const savedTokenExpiryMs = getTokenExpiryMs(savedToken);
-        const hasValidSavedToken = typeof savedTokenExpiryMs === 'number' ? savedTokenExpiryMs > Date.now() : Boolean(savedToken);
-
-        let nextToken = savedToken;
-        let nextRefreshToken = savedRefreshToken || null;
-
-        if (savedRefreshToken) {
-          try {
-            const refreshResponse = await fetch('/api/auth/refresh', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken: savedRefreshToken }),
-            });
-            const refreshPayload = await refreshResponse.json().catch(() => null);
-
-            if (refreshResponse.ok && refreshPayload?.token && refreshPayload?.refreshToken) {
-              nextToken = refreshPayload.token;
-              nextRefreshToken = refreshPayload.refreshToken;
-            } else if (!hasValidSavedToken) {
-              throw new Error('Session refresh failed');
-            }
-          } catch {
-            if (!hasValidSavedToken) {
-              throw new Error('Session refresh failed');
-            }
-          }
-        } else if (!hasValidSavedToken) {
-          throw new Error('Session refresh failed');
-        }
-
-        if (!active) {
-          return;
-        }
-
-        setUser(parsedUser);
-        setToken(nextToken);
-        setRefreshToken(nextRefreshToken);
-        localStorage.setItem('user', JSON.stringify(parsedUser));
-        localStorage.setItem('token', nextToken);
-        if (nextRefreshToken) {
-          localStorage.setItem('refreshToken', nextRefreshToken);
-        } else {
-          localStorage.removeItem('refreshToken');
-        }
-        scheduleLogout(nextToken);
-      } catch {
-        clearStoredSession();
-        if (active) {
-          setUser(null);
-          setToken(null);
-          setRefreshToken(null);
-        }
-      } finally {
-        if (active) {
-          setIsReady(true);
-        }
+    try {
+      if (supabaseRef.current) {
+        void supabaseRef.current.auth.signOut();
       }
-    };
-
-    void hydrateSession();
-
-    return () => {
-      active = false;
-    };
-  }, [clearStoredSession, scheduleLogout]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !token) return;
-
-    let active = true;
-
-    const refreshUserProfile = async () => {
-      try {
-        const response = await fetch('/api/users/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await response.json().catch(() => null);
-        if (!response.ok || !data?.user || !active) {
-          return;
-        }
-
-        setUser((current) => {
-          const nextUser = { ...(current || {}), ...data.user } as User;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('user', JSON.stringify(nextUser));
-          }
-          return nextUser;
-        });
-      } catch {
-        // Silent refresh only. We keep the existing session snapshot.
-      }
-    };
-
-    void refreshUserProfile();
-
-    return () => {
-      active = false;
-    };
-  }, [token]);
+    } catch {
+      // ignore
+    }
+    setInternalUser(null);
+    clearStoredSession();
+  }, [setInternalUser, clearStoredSession]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -234,23 +115,142 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [logout]);
 
-  const login = useCallback(
-    (user: User, accessToken: string, nextRefreshToken?: string | null) => {
-      setUser(user);
-      setToken(accessToken);
-      setRefreshToken(nextRefreshToken ?? null);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', accessToken);
-        if (nextRefreshToken) {
-          localStorage.setItem('refreshToken', nextRefreshToken);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let active = true;
+    let supabase: ReturnType<typeof createClient> | null = null;
+
+    const init = async () => {
+      try {
+        supabase = createClient();
+        supabaseRef.current = supabase;
+
+        const { data } = await supabase.auth.getUser();
+
+        if (!active) return;
+
+        if (data.user) {
+          const cachedUser = (() => {
+            const storage = getBrowserStorage();
+            const saved = storage?.getItem(USER_STORAGE_KEY);
+            if (!saved) return null;
+            try {
+              return JSON.parse(saved) as User;
+            } catch {
+              return null;
+            }
+          })();
+
+          if (cachedUser) {
+            setInternalUser(cachedUser);
+          } else {
+            try {
+              const response = await fetch('/api/users/profile', {
+                credentials: 'include',
+              });
+              if (response.ok) {
+                const payload = await response.json().catch(() => null);
+                if (payload?.user) {
+                  setInternalUser({
+                    ...payload.user,
+                    name: payload.user.name || '',
+                  } as User);
+                } else {
+                  setInternalUser(null);
+                }
+              } else {
+                setInternalUser(null);
+              }
+            } catch {
+              setInternalUser(null);
+            }
+          }
         } else {
-          localStorage.removeItem('refreshToken');
+          setInternalUser(null);
+        }
+      } catch {
+        if (active) {
+          setInternalUser(null);
+        }
+      } finally {
+        if (active) {
+          setIsReady(true);
         }
       }
-      scheduleLogout(accessToken);
+    };
+
+    void init();
+
+    return () => {
+      active = false;
+    };
+  }, [getBrowserStorage, setInternalUser]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const active = true;
+
+    const setupListener = async () => {
+      try {
+        const supabase = supabaseRef.current ?? createClient();
+        supabaseRef.current = supabase;
+
+        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
+          if (!active) return;
+
+          if (!session?.user) {
+            setInternalUser(null);
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/users/profile', {
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const payload = (await response.json().catch(() => null)) as { user?: User } | null;
+              if (payload?.user) {
+                setInternalUser({
+                  ...payload.user,
+                  name: payload.user.name || '',
+                });
+              }
+            } else {
+              setInternalUser(null);
+            }
+          } catch {
+            setInternalUser(null);
+          }
+        });
+
+        return () => {
+          data?.subscription?.unsubscribe();
+        };
+      } catch {
+        return () => {};
+      }
+    };
+
+    const cleanup = setupListener();
+    return () => {
+      void cleanup;
+    };
+  }, [setInternalUser, getBrowserStorage]);
+
+  const login = useCallback(
+    (nextUser: User) => {
+      setInternalUser(nextUser);
     },
-    [scheduleLogout],
+    [setInternalUser],
+  );
+
+  const setUser = useCallback(
+    (nextUser: User | null) => {
+      setInternalUser(nextUser);
+    },
+    [setInternalUser],
   );
 
   return (
@@ -262,7 +262,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         setUser,
-        isAuthenticated: !!token,
+        isAuthenticated: !!user,
         isReady,
       }}
     >

@@ -15,7 +15,7 @@ import {
 import { Product } from '../../../types';
 import { formatPrice } from '../../../lib/utils';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
-import { Link, useNavigate } from '../../../lib/navigation';
+import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
 import { printSkuLabel, printSkuLabelSheet } from '../../../lib/skuLabel';
@@ -43,12 +43,15 @@ const renderInventoryTone = (status: ProductTab) => {
 };
 
 export const SellerProductsPage = () => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlProduct = searchParams.get('product') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [focusedProductId, setFocusedProductId] = useState('');
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
   const [activeTab, setActiveTab] = useState<ProductTab | 'all'>('all');
   const { token, user } = useUser();
   const navigate = useNavigate();
@@ -75,21 +78,15 @@ export const SellerProductsPage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    const nextProductId = params.get('product');
-
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-    if (nextProductId) {
-      setFocusedProductId(nextProductId);
+    if (urlProduct) {
+      setFocusedProductId(urlProduct);
     }
-  }, []);
+  }, [urlProduct, urlSearch]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     try {
       setError('');
       const response = await fetch(`/api/products/${id}`, {

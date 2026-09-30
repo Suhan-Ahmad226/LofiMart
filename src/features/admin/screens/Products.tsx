@@ -3,13 +3,16 @@ import { Search, Filter, Eye, Trash2, Printer } from 'lucide-react';
 import { formatPrice } from '../../../lib/utils';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { useUser } from '../../../features/shared/state/UserContext';
-import { Link } from '../../../lib/navigation';
+import { Link, useSearchParams } from '../../../lib/navigation';
 import toast from '@/lib/toast';
 import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
 import { printSkuLabel, printSkuLabelSheet } from '../../../lib/skuLabel';
 
 export const AdminProductsPage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const urlProduct = searchParams.get('product') || '';
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -40,19 +43,13 @@ export const AdminProductsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextSearch = params.get('search');
-    const nextProductId = params.get('product');
-
-    if (nextSearch) {
-      setSearch(nextSearch);
+    if (urlSearch) {
+      setSearch(urlSearch);
     }
-    if (nextProductId) {
-      setFocusedProductId(nextProductId);
+    if (urlProduct) {
+      setFocusedProductId(urlProduct);
     }
-  }, []);
+  }, [urlProduct, urlSearch]);
 
   const handleDelete = async (id: number) => {
     try {

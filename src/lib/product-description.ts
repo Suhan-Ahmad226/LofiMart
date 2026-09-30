@@ -128,3 +128,19 @@ export function insertAroundSelection(value: string, selectionStart: number, sel
     nextSelectionEnd: selectionEnd + before.length,
   };
 }
+
+/**
+ * Serialize an object for embedding inside a <script type="application/ld+json">
+ * block. Escapes the `</script>` breakout sequence and control characters so a
+ * value containing markup cannot break out of the script element and inject
+ * HTML/JavaScript.
+ */
+export function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+

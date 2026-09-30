@@ -544,18 +544,62 @@ GET  /api/ai/pricing/demand          → Demand forecast
 ## Logistics Endpoints
 
 ```
-GET  /api/logistics/providers           → List courier providers
-POST /api/logistics/book                → Book shipment
-POST /api/logistics/sync-status         → Sync tracking status
-GET  /api/logistics/steadfast/balance   → Steadfast balance
-POST /api/logistics/steadfast/bulk      → Steadfast bulk orders
-POST /api/logistics/steadfast/return    → Create return request
-GET  /api/logistics/steadfast/returns   → List returns
-GET  /api/logistics/steadfast/payments  → Steadfast payments
-GET  /api/logistics/steadfast/police-stations → Police stations
-POST /api/logistics/webhook/pathao      → Pathao webhook
-POST /api/logistics/webhook/redx        → RedX webhook
-POST /api/logistics/webhook/steadfast   → Steadfast webhook
+GET  /api/logistics/providers                 → Registered courier providers with capabilities
+                                                 (Pathao is the only one today)
+
+GET  /api/logistics/locations?provider=&level=&parentId=
+                                               → Generic location tree
+                                                 level: city | zone | area
+
+GET  /api/logistics/stores?provider=[&warehouseId=]
+                                               → Pickup points for a provider
+POST /api/logistics/stores                    → Register a pickup point
+                                                 { provider, warehouseId, cityId,
+                                                   zoneId, areaId }
+
+POST /api/logistics/shipments/[shipmentId]/sync
+                                               → Re-read one shipment from its provider
+POST /api/logistics/webhooks/[provider]       → Provider webhook (dispatches to the provider adapter)
+
+POST /api/seller/courier/bookings             → Book a shipment (seller)
+                                                 { shipmentId } | { orderId } + { provider }
+GET  /api/seller/logistics/courier-readiness  → Which couriers a seller can book, and why not
+
+GET  /api/admin/logistics/diagnostics[?probe=1] → Courier health, sync backlog, unmapped locations
+```
+
+Every `/api/logistics/*` route takes `?provider=`. The provider is resolved
+through the registry, and an unregistered provider returns `404`. There are
+deliberately no provider-specific route variants: a new courier is added by
+registering an adapter, not by adding routes.
+
+`?probe=1` on the admin diagnostics route performs live upstream health checks.
+Without it the route only reports stored state, so viewing the page does not
+consume provider API quota.
+
+Single-order booking is not exposed as a public courier route on purpose.
+`POST /api/seller/courier/bookings` is the only supported way to create a
+parcel, because it claims the shipment row, persists the tracking id, and is
+idempotent. Calling a provider's create-order endpoint directly would create a
+real consignment the database never records. `merchantReference` is derived from
+the shipment id by the booking service, so retries reuse the same reference
+instead of creating duplicate consignments.
+
+Delivery prices are never returned by these routes. Quotes come from
+`POST /api/shipping/preview` and are recomputed server-side at order creation;
+a client-supplied fee is untrusted.
+
+The webhook route is provider-agnostic: it resolves the provider through the
+registry and delegates verification and parsing to that provider's adapter.
+Pathao authenticates with `PATHAO_WEBHOOK_TOKEN`, which has no fallback, so it
+fails closed when the token is unset. An unregistered provider returns `404`.
+
+`PATHAO_BASE_URL` must be one of the two documented Pathao hosts
+(`https://api-hermes.pathao.com`, `https://courier-api-sandbox.pathao.com`) over
+`https`. Anything else is refused before the request is sent, because every
+request carries a bearer token or the client secret. `PATHAO_ALLOW_CUSTOM_BASE_URL=1`
+is an explicit opt-out for self-hosted gateways, and startup validation reports it
+as an error in production.
 ```
 
 ---

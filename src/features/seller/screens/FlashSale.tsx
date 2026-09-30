@@ -3,6 +3,7 @@ import { Loader2, Send, Zap } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
+import { useSearchParams } from '../../../lib/navigation';
 
 type SellerProduct = {
   id: string;
@@ -47,6 +48,8 @@ const initialForm = {
 export const SellerFlashSalePage = () => {
   const { token, user } = useUser();
   const sellerApproved = user?.seller_status === 'approved';
+  const [searchParams] = useSearchParams();
+  const urlEntry = searchParams.get('entry') || '';
   const [campaigns, setCampaigns] = useState<FlashSaleCampaign[]>([]);
   const [entries, setEntries] = useState<FlashSaleEntry[]>([]);
   const [products, setProducts] = useState<SellerProduct[]>([]);
@@ -105,13 +108,10 @@ export const SellerFlashSalePage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const nextEntry = params.get('entry');
-    if (nextEntry) {
-      setFocusedEntryId(nextEntry);
+    if (urlEntry) {
+      setFocusedEntryId(urlEntry);
     }
-  }, []);
+  }, [urlEntry]);
 
   const eligibleCampaigns = useMemo(
     () => campaigns.filter((campaign) => ['draft', 'scheduled', 'live', 'published'].includes(campaign.status)),

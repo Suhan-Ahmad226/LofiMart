@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prismaDirect } from '../../../../../features/shared/services/database/prisma';
 import { requireAdminRole, requireApiUser } from '../../../_compat/shared';
+import { associateEntityMedia, deleteManyMedia, enqueueMediaDelete } from '@/lib/media';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,7 @@ const aboutSettingKeys = [
 type AboutSettingKey = (typeof aboutSettingKeys)[number];
 
 const aboutSettingKeySet = new Set<string>(aboutSettingKeys);
+const aboutImageKeys = new Set(['about_hero_image', 'about_story_image']);
 
 async function requireAdmin(request: NextRequest) {
   const user = await requireApiUser(request);
@@ -81,6 +83,12 @@ export async function PATCH(request: NextRequest) {
         value: normalizeSettingValue(value),
       }));
 
+    const currentImageSettings = await prismaDirect.platformSetting.findMany({
+      where: { key: { in: [...aboutImageKeys] } },
+      select: { key: true, value: true },
+    });
+    const currentImageByKey = new Map(currentImageSettings.map((setting) => [setting.key, setting.value]));
+
     await prismaDirect.$transaction(
       updates.map((setting) =>
         prismaDirect.platformSetting.upsert({
@@ -90,6 +98,29 @@ export async function PATCH(request: NextRequest) {
         }),
       ),
     );
+
+    for (const setting of updates.filter((item) => aboutImageKeys.has(item.key))) {
+      await associateEntityMedia({
+        ownerId: String(admin.id),
+        entityType: 'PlatformSetting',
+        entityId: setting.key,
+        fieldName: setting.key,
+        urls: [setting.value],
+      });
+
+      const oldUrl = currentImageByKey.get(setting.key);
+      if (oldUrl && oldUrl !== setting.value) {
+        const cleanup = await deleteManyMedia([{ url: oldUrl }]);
+        await Promise.all(cleanup.errors.map((failed) => enqueueMediaDelete({
+          publicId: failed.item.publicId,
+          url: failed.item.url,
+          resourceType: failed.item.resourceType,
+          reason: 'about-page-replaced-old-asset',
+          entityType: 'PlatformSetting',
+          entityId: setting.key,
+        })));
+      }
+    }
 
     return NextResponse.json({ success: true, updated: updates.length });
   } catch (error) {

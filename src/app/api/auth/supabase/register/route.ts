@@ -1,136 +1,144 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { normalizeEmail, normalizeBdPhone } from '@/features/auth/services/identity';
+import { sanitizeRegistrationRole } from '@/modules/rbac/registration';
+import { getClientIp } from '@/app/api/auth/_utils/ip';
+import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import {
-  attachAppSessionCookies,
-  createLocalUserFromSupabase,
-  createSupabaseServerClient,
-  formatAuthUser,
-  isAuthRole,
-  issueAppSession,
-} from '../shared';
-import { prisma } from '@/lib/server';
+  getTrustedRedirectOrigins,
+  isRedirectUrlAllowed,
+} from '@/features/auth/services/redirectOrigins';
+import {
+  registerUser,
+  sendEmailOtp,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} from '@/features/auth/server/auth-service';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_REDIRECT_ORIGINS = [
-  process.env.FRONTEND_URL,
-  process.env.NEXT_PUBLIC_SITE_URL,
-].filter(Boolean) as string[];
-
-function isRedirectUrlAllowed(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return ALLOWED_REDIRECT_ORIGINS.some(allowed => {
-      try {
-        const allowedUrl = new URL(allowed);
-        return parsed.origin === allowedUrl.origin;
-      } catch {
-        return false;
-      }
-    });
-  } catch {
-    return false;
+// Temporary safe staging logs (any password/token values are never logged).
+function debugLog(message: string, extra: Record<string, unknown> = {}) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[register] ${message}`, extra);
   }
 }
 
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  role: z.string(),
-  name: z.string().trim().min(1).max(120),
-  referralCode: z.string().optional(),
-  redirectTo: z.string().url().optional()
-    .refine(
-      (url) => !url || isRedirectUrlAllowed(url),
-      "Redirect URL origin not allowed"
+const createRegisterSchema = (allowedOrigins: string[]) =>
+  z.object({
+    email: z.string().email().transform((value) => value.trim().toLowerCase()),
+    password: z.string().min(8).optional(),
+    name: z.string().trim().min(1).max(120),
+    phone: z.string().trim().max(20).optional(),
+    role: z.string().optional(),
+    referralCode: z.string().optional(),
+    redirectTo: z.string().url().optional().refine(
+      (url) => !url || isRedirectUrlAllowed(url, allowedOrigins),
+      'Redirect URL origin not allowed',
     ),
-});
+  });
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = RegisterSchema.parse(await req.json());
-
-    if (!isAuthRole(body.role)) {
-      return NextResponse.json({ error: 'Invalid account role.' }, { status: 400 });
-    }
-
-    const existing = await prisma.user.findUnique({
-      where: { email: body.email },
+    debugLog('submit received', {
+      path: request.nextUrl.pathname,
+      hasBody: Boolean(request.body),
     });
 
-    if (existing) {
-      return NextResponse.json({ error: 'Email already exists' }, { status: 409 });
+    // Allowlist combines the configured frontend origins, CORS_ALLOWED_ORIGINS,
+    // the caller's own origin (same-origin redirects are safe), and localhost
+    // loopbacks in non-production. The frontend always builds redirectTo from
+    // window.location.origin.
+    const allowedOrigins = getTrustedRedirectOrigins(request.nextUrl.origin);
+    const body = createRegisterSchema(allowedOrigins).parse(await request.json());
+
+    const email = normalizeEmail(body.email);
+    const phone = body.phone ? normalizeBdPhone(body.phone) : null;
+    if (!email || (body.phone && !phone)) {
+      return NextResponse.json({ error: 'Enter a valid email and a valid Bangladesh phone number.' }, { status: 400 });
     }
 
-    const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-    const supabase = createSupabaseServerClient(hasServiceRole);
-    const authResult = hasServiceRole
-      ? await supabase.auth.admin.createUser({
-          email: body.email,
-          password: body.password,
-          email_confirm: false,
-          user_metadata: {
-            name: body.name,
-            role: body.role,
-          },
-        })
-      : await supabase.auth.signUp({
-          email: body.email,
-          password: body.password,
-          options: {
-            emailRedirectTo: body.redirectTo,
-            data: {
-              name: body.name,
-              role: body.role,
-            },
-          },
-        });
+    const role = sanitizeRegistrationRole(body.role);
 
-    if (authResult.error) {
-      return NextResponse.json({ error: authResult.error.message || 'Registration failed' }, { status: 400 });
-    }
-
-    const authUser = authResult.data.user;
-    const verifiedAt = authUser?.email_confirmed_at ? new Date(authUser.email_confirmed_at) : null;
-    const user = await createLocalUserFromSupabase({
-      email: body.email,
-      name: body.name,
-      role: body.role,
-      password: body.password,
-      emailVerified: Boolean(verifiedAt),
-      emailVerifiedAt: verifiedAt,
+    debugLog('payload validated', {
+      email,
+      phone: phone ? `${phone.slice(0, 3)}****` : null,
+      name: Boolean(body.name),
+      role: role || null,
+      hasPassword: Boolean(body.password),
+      redirectTo: body.redirectTo ?? null,
     });
 
-    const hasSupabaseSession =
-      'session' in authResult.data &&
-      Boolean(
-        authResult.data.session &&
-          typeof authResult.data.session === 'object' &&
-          'access_token' in authResult.data.session,
+    const clientIp = getClientIp(request);
+    const { allowed } = await takeRateLimit(`auth:register:${clientIp}`, { limit: 10, windowMs: 15 * 60 * 1000 });
+    if (!allowed) {
+      debugLog('rate limited', { clientIp });
+      return NextResponse.json(
+        { error: 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।', code: 'RATE_LIMITED' },
+        { status: 429, headers: { 'Retry-After': '900' } },
       );
-
-    if (hasSupabaseSession) {
-      const session = await issueAppSession(user);
-
-      const response = NextResponse.json({
-        user: formatAuthUser(user),
-        token: session.accessToken,
-        refreshToken: session.refreshToken,
-        refreshExpiresAt: session.expiresAt,
-      });
-
-      return attachAppSessionCookies(response, user, session);
     }
 
-    return NextResponse.json({
-      user: formatAuthUser(user),
-      requiresVerification: true,
+    debugLog('calling auth service', { email, redirectTo: body.redirectTo ?? null });
+    const result = await registerUser({
+      email,
+      name: body.name,
+      role,
+      phone,
+      password: body.password,
+      redirectTo: body.redirectTo,
     });
+    debugLog('auth service returned', { success: result.success, code: result.success ? undefined : result.code });
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error, code: result.code },
+        { status: result.status ?? 400 },
+      );
+    }
+
+    // Send verification OTP to the account's real email after registration or resume
+    debugLog('calling supabase signUp', { email: result.registeredEmail ?? email, purpose: 'register' });
+    const otpResult = await sendEmailOtp({ email: result.registeredEmail ?? email, purpose: 'register' });
+    debugLog('supabase signUp returned', { success: otpResult.success, code: otpResult.success ? undefined : otpResult.code });
+    if (!otpResult.success) {
+      return NextResponse.json(
+        { error: 'Failed to send verification code' },
+        { status: 500 },
+      );
+    }
+
+    if (result.resumingAccount) {
+      return NextResponse.json(
+        {
+          success: true,
+          requiresVerification: true,
+          resumingAccount: true,
+          existingEmail: email,
+          existingPhone: phone,
+          passwordSet: false,
+          registeredEmail: result.registeredEmail,
+          registeredPhone: result.registeredPhone,
+          resendInSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+        },
+        { status: 200 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        requiresVerification: result.requiresVerification,
+        passwordSet: result.passwordSet,
+        registeredEmail: result.registeredEmail,
+        registeredPhone: result.registeredPhone,
+        resendInSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid registration payload', details: error.issues }, { status: 400 });
     }
-
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Registration failed' },
       { status: 500 },

@@ -50,6 +50,8 @@ type FeedItem = {
     avatar: string;
     role: string;
     badge: string;
+    storefront_slug?: string | null;
+    reseller_code?: string | null;
   };
   image: string;
   caption: string;
@@ -80,6 +82,9 @@ type CommunityContributor = {
   name: string;
   role: string;
   stat: string;
+  storefront_slug?: string | null;
+  reseller_code?: string | null;
+  reseller_role?: boolean;
 };
 
 type CommunityStats = {
@@ -178,10 +183,13 @@ function normalizeFeedItem(item: FeedItem): FeedItem {
   };
 }
 
-function getSellerProfilePath(userId?: string | null, role?: string) {
-  if (!userId) return null;
-  if (role?.toLowerCase().includes('seller') || role?.toLowerCase().includes('reseller')) {
-    return `/seller-profile/${userId}`;
+function getSellerProfilePath(role?: string, storefrontSlug?: string | null, resellerCode?: string | null) {
+  const normalizedRole = role?.toLowerCase() ?? '';
+  if (normalizedRole.includes('reseller')) {
+    return resellerCode ? `/r/${resellerCode}` : null;
+  }
+  if (normalizedRole.includes('seller')) {
+    return storefrontSlug ? `/store/${storefrontSlug}` : null;
   }
   return null;
 }
@@ -955,7 +963,7 @@ export const CommunityFeedPage = () => {
               ) : (
                 filteredItems.map((item, idx) => {
                   const isLiked = likedPosts.includes(item.id);
-                  const sellerProfilePath = getSellerProfilePath(item.user.id, item.user.role);
+                  const sellerProfilePath = getSellerProfilePath(item.user.role, item.user.storefront_slug, item.user.reseller_code);
                   const isOwnPost = user?.id && item.user.id === user.id;
                   const shareUrl =
                     typeof window !== 'undefined'
@@ -1238,9 +1246,21 @@ export const CommunityFeedPage = () => {
                           <div className="text-right">
                             <p className="text-xs font-semibold text-emerald-600">{user.stat}</p>
                             {user.id ? (
-                              <Link to={`/seller-profile/${user.id}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
-                                View
-                              </Link>
+                              ((user.reseller_role || user.role === 'Verified Reseller') && user.reseller_code)
+                                ? (
+                                    <Link to={`/r/${user.reseller_code}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
+                                      View
+                                    </Link>
+                                  )
+                                : user.storefront_slug ? (
+                                    <Link to={`/store/${user.storefront_slug}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
+                                      View
+                                    </Link>
+                                  ) : (
+                                    <button type="button" className="mt-1 text-xs font-semibold text-primary hover:underline">
+                                      View
+                                    </button>
+                                  )
                             ) : (
                               <button type="button" className="mt-1 text-xs font-semibold text-primary hover:underline">
                                 View

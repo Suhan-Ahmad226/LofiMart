@@ -1,3 +1,7 @@
 'use client';
 
-export { SellerFlashSalePage as default } from '../../../../../features/seller/screens/FlashSale';
+import { ClientRedirect } from '../../../../../features/shared/app/ClientRedirect';
+
+export default function SellerMarketingPromotionsPage() {
+  return <ClientRedirect to="/seller/flash-sale" />;
+}

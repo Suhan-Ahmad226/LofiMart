@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 const BOT_USER_AGENTS = [
   /gptbot/i,
@@ -50,7 +51,19 @@ function addSecurityHeaders(response: NextResponse, isProd: boolean): NextRespon
   return response;
 }
 
-export function middleware(request: NextRequest) {
+function getSupabaseUrl(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return url || null;
+}
+
+function getSupabaseKey(): string | null {
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return key || null;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const userAgent = request.headers.get('user-agent');
   const isProd = process.env.NODE_ENV === 'production';
@@ -65,15 +78,35 @@ export function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 204 });
   }
 
+  const response = NextResponse.next({ request });
+
+  const supabaseUrl = getSupabaseUrl();
+  const supabaseKey = getSupabaseKey();
+
+  if (supabaseUrl && supabaseKey) {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    });
+
+    await supabase.auth.getUser();
+  }
+
   if (pathname.startsWith('/api/')) {
     const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
-    const response = NextResponse.next();
     response.headers.set('x-request-id', requestId);
     addSecurityHeaders(response, isProd);
     return response;
   }
 
-  const response = NextResponse.next();
   addSecurityHeaders(response, isProd);
 
   if (pathname.startsWith('/admin') || pathname.startsWith('/seller') || pathname.startsWith('/reseller-dashboard')) {

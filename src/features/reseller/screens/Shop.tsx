@@ -101,8 +101,8 @@ export const ResellerShop = () => {
   );
   const getProductImageSrc = (product: Product) => product.image || '/icon.svg';
 
-  const isProductInShop = (productId: number) =>
-    myProducts.some((product) => Number(product.product_id) === productId);
+  const isProductInShop = (productId: Product['id']) =>
+    myProducts.some((product) => product.product_id === String(productId));
 
   const handleAddProduct = async (product: Product) => {
     if (!token) {
@@ -239,27 +239,27 @@ export const ResellerShop = () => {
             return (
               <div
                 key={product.id}
-                className="group overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/70 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/80 hover:-translate-y-1"
               >
-                <div className="relative aspect-square overflow-hidden bg-gray-100">
+                <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 via-slate-100/70 to-slate-50">
                   <img
                     src={getProductImageSrc(product)}
                     alt={product.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     referrerPolicy="no-referrer"
                   />
                   {inShop ? (
-                    <div className="absolute right-2 top-2 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white">
+                    <div className="absolute right-2 top-2 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-bold text-white shadow-md">
                       IN CATALOG
                     </div>
                   ) : null}
                 </div>
 
-                <div className="space-y-3 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                <div className="space-y-3 p-5">
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                     {product.category}
                   </p>
-                  <h3 className="line-clamp-2 text-sm font-bold leading-5">{product.name}</h3>
+                  <h3 className="line-clamp-2 text-sm font-bold leading-5 text-slate-900">{product.name}</h3>
                   <div className="flex items-start justify-between gap-3 pt-1">
                     <div>
                       <p className="text-xs text-gray-400">Seller reseller price</p>

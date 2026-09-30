@@ -35,8 +35,8 @@ const ActivityHeatmap: React.FC<{ data?: HeatmapDay[] }> = ({ data = [] }) => {
       ) : (
         <>
           <div className="grid grid-cols-7 gap-1">
-            {safeData.map((day) => (
-              <div key={day.day} className="flex flex-col space-y-0.5">
+            {safeData.map((day, index) => (
+              <div key={`${day.day}-${index}`} className="flex flex-col space-y-0.5">
                 {day.hours.map((hour) => (
                   <div
                     key={`${day.day}-${hour.hour}`}

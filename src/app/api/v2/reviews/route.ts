@@ -42,6 +42,10 @@ export async function GET(request: NextRequest) {
       success: true,
       data: reviews,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=120, s-maxage=600, stale-while-revalidate=1800',
+      },
     });
   } catch (error) {
     console.error('GET /api/v2/reviews error:', error);

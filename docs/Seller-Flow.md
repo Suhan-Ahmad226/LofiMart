@@ -168,18 +168,12 @@ graph TB
     SelectOrder["Select Order"] --> SelectCourier{"Choose<br/>Courier"}
     
     SelectCourier -->|"Pathao"| PathaoFlow["Pathao Flow"]
-    SelectCourier -->|"RedX"| RedxFlow["RedX Flow"]
-    SelectCourier -->|"Steadfast"| SteadfastFlow["Steadfast Flow"]
     SelectCourier -->|"Manual"| ManualFlow["Manual Flow"]
     
-    PathaoFlow --> PathaoAPI["API: Auto-create<br/>store + book"]
-    RedxFlow --> RedxAPI["API: Book<br/>shipment"]
-    SteadfastFlow --> SteadfastAPI["API: Book<br/>shipment"]
+    PathaoFlow --> PathaoAPI["API: Book<br/>shipment"]
     ManualFlow --> ManualRef["Generate<br/>tracking ref"]
     
     PathaoAPI --> Tracking["Tracking<br/>Stored"]
-    RedxAPI --> Tracking
-    SteadfastAPI --> Tracking
     ManualRef --> Tracking
 ```
 
@@ -187,10 +181,7 @@ graph TB
 
 | Provider | API Mode | Auto Book | COD | Tracking Sync |
 |----------|----------|-----------|-----|---------------|
-| Pathao | API/Manual | ✅ (with store setup) | ✅ | ✅ |
-| RedX | API/Manual | ✅ | ✅ | ✅ |
-| Steadfast | API/Manual | ✅ | ✅ | ✅ |
-| Paperfly | Manual only | ❌ | ✅ | ❌ |
+| Pathao | API/Manual | ✅ (requires a pre-mapped Pathao store) | ✅ | ✅ |
 
 ### Telegram Bot Integration
 

@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react';
 import { useCart } from '../../../../features/shop/state/CartContext';
 import { useUser } from '../../../../features/shared/state/UserContext';
 
+const SCHEDULE_WAIT_MS = 45_000;
+
 export default function CartRecoveryTracker() {
   const { items, isReady } = useCart();
   const { token, isAuthenticated } = useUser();
@@ -11,68 +13,62 @@ export default function CartRecoveryTracker() {
 
   useEffect(() => {
     if (!isReady || !isAuthenticated || !token) {
+      hasScheduledRef.current = false;
       return;
     }
 
-    if (items.length === 0) {
-      hasScheduledRef.current = false;
-      fetch('/api/cart/recovery/cancel', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }).catch(() => undefined);
-      return;
-    }
+    const headers = { Authorization: `Bearer ${token}` };
 
     const scheduleRecovery = () => {
-      fetch('/api/cart/recovery/schedule', {
+      if (hasScheduledRef.current) {
+        return;
+      }
+      hasScheduledRef.current = true;
+      void fetch('/api/cart/recovery/schedule', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         keepalive: true,
-      }).catch(() => undefined);
+      })
+        .then((response) => {
+          if (!response.ok) {
+            hasScheduledRef.current = false;
+          }
+        })
+        .catch(() => {
+          hasScheduledRef.current = false;
+        });
     };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && items.length > 0) {
-        scheduleRecovery();
-        hasScheduledRef.current = true;
+    if (items.length === 0) {
+      if (hasScheduledRef.current) {
+        void fetch('/api/cart/recovery/cancel', {
+          method: 'POST',
+          headers,
+        }).catch(() => undefined);
+        hasScheduledRef.current = false;
       }
-    };
-
-    const handleBeforeUnload = () => {
-      if (items.length > 0) {
-        scheduleRecovery();
-        hasScheduledRef.current = true;
-      }
-    };
-
-    if (!hasScheduledRef.current) {
-      const timer = window.setTimeout(() => {
-        if (items.length > 0) {
-          scheduleRecovery();
-          hasScheduledRef.current = true;
-        }
-      }, 45_000);
-
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('beforeunload', handleBeforeUnload);
-
-      return () => {
-        window.clearTimeout(timer);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-      };
+      return;
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        scheduleRecovery();
+      }
+    };
+
+    const timer = hasScheduledRef.current
+      ? null
+      : window.setTimeout(scheduleRecovery, SCHEDULE_WAIT_MS);
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', scheduleRecovery);
 
     return () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', scheduleRecovery);
     };
   }, [isReady, isAuthenticated, token, items]);
 

@@ -1,37 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from '@/lib/navigation';
 import {
-  AlertCircle,
   ArrowRight,
-  CheckCircle2,
   ChevronRight,
   CreditCard,
   Home,
   Loader2,
-  LockKeyhole,
   MapPin,
   Phone,
-  Plus,
   ShieldCheck,
-  Store,
   Truck,
   User,
 } from 'lucide-react';
 import { useCart } from '@/features/shop/state/CartContext';
 import { useUser } from '@/features/shared/state/UserContext';
+import { useCommerceConfig } from '@/features/shared/state/CommerceConfigContext';
 import {
   DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS,
   isKnownCheckoutPaymentMethod,
+  PLATFORM_FEE,
 } from '@/lib/commerce-channels';
 import { formatPrice, cn } from '@/lib/utils';
 import { Skeleton } from '@/features/shared/ui/Skeleton';
 import { FormNotice } from '@/features/shared/ui/FeedbackState';
 import { buildBangladeshAddressLine, getDistrictOptions, getDivisionOptions, getUpazilaOptions } from '@/lib/bangladesh-address';
 
-const CHECKOUT_PLATFORM_FEE = 5;
-
-type PaymentMethod = 'cod' | 'bkash' | 'bank' | 'gateway';
-type PaymentStep = 'number' | 'otp' | 'pin' | 'success';
+type PaymentMethod = 'cod';
 
 type PaymentOption = {
   value: PaymentMethod;
@@ -107,27 +101,6 @@ const allPaymentOptions: PaymentOption[] = [
     icon: <Truck size={18} />,
     accent: 'from-emerald-500/20 to-cyan-500/10',
   },
-  {
-    value: 'bkash',
-    title: 'bKash / Nagad',
-    description: 'Fast mobile payment with OTP confirmation.',
-    icon: <Phone size={18} />,
-    accent: 'from-rose-500/20 to-orange-500/10',
-  },
-  {
-    value: 'bank',
-    title: 'Bank transfer',
-    description: 'Direct transfer for business or planned purchases.',
-    icon: <Store size={18} />,
-    accent: 'from-sky-500/20 to-indigo-500/10',
-  },
-  {
-    value: 'gateway',
-    title: 'Online gateway',
-    description: 'Cards and supported digital payment channels.',
-    icon: <CreditCard size={18} />,
-    accent: 'from-violet-500/20 to-fuchsia-500/10',
-  },
 ];
 
 function CheckoutSkeleton() {
@@ -166,6 +139,7 @@ export const CheckoutPage = () => {
     isReady: isCartReady,
   } = useCart();
   const { user, token, isAuthenticated, isReady } = useUser();
+  const commerceConfig = useCommerceConfig();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
@@ -175,15 +149,11 @@ export const CheckoutPage = () => {
   const [couponStatus, setCouponStatus] = useState('');
   const [couponStatusTone, setCouponStatusTone] = useState<'success' | 'error' | 'info'>('info');
   const [couponLoading, setCouponLoading] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<PaymentStep>('number');
-  const [paymentData, setPaymentData] = useState({ number: '', otp: '', pin: '' });
   const [hasPlacedOrder, setHasPlacedOrder] = useState(false);
   const [shippingPreview, setShippingPreview] = useState<ShippingPreview | null>(null);
   const [shippingPreviewLoading, setShippingPreviewLoading] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
-  const [showInlineAddressForm, setShowInlineAddressForm] = useState(false);
   const [saveAddressToAccount, setSaveAddressToAccount] = useState(false);
   const [enabledPaymentMethods, setEnabledPaymentMethods] = useState<string[]>([...DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS]);
 
@@ -213,10 +183,9 @@ export const CheckoutPage = () => {
       return;
     }
 
-    if (!isAuthenticated) {
-      navigate('/login?redirect=/checkout');
-    }
-  }, [hasPlacedOrder, isAuthenticated, isCartReady, isReady, items.length, navigate]);
+    // Guests are allowed through: checkout proceeds without an account and the
+    // order can be claimed later once the contact OTP is verified.
+  }, [hasPlacedOrder, isCartReady, isReady, items.length, navigate]);
 
   useEffect(() => {
     setFormData((current) => ({
@@ -228,22 +197,17 @@ export const CheckoutPage = () => {
   }, [user?.alternate_phone, user?.email, user?.name]);
 
   useEffect(() => {
-    fetch('/api/public/commerce-config')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!Array.isArray(data?.enabled_checkout_payment_methods)) return;
-        const nextMethods = data.enabled_checkout_payment_methods.filter((value: unknown): value is string =>
-          isKnownCheckoutPaymentMethod(typeof value === 'string' ? value : ''),
-        );
-        if (nextMethods.length === 0) return;
-        setEnabledPaymentMethods(nextMethods);
-        setFormData((current) => ({
-          ...current,
-          paymentMethod: nextMethods.includes(current.paymentMethod) ? current.paymentMethod : (nextMethods[0] as PaymentMethod),
-        }));
-      })
-      .catch(() => undefined);
-  }, []);
+    if (!Array.isArray(commerceConfig?.enabled_checkout_payment_methods)) return;
+    const nextMethods = commerceConfig.enabled_checkout_payment_methods.filter((value: unknown): value is string =>
+      isKnownCheckoutPaymentMethod(typeof value === 'string' ? value : ''),
+    );
+    if (nextMethods.length === 0) return;
+    setEnabledPaymentMethods(nextMethods);
+    setFormData((current) => ({
+      ...current,
+      paymentMethod: nextMethods.includes(current.paymentMethod) ? current.paymentMethod : (nextMethods[0] as PaymentMethod),
+    }));
+  }, [commerceConfig]);
 
   useEffect(() => {
     if (!token || !isAuthenticated) {
@@ -307,10 +271,9 @@ export const CheckoutPage = () => {
     () => getUpazilaOptions(formData.division, formData.district || formData.city),
     [formData.city, formData.district, formData.division],
   );
-  const selectedPayment = paymentOptions.find((option) => option.value === formData.paymentMethod) ?? paymentOptions[0];
   const couponCode = couponCodeInput ?? appliedCoupon?.code ?? '';
   const deliveryFee = shippingPreview?.estimated_fee_payable ?? 0;
-  const checkoutTotal = totalPrice + CHECKOUT_PLATFORM_FEE + deliveryFee;
+  const checkoutTotal = totalPrice + PLATFORM_FEE + deliveryFee;
   const hasShippingPreviewInputs = useMemo(() => {
     const normalizedPhone = formData.phone.replace(/\D/g, '');
     const composedAddress = buildCheckoutAddressSummary({
@@ -320,7 +283,7 @@ export const CheckoutPage = () => {
       address: formData.address,
     });
     return formData.district.trim().length > 0 && composedAddress.length >= 10 && normalizedPhone.length >= 11 && itemCount > 0;
-  }, [formData.address, formData.city, formData.district, formData.division, formData.house, formData.phone, formData.road, formData.upazila, formData.village, itemCount]);
+  }, [formData.address, formData.city, formData.district, formData.division, formData.phone, formData.upazila, itemCount]);
 
   useEffect(() => {
     if (!hasShippingPreviewInputs) {
@@ -369,7 +332,7 @@ export const CheckoutPage = () => {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [formData.city, hasShippingPreviewInputs, itemCount, subtotal]);
+  }, [formData.city, formData.district, hasShippingPreviewInputs, itemCount, items, subtotal]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -404,6 +367,16 @@ export const CheckoutPage = () => {
 
     if (!enabledPaymentMethods.includes(formData.paymentMethod)) {
       setError('This payment method is temporarily unavailable right now. Please use Cash on delivery.');
+      return;
+    }
+
+    if (!hasShippingPreviewInputs) {
+      setError('Please provide a complete phone number and delivery address so we can estimate delivery before placing the order.');
+      return;
+    }
+
+    if (!shippingPreview) {
+      setError('Delivery cost is still being estimated for this address. Please wait a moment and try again.');
       return;
     }
 
@@ -464,14 +437,15 @@ export const CheckoutPage = () => {
 
   const processOrder = async () => {
     setLoading(true);
+    const addressSummary = buildCheckoutAddressSummary({
+      upazila: formData.upazila,
+      district: formData.district || formData.city,
+      division: formData.division,
+      address: formData.address,
+    });
+
     try {
       if (saveAddressToAccount && !selectedAddressId) {
-      const addressSummary = buildCheckoutAddressSummary({
-          upazila: formData.upazila,
-          district: formData.district || formData.city,
-          division: formData.division,
-          address: formData.address,
-        });
         const saveAddressResponse = await fetch('/api/addresses', {
           method: 'POST',
           headers: {
@@ -506,23 +480,19 @@ export const CheckoutPage = () => {
         }
       }
 
-      const response = await fetch('/api/orders', {
+      const endpoint = isAuthenticated ? '/api/orders' : '/api/orders/guest';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(isAuthenticated ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          total: checkoutTotal,
+          ...(isAuthenticated ? { total: checkoutTotal } : { email: formData.email, phone: formData.phone }),
           couponCode: appliedCoupon?.code || undefined,
           paymentMethod: formData.paymentMethod,
           deliveryFee,
-          fullAddressSummary: buildCheckoutAddressSummary({
-            upazila: formData.upazila,
-            district: formData.district || formData.city,
-            division: formData.division,
-            address: formData.address,
-          }),
+          fullAddressSummary: addressSummary,
           shippingAddress: {
             fullName: formData.fullName,
             phone: formData.phone,
@@ -534,12 +504,7 @@ export const CheckoutPage = () => {
             house: formData.house,
             road: formData.road,
             village: formData.village,
-            address: buildCheckoutAddressSummary({
-              upazila: formData.upazila,
-              district: formData.district || formData.city,
-              division: formData.division,
-              address: formData.address,
-            }),
+            address: addressSummary,
             city: formData.district || formData.city,
           },
           items: items.map((item) => ({
@@ -565,6 +530,9 @@ export const CheckoutPage = () => {
             orderId: data.orderId,
             total: checkoutTotal,
             placedAt: new Date().toISOString(),
+            guest: !isAuthenticated,
+            guestEmail: !isAuthenticated ? formData.email : undefined,
+            guestPhone: !isAuthenticated ? formData.phone : undefined,
           }),
         );
       }
@@ -579,31 +547,11 @@ export const CheckoutPage = () => {
       }
       clearCart();
       navigate(`/order-success?orderId=${encodeURIComponent(String(data.orderId))}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to place order.');
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : 'Failed to place order.');
       setRecoveryHint('Please review your delivery details and try again. If the problem continues, contact support from the help page.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (paymentStep === 'number') {
-      setPaymentStep('otp');
-      return;
-    }
-
-    if (paymentStep === 'otp') {
-      setPaymentStep('pin');
-      return;
-    }
-
-    if (paymentStep === 'pin') {
-      setPaymentStep('success');
-      setTimeout(() => {
-        setShowPaymentModal(false);
-        void processOrder();
-      }, 1600);
     }
   };
 
@@ -611,7 +559,7 @@ export const CheckoutPage = () => {
     return <CheckoutSkeleton />;
   }
 
-  if (!hasPlacedOrder && (items.length === 0 || !isAuthenticated)) {
+  if (!hasPlacedOrder && items.length === 0) {
     return <CheckoutSkeleton />;
   }
 
@@ -628,6 +576,26 @@ export const CheckoutPage = () => {
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-12">
         <div className="space-y-8">
         
+          {!isAuthenticated ? (
+            <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-sky-900">Checking out as a guest</p>
+                  <p className="mt-1 text-sm leading-6 text-sky-700">
+                    Your order is confirmed without an account. After placing it you can{' '}
+                    <Link
+                      to="/login"
+                      className="font-semibold text-sky-800 underline-offset-4 hover:underline"
+                    >
+                      login or register
+                    </Link>{' '}
+                    to claim and track it with the OTP sent to your email or phone.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {error ? (
             <div className="space-y-3">
               <FormNotice tone="error">{error}</FormNotice>
@@ -649,7 +617,7 @@ export const CheckoutPage = () => {
             </div>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <form id="checkout-form" onSubmit={handleSubmit} className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="space-y-6">
               <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
                 <div className="flex items-center gap-3">
@@ -682,21 +650,11 @@ export const CheckoutPage = () => {
                   ) : null}
 
                   <div className="md:col-span-2">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">Address options</p>
-                        <p className="text-xs text-slate-500">
-                          Use a saved address or keep this order address for your next checkout.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowInlineAddressForm((current) => !current)}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <Plus size={14} />
-                        <span>{showInlineAddressForm ? 'Hide quick add' : 'Quick add address'}</span>
-                      </button>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">Address options</p>
+                      <p className="text-xs text-slate-500">
+                        Use a saved address or keep this order address for your next checkout.
+                      </p>
                     </div>
                   </div>
 
@@ -708,6 +666,7 @@ export const CheckoutPage = () => {
                         type="text"
                         name="fullName"
                         required
+                        autoComplete="name"
                         value={formData.fullName}
                         onChange={handleInputChange}
                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
@@ -724,6 +683,9 @@ export const CheckoutPage = () => {
                         type="tel"
                         name="phone"
                         required
+                        autoComplete="tel"
+                        inputMode="numeric"
+                        maxLength={15}
                         value={formData.phone}
                         onChange={handleInputChange}
                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
@@ -739,6 +701,9 @@ export const CheckoutPage = () => {
                       <input
                         type="tel"
                         name="alternatePhone"
+                        autoComplete="tel-secondary"
+                        inputMode="numeric"
+                        maxLength={15}
                         value={formData.alternatePhone}
                         onChange={handleInputChange}
                         className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
@@ -753,6 +718,7 @@ export const CheckoutPage = () => {
                       type="email"
                       name="email"
                       required
+                      autoComplete="email"
                       value={formData.email}
                       onChange={handleInputChange}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
@@ -832,6 +798,7 @@ export const CheckoutPage = () => {
                     <textarea
                       name="address"
                       rows={3}
+                      autoComplete="street-address"
                       value={formData.address}
                       onChange={handleInputChange}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
@@ -842,23 +809,19 @@ export const CheckoutPage = () => {
                     </p>
                   </div>
 
-                  <div className="space-y-3 md:col-span-2">
-                    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      <input
-                        type="checkbox"
-                        checked={saveAddressToAccount}
-                        onChange={(event) => setSaveAddressToAccount(event.target.checked)}
-                        className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
-                      />
-                      <span>
-                        Save this delivery profile to my account for faster checkout next time.
-                      </span>
-                    </label>
-                  </div>
-
-                  {showInlineAddressForm ? (
-                    <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                      This quick-add form uses the main shipping fields above. Fill the address once, turn on "Save this delivery address", and your checkout address will be stored automatically after order placement.
+                  {isAuthenticated ? (
+                    <div className="space-y-3 md:col-span-2">
+                      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={saveAddressToAccount}
+                          onChange={(event) => setSaveAddressToAccount(event.target.checked)}
+                          className="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                        />
+                        <span>
+                          Save this delivery profile to my account for faster checkout next time.
+                        </span>
+                      </label>
                     </div>
                   ) : null}
                 </div>
@@ -938,6 +901,9 @@ export const CheckoutPage = () => {
                         src={item.image || '/icon.svg'}
                         className="h-14 w-14 rounded-xl bg-slate-100 object-cover"
                         alt={item.name}
+                        width={56}
+                        height={56}
+                        decoding="async"
                         referrerPolicy="no-referrer"
                       />
                       <div className="min-w-0 flex-1">
@@ -952,10 +918,10 @@ export const CheckoutPage = () => {
                 </div>
 
                 <div className="mt-5">
-                  <label htmlFor="checkout-coupon" className="text-[24px] font-medium leading-8 text-[#24272f]">
+                  <label htmlFor="checkout-coupon" className="text-sm font-semibold text-slate-900">
                     Have a coupon?
                   </label>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-3 flex gap-3">
                     <input
                       id="checkout-coupon"
                       type="text"
@@ -971,15 +937,17 @@ export const CheckoutPage = () => {
                         }
                       }}
                       placeholder="Enter code"
-                      className="min-w-0 flex-1 rounded-xl border border-[#d8dde6] bg-white px-5 py-4 text-[20px] text-[#24272f] outline-none transition placeholder:text-[#667085] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-primary/30 focus:bg-white focus:ring-4 focus:ring-primary/10"
                     />
                     <button
                       type="button"
                       onClick={() => void handleApplyCoupon()}
                       disabled={couponLoading}
-                      className="inline-flex min-w-[105px] items-center justify-center rounded-md bg-[#2563EB] px-6 py-4 text-[22px] font-semibold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {couponLoading ? <Loader2 size={22} className="animate-spin" aria-hidden="true" /> : 'Apply'}
+                      {couponLoading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : 'Apply'}
                     </button>
                   </div>
                   {couponStatus ? (
@@ -1018,16 +986,29 @@ export const CheckoutPage = () => {
                   <div className="flex justify-between text-sm text-slate-600">
                     <span>Delivery Fee</span>
                     <span className="font-medium text-primary">
-                      {shippingPreview
-                        ? shippingPreview.qualifies_for_free_shipping
-                          ? 'Free'
-                          : formatPrice(shippingPreview.estimated_fee_payable)
-                        : 'Add city'}
+                      {shippingPreviewLoading
+                        ? 'Estimating...'
+                        : shippingPreview
+                          ? shippingPreview.qualifies_for_free_shipping
+                            ? 'Free'
+                            : formatPrice(shippingPreview.estimated_fee_payable)
+                          : 'Add city'}
                     </span>
                   </div>
+                  {shippingPreviewLoading ? (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                      <span>Estimating delivery cost...</span>
+                    </div>
+                  ) : shippingPreview?.estimated_eta ? (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Truck size={14} className="shrink-0 text-primary" aria-hidden="true" />
+                      <span>Estimated delivery: {shippingPreview.estimated_eta}</span>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between text-sm text-slate-600">
                     <span>Platform fee:</span>
-                    <span className="font-semibold text-slate-900">{formatPrice(CHECKOUT_PLATFORM_FEE)}</span>
+                    <span className="font-semibold text-slate-900">{formatPrice(PLATFORM_FEE)}</span>
                   </div>
 
                   <div className="flex justify-between pt-4 text-slate-950">
@@ -1068,28 +1049,6 @@ export const CheckoutPage = () => {
                     </div>
                   </div>
                 </div>
-
-                {(formData.paymentMethod === 'gateway' || formData.paymentMethod === 'bkash') && (
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
-                      <div className="text-sm text-amber-800">
-                        <p className="font-semibold">Payment recovery tip</p>
-                        <p className="mt-1 leading-6">
-                          If verification fails or the payment app closes early, your cart will stay intact. You can retry checkout here or switch to Cash on delivery before placing the order.
-                        </p>
-                        <Link
-                          to={`/contact?subject=${encodeURIComponent('Payment Support')}&message=${encodeURIComponent(
-                            `I need help with a checkout payment issue. Payment method: ${formData.paymentMethod}.`,
-                          )}`}
-                          className="mt-3 inline-flex text-sm font-semibold text-amber-800 underline-offset-4 hover:underline"
-                        >
-                          Contact support about payment issues
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </aside>
           </form>
@@ -1103,12 +1062,9 @@ export const CheckoutPage = () => {
               <p className="text-lg font-bold text-slate-950">{formatPrice(checkoutTotal)}</p>
             </div>
             <button
-              type="button"
+              type="submit"
+              form="checkout-form"
               disabled={loading}
-              onClick={() => {
-                const form = document.querySelector('form') as HTMLFormElement | null;
-                form?.requestSubmit();
-              }}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? <Loader2 className="animate-spin" size={16} /> : null}
@@ -1118,94 +1074,6 @@ export const CheckoutPage = () => {
         </div>
       </div>
 
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-[#DC2626] shadow-2xl">
-            <div className="space-y-6 p-8 text-center text-white">
-              <div className="flex justify-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white p-4">
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Bkash_logo.png/1200px-Bkash_logo.png"
-                    alt="bKash"
-                    className="w-full object-contain"
-                  />
-                </div>
-              </div>
-
-              {paymentStep === 'number' && (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-bold">Enter payment number</h3>
-                  <p className="text-sm text-white/75">
-                    Use the number linked to your payment app. You can cancel and return to checkout if you want to switch methods.
-                  </p>
-                  <input
-                    type="tel"
-                    placeholder="01XXXXXXXXX"
-                    className="w-full rounded-2xl border-2 border-white/20 bg-white/10 px-6 py-4 text-center text-2xl font-bold text-white placeholder:text-white/50 outline-none focus:border-white"
-                    value={paymentData.number}
-                    onChange={(e) => setPaymentData({ ...paymentData, number: e.target.value })}
-                  />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
-                    Next
-                  </button>
-                </div>
-              )}
-
-              {paymentStep === 'otp' && (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-bold">Enter OTP</h3>
-                  <p className="text-sm text-white/75">A 6-digit verification code has been sent to {paymentData.number}</p>
-                  <input
-                    type="text"
-                    placeholder="XXXXXX"
-                    className="w-full rounded-2xl border-2 border-white/20 bg-white/10 px-6 py-4 text-center text-2xl font-bold text-white placeholder:text-white/50 outline-none focus:border-white"
-                    value={paymentData.otp}
-                    onChange={(e) => setPaymentData({ ...paymentData, otp: e.target.value })}
-                  />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
-                    Verify OTP
-                  </button>
-                </div>
-              )}
-
-              {paymentStep === 'pin' && (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-bold">Enter PIN</h3>
-                  <input
-                    type="password"
-                    placeholder="XXXXX"
-                    className="w-full rounded-2xl border-2 border-white/20 bg-white/10 px-6 py-4 text-center text-2xl font-bold text-white placeholder:text-white/50 outline-none focus:border-white"
-                    value={paymentData.pin}
-                    onChange={(e) => setPaymentData({ ...paymentData, pin: e.target.value })}
-                  />
-                  <button onClick={handlePaymentSubmit} className="w-full rounded-2xl bg-white py-4 text-lg font-bold text-[#DC2626] transition hover:bg-gray-100">
-                    Confirm payment
-                  </button>
-                </div>
-              )}
-
-              {paymentStep === 'success' && (
-                <div className="space-y-5 py-10">
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
-                    <CheckCircle2 className="h-10 w-10 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold">Payment successful</h3>
-                  <p className="text-white/75">Finalizing your order and redirecting to confirmation...</p>
-                </div>
-              )}
-
-              {paymentStep !== 'success' && (
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="text-sm text-white/65 transition hover:text-white"
-                >
-                  Cancel payment
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

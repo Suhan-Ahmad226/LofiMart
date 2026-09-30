@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/server';
+import { Prisma } from '@prisma/client';
+import { getShippingQuote } from '@/features/courier/services/quoteService';
 import { restoreStockForOrder } from './inventoryService';
 import { ensureTelegramInvoice, sendInvoiceToTelegram } from './invoiceService';
 import { sendLowStockAlert, sendNewOrderNotification, sendOrderStatusNotification } from './notificationService';
@@ -10,27 +12,54 @@ type CreateOrderLine = {
 };
 
 type CreateMarketplaceOrderInput = {
-  userId: string;
+  userId?: string;
+  guestEmail?: string;
+  guestPhone?: string;
   tenantId?: string;
   items: CreateOrderLine[];
   paymentMethod?: string;
   shippingAddress?: unknown;
   refCode?: string;
   couponCode?: string;
-  deliveryFee?: number;
   platformFee?: number;
 };
 
 const DEFAULT_PLATFORM_FEE = 5;
-const MAX_DELIVERY_FEE = 10000;
+
+/**
+ * Pulls the delivery destination out of the collected shipping address.
+ *
+ * The bot stores the address as an opaque JSON blob, so the shape varies by
+ * conversation. Returns `null` unless a city is actually present: a fabricated
+ * city would produce a wrong courier price, and a missing one simply means the
+ * order is recorded with an unverified fee for the seller to resolve.
+ */
+function readDestination(shippingAddress: unknown): { city: string; zone: string | null; area: string | null } | null {
+  if (!shippingAddress || typeof shippingAddress !== 'object') return null;
+
+  const address = shippingAddress as Record<string, unknown>;
+  const pick = (...keys: string[]): string | null => {
+    for (const key of keys) {
+      const value = address[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return null;
+  };
+
+  const city = pick('city', 'district', 'cityName', 'city_name', 'shippingCity');
+
+  if (!city) return null;
+
+  return { city, zone: pick('zone', 'area', 'thana', 'upazila'), area: pick('area', 'areaName', 'area_name') };
+}
 
 function buildOrderCode() {
   return `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
 function normalizeStatusForOrder(status: 'accepted' | 'shipped' | 'delivered' | 'cancelled') {
-  if (status === 'accepted') return 'accepted';
-  if (status === 'shipped') return 'shipped';
+  if (status === 'accepted') return 'processing';
+  if (status === 'shipped') return 'picked_up';
   if (status === 'delivered') return 'delivered';
   return 'cancelled';
 }
@@ -38,6 +67,10 @@ function normalizeStatusForOrder(status: 'accepted' | 'shipped' | 'delivered' | 
 export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput) {
   if (!Array.isArray(input.items) || input.items.length === 0) {
     throw new Error('Order must include at least one item');
+  }
+
+  if (!input.userId && (!input.guestEmail || !input.guestPhone)) {
+    throw new Error('Guest orders require both a guest email and phone number');
   }
 
   const normalizedItems = Array.from(
@@ -88,7 +121,6 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   });
 
   const subtotal = pricedItems.reduce((sum, item) => sum + item.lineTotal, 0);
-  const deliveryFee = Math.min(Math.max(0, Number(input.deliveryFee || 0)), MAX_DELIVERY_FEE);
   const platformFee = DEFAULT_PLATFORM_FEE;
   let discountAmount = 0;
   let couponSnapshot: Record<string, unknown> | null = null;
@@ -133,20 +165,69 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     };
   }
 
+  // Delivery fee is calculated on the server from database prices, product
+  // weights and the courier's own quote. It was previously hardcoded to 0, which
+  // meant the platform silently absorbed every courier charge and the
+  // collectible amount never covered delivery.
+  //
+  // Placed after the coupon block because the collectible amount depends on the
+  // discount: the courier charges a COD fee on what the rider actually collects.
+  //
+  // A missing destination or an unreachable courier yields a configured flat
+  // fallback, and the order is recorded with `deliveryFeeVerified: false` so the
+  // figure can be reconciled against the courier invoice rather than mistaken
+  // for a confirmed price.
+  const destination = readDestination(input.shippingAddress);
+  const collectibleAmount = Math.max(0, subtotal - discountAmount);
+
+  const quote = destination
+    ? await getShippingQuote({
+        items: normalizedItems,
+        destination,
+        codAmount: collectibleAmount,
+      })
+    : null;
+
+  const deliveryFee = quote?.totalCustomerDeliveryFee ?? 0;
+  const deliveryFeeVerified = quote?.verified === true;
+  const deliveryQuoteWarnings = quote?.warnings ?? [
+    'No delivery city was supplied, so no delivery fee could be calculated.',
+  ];
+
   const total = Math.max(0, subtotal - discountAmount) + platformFee + deliveryFee;
   const orderCode = buildOrderCode();
   const lowStockAlerts: Array<{ sellerId: string; productName: string; stock: number; threshold: number }> = [];
+
+  /**
+   * What the rider should collect for one parcel.
+   *
+   * Apportioned by value share, because the courier charges its COD fee on the
+   * collectible amount and that fee is per parcel. The platform fee is excluded
+   * because the platform does not collect it on delivery.
+   *
+   * Proportional rather than exact per-item allocation: a seller-scoped coupon is
+   * apportioned across all parcels by value, which can differ by a few taka from a
+   * per-seller allocation. Recorded as a real number rather than zero so a
+   * settlement run can reconcile the difference against the courier invoice.
+   */
+  const collectibleAmountFor = (parcelItems: Array<{ lineTotal: number }>): number => {
+    const parcelTotal = parcelItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    if (subtotal <= 0) return 0;
+    return collectibleAmount * (parcelTotal / subtotal);
+  };
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
         userId: input.userId,
+        guestEmail: input.guestEmail || null,
+        guestPhone: input.guestPhone || null,
         tenantId: input.tenantId,
         total,
-        status: 'pending',
+        status: 'processing',
         orderCode,
         paymentMethod: input.paymentMethod || 'cod',
-        paymentStatus: input.paymentMethod === 'bkash' ? 'pending' : 'unpaid',
+        paymentStatus: 'pending',
         shippingAddress: input.shippingAddress || undefined,
         shipmentMetadata: {
           pricing: {
@@ -157,6 +238,13 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
             deliveryFee,
             total,
             source: 'server',
+            // Whether `deliveryFee` came from a live courier quote or a
+            // configured fallback. Persisted so finance can reconcile a
+            // fallback charge against the courier invoice.
+            deliveryFeeVerified,
+            deliveryQuoteWarnings,
+            courierProvider: quote?.provider ?? null,
+            collectibleAmount,
           },
         },
         refCode: input.refCode || undefined,
@@ -176,6 +264,16 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     });
     const createdItemByProductId = new Map(createdItems.map((item) => [item.productId, item]));
 
+    /**
+     * Which warehouse each product actually ships from.
+     *
+     * Captured here because this is the only place the `InventoryItem` row is read.
+     * Without it the shipment has no `warehouseId`, which leaves the courier booking
+     * with no pickup point to collect from and pushes every parcel into a manual
+     * flow.
+     */
+    const warehouseIdByProductId = new Map<string, string>();
+
     for (const item of pricedItems) {
       const updated = await tx.product.updateMany({
         where: { id: item.productId, stock: { gte: item.quantity } },
@@ -193,6 +291,8 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
       });
 
       if (inventoryItem) {
+        warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
+
         await tx.inventoryItem.update({
           where: { id: inventoryItem.id },
           data: {
@@ -229,36 +329,92 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
       itemsBySeller.set(item.sellerId, [...(itemsBySeller.get(item.sellerId) || []), item]);
     }
 
-    for (const [sellerId, sellerItems] of itemsBySeller.entries()) {
-      const shipment = await tx.orderShipment.create({
-        data: {
-          orderId: created.id,
-          sellerId,
-          status: 'pending',
-          total: sellerItems.reduce((sum, item) => sum + item.lineTotal, 0),
-          itemCount: sellerItems.reduce((sum, item) => sum + item.quantity, 0),
-        },
-      });
+    // The quote splits parcels by warehouse, not by seller. A seller with stock in
+    // two warehouses therefore gets one shipment per warehouse, keyed here so the
+    // financial columns below can be attributed to the right parcel instead of
+    // being lumped into one row.
+    const quoteByWarehouse = new Map((quote?.shipments || []).map((parcel) => [parcel.warehouseId, parcel]));
 
+    for (const [sellerId, sellerItems] of itemsBySeller.entries()) {
+      // Group this seller's items by the warehouse that will actually ship them.
+      const itemsByWarehouse = new Map<string, typeof sellerItems>();
       for (const item of sellerItems) {
-        const orderItem = createdItemByProductId.get(item.productId);
-        if (!orderItem) continue;
-        await tx.orderShipmentItem.create({
+        const warehouseId = warehouseIdByProductId.get(item.productId) || '';
+        itemsByWarehouse.set(warehouseId, [...(itemsByWarehouse.get(warehouseId) || []), item]);
+      }
+
+      for (const [warehouseId, warehouseItems] of itemsByWarehouse.entries()) {
+        const parcel = warehouseId ? quoteByWarehouse.get(warehouseId) : undefined;
+
+        const shipment = await tx.orderShipment.create({
           data: {
-            shipmentId: shipment.id,
-            orderItemId: orderItem.id,
-            productId: item.productId,
-            qty: item.quantity,
-            price: item.price,
+            orderId: created.id,
+            sellerId,
+            warehouseId: warehouseId || null,
+            status: 'processing',
+            total: warehouseItems.reduce((sum, item) => sum + item.lineTotal, 0),
+            itemCount: warehouseItems.reduce((sum, item) => sum + item.quantity, 0),
+            /**
+             * Frozen now, at checkout, from the server-side quote.
+             *
+             * The customer-facing fee, the courier's actual cost and the COD fee
+             * are separate columns on purpose: conflating them is how a platform
+             * ends up paying delivery out of margin while believing it was
+             * profitable. Null (not zero) when no live quote existed, so "we do not
+             * know" is distinguishable from "delivery was free".
+             */
+            courierProvider: quote?.provider ?? null,
+            customerDeliveryFee: parcel ? new Prisma.Decimal(parcel.customerDeliveryFee) : null,
+            courierCharge: parcel?.courierCharge != null ? new Prisma.Decimal(parcel.courierCharge) : null,
+            codFee: new Prisma.Decimal(parcel?.codFee ?? 0),
+            codAmount: new Prisma.Decimal(Math.max(0, collectibleAmountFor(warehouseItems))),
+            // Per-parcel verification: one unquoted parcel must not mark the whole
+            // order as courier-confirmed.
+            deliveryFeeVerified: Boolean(parcel?.verified),
+            /**
+             * `merchantReference` is deliberately NOT set here.
+             *
+             * It is derived from the shipment id by the booking service, which
+             * reuses an existing value if one is present. Minting one at order time
+             * would either duplicate that logic or, worse, create a second key that
+             * disagrees with the one retries use — which is precisely how one
+             * physical parcel ends up with two courier-side references.
+             */
+            shipmentMetadata: {
+              quoteSource: parcel?.source ?? 'none',
+              quoteReason: parcel?.reason ?? null,
+              weightKg: parcel?.weightKg ?? null,
+              estimatedDays: parcel?.estimatedDays ?? null,
+              courierStoreId: parcel?.courierStoreId ?? null,
+              deliveryFeeWarnings: deliveryQuoteWarnings,
+            },
           },
         });
+
+        for (const item of warehouseItems) {
+          const orderItem = createdItemByProductId.get(item.productId);
+          if (!orderItem) continue;
+          await tx.orderShipmentItem.create({
+            data: {
+              shipmentId: shipment.id,
+              orderItemId: orderItem.id,
+              productId: item.productId,
+              qty: item.quantity,
+              price: item.price,
+            },
+          });
+        }
       }
     }
 
     return created;
   });
 
-  await ensureTelegramInvoice(order.id);
+  try {
+    await ensureTelegramInvoice(order.id);
+  } catch (invoiceError) {
+    console.error('Order created but invoice generation failed:', invoiceError);
+  }
 
   await Promise.all(lowStockAlerts.map((alert) => sendLowStockAlert(alert)));
 
@@ -311,14 +467,13 @@ export async function updateSellerOrderStatus(input: {
 
   const status =
     input.action === 'accept'
-      ? 'accepted'
+      ? 'processing'
       : input.action === 'ship'
-        ? 'shipped'
+        ? 'picked_up'
         : input.action === 'deliver'
           ? 'delivered'
           : 'cancelled';
 
-  const orderStatus = normalizeStatusForOrder(status);
   const existingShipment = await prisma.orderShipment.findFirst({
     where: {
       orderId: input.orderId,
@@ -342,8 +497,8 @@ export async function updateSellerOrderStatus(input: {
       sellerId: input.sellerId,
     },
     data: {
-      status,
-      ...(status === 'shipped' ? { pickedUpAt: new Date() } : {}),
+      status: status as any,
+      ...(status === 'picked_up' ? { pickedUpAt: new Date() } : {}),
       ...(status === 'delivered' ? { deliveredAt: new Date() } : {}),
     },
   });
@@ -365,8 +520,8 @@ export async function updateSellerOrderStatus(input: {
   await prisma.order.update({
     where: { id: input.orderId },
     data: {
-      status: orderStatus,
-      ...(status === 'shipped' ? { pickedUpAt: new Date() } : {}),
+      status,
+      ...(status === 'picked_up' ? { pickedUpAt: new Date() } : {}),
       ...(status === 'delivered' ? { deliveredAt: new Date() } : {}),
     },
   });
@@ -383,7 +538,7 @@ export async function updateSellerOrderStatus(input: {
     status,
   });
 
-  if (status === 'accepted') {
+  if (status === 'processing') {
     await sendInvoiceToTelegram({
       chatId: input.chatId,
       orderId: input.orderId,

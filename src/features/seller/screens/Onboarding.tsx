@@ -152,8 +152,17 @@ export const SellerOnboardingPage = () => {
 
       const safeProfile = profilePayload as ProfileResponse;
       const safeStorefront = storefrontPayload as StorefrontResponse;
+      const rawStatus = statusPayload as OnboardingStatusPayload;
 
-      setStatus(statusPayload as OnboardingStatusPayload);
+      setStatus({
+        ...emptyStatus,
+        ...rawStatus,
+        summary: { ...emptyStatus.summary, ...(rawStatus.summary || {}) },
+        pickups: rawStatus.pickups
+          ? { ...emptyStatus.pickups, ...rawStatus.pickups }
+          : emptyStatus.pickups,
+        steps: Array.isArray(rawStatus.steps) ? rawStatus.steps : [],
+      });
       setProfileForm({
         name: safeProfile?.user?.name || '',
         phone: safeProfile?.user?.phone || '',

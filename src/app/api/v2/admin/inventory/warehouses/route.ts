@@ -34,14 +34,16 @@ const WarehouseInputSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const user = await secureApiRoute(req, {
+  const result = await secureApiRoute(req, {
     keyPrefix: 'api:v2:admin:inventory:warehouses',
     requireAuth: true,
     roles: ['admin', 'seller'],
     limit: 120,
   });
-  if (user instanceof NextResponse) return user;
+  if (result instanceof NextResponse) return result;
+  if (!result.authorized || !result.user) return apiError('unauthorized', 'Unauthorized', 401);
 
+  const user = result.user;
   const warehouses = await withTenantContext(
     { tenantId: typeof user.tenantId === 'string' ? user.tenantId : undefined, bypass: user.role === 'admin' },
     () => getOrSetCache('inventory:warehouses', () => inventoryModule.listWarehouses(), 300),
@@ -53,13 +55,16 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const user = await secureApiRoute(req, {
+  const result = await secureApiRoute(req, {
     keyPrefix: 'api:v2:admin:inventory:warehouses:mutate',
     requireAuth: true,
     roles: ['admin'],
     limit: 30,
   });
-  if (user instanceof NextResponse) return user;
+  if (result instanceof NextResponse) return result;
+  if (!result.authorized || !result.user) return apiError('unauthorized', 'Unauthorized', 401);
+
+  const user = result.user;
 
   const parsed = WarehouseInputSchema.safeParse(await req.json());
   if (!parsed.success) {

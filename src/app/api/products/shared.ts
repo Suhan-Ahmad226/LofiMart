@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import type { UserRole } from '@prisma/client';
 import { prisma } from '@/lib/server';
-import { validateAccessToken, type SessionUser } from '../../../features/auth/services/sessionStore';
+import { requireApiUser, type AuthenticatedUser } from '@/server/auth';
+
+export { requireApiUser };
+export type { AuthenticatedUser as SessionUser };
 
 export const PRODUCT_STATUSES = {
   draft: 'draft',
@@ -20,6 +23,28 @@ export function toPlainNumber(value: unknown) {
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+export function normalizeJsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/^-|-$/g, '');
 }
 
 export function serializeProduct(product: any) {
@@ -52,16 +77,10 @@ export function serializeProduct(product: any) {
     is_published: (product.productStatus ?? PRODUCT_STATUSES.draft) === PRODUCT_STATUSES.published,
     seller_id: product.sellerId ?? null,
     seller_name: product.seller?.name ?? undefined,
+    seller_avatar_url: product.seller?.avatarUrl ?? null,
     store_name: product.seller?.storeName ?? null,
-    seller_rating:
-      Array.isArray(product.seller?.products) && product.seller.products.length > 0
-        ? Number(
-            (
-              product.seller.products.reduce((sum: number, entry: any) => sum + Number(entry.rating ?? 0), 0) /
-              product.seller.products.length
-            ).toFixed(1),
-          )
-        : null,
+    storefront_slug: product.seller?.storefrontSlug ?? null,
+    seller_rating: null,
     response_time_hours: product.seller?.responseTimeHours ?? null,
     verification_badge: product.seller?.verificationSubmission?.status === 'verified',
     created_at: product.createdAt ? new Date(product.createdAt).toISOString() : undefined,
@@ -83,7 +102,7 @@ export function serializeReview(review: any) {
 
 export function getPublicApprovedSellerWhere() {
   return {
-    role: 'seller',
+    role: 'seller' as UserRole,
     sellerStatus: SELLER_STATUSES.approved,
     storefrontPublished: true,
     profileVisibility: { not: 'private' as const },
@@ -97,7 +116,7 @@ export function getPublicPublishedProductWhere(extra: Record<string, unknown> = 
     OR: [
       {
         seller: {
-          role: 'admin',
+          role: 'admin' as UserRole,
         },
       },
       {
@@ -112,15 +131,12 @@ export const productSellerInclude = {
     select: {
       id: true,
       name: true,
+      avatarUrl: true,
       storeName: true,
+      storefrontSlug: true,
       sellerStatus: true,
       storefrontPublished: true,
       responseTimeHours: true,
-      products: {
-        select: {
-          rating: true,
-        },
-      },
       verificationSubmission: {
         select: {
           status: true,
@@ -130,47 +146,7 @@ export const productSellerInclude = {
   },
 };
 
-export async function requireApiUser(request: NextRequest): Promise<SessionUser | NextResponse> {
-  const header = request.headers.get('authorization') || '';
-  const headerToken = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const token = headerToken || request.cookies.get('access_token')?.value || '';
-
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    return await validateAccessToken(token);
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-}
-
-export function normalizeJsonArray(value: unknown): Prisma.InputJsonArray {
-  if (Array.isArray(value)) return value as Prisma.InputJsonArray;
-  if (typeof value !== 'string' || !value.trim()) return [];
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? (parsed as Prisma.InputJsonArray) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function slugify(name: string) {
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return `${base || 'product'}-${Date.now()}`;
-}
-
-export async function userCanManageProduct(user: SessionUser, productId: string) {
+export async function userCanManageProduct(user: AuthenticatedUser, productId: string) {
   if (user.role === 'admin') return true;
 
   const product = await prisma.product.findUnique({

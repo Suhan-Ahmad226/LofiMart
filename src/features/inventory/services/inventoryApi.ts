@@ -3,6 +3,57 @@ import { Warehouse, Supplier, InventoryItem, PurchaseOrder } from '../../../type
 
 const CACHE_TTL = 5 * 60 * 1000; // 5min
 
+/** One level of a courier's location directory, as returned by /logistics/locations. */
+export type CourierLocationOption = {
+  id: string;
+  name: string;
+  level: string;
+  parentId: string | null;
+  homeDeliveryAvailable: boolean | null;
+  pickupAvailable: boolean | null;
+};
+
+export type CourierLocationResponse = {
+  provider: string;
+  level: string;
+  parentId: string | null;
+  nodes: CourierLocationOption[];
+};
+
+/** A pickup point registered with a courier. */
+export type CourierStoreOption = {
+  externalStoreId: string;
+  externalStoreName: string | null;
+  active: boolean;
+  /** Courier-specific detail, treated as opaque by this layer. */
+  metadata?: {
+    address?: string | null;
+    cityId?: number | null;
+    zoneId?: number | null;
+    areaId?: number | null;
+  } | null;
+};
+
+export type CourierStoreMappingOption = {
+  id: string;
+  warehouseId: string;
+  externalStoreId: string;
+  externalStoreName: string | null;
+  status: string;
+  isActive: boolean;
+  bookable: boolean;
+  cityId: number | null;
+  zoneId: number | null;
+  areaId: number | null;
+  lastError: string | null;
+};
+
+export type CourierStoresResponse = {
+  provider: string;
+  remoteStores: CourierStoreOption[] | null;
+  mappings: CourierStoreMappingOption[];
+};
+
 function getBrowserStorage() {
   if (typeof globalThis === 'undefined' || !('localStorage' in globalThis)) {
     return null;
@@ -42,8 +93,8 @@ export const inventoryApi = {
     try {
       const cached = await getCached('warehouses');
       if (cached) return cached;
-      
-      const res = await api.get('/admin/inventory/warehouses');
+
+      const res = await api.get<Warehouse[]>('/admin/inventory/warehouses');
       setCached('warehouses', res.data);
       return res.data;
     } catch {
@@ -52,13 +103,13 @@ export const inventoryApi = {
   },
 
   async createWarehouse(warehouse: Omit<Warehouse, 'id'>): Promise<Warehouse> {
-    const res = await api.post('/admin/inventory/warehouses', warehouse);
+    const res = await api.post<Warehouse>('/admin/inventory/warehouses', warehouse);
     clearCached('warehouses');
     return res.data;
   },
 
   async updateWarehouse(warehouseId: string, warehouse: Omit<Warehouse, 'id'>): Promise<Warehouse> {
-    const res = await api.patch(`/admin/inventory/warehouses/${warehouseId}`, warehouse);
+    const res = await api.patch<Warehouse>(`/admin/inventory/warehouses/${warehouseId}`, warehouse);
     clearCached('warehouses');
     return res.data;
   },
@@ -68,10 +119,18 @@ export const inventoryApi = {
     clearCached('warehouses');
   },
 
-  async updateWarehousePathaoConfig(
+  /**
+   * Links a warehouse to a courier: pickup contact plus the courier's own ids for
+   * the pickup location.
+   *
+   * Provider-neutral. The `provider` field is what makes it extensible — this
+   * method, and the route behind it, have no idea which courier is being mapped.
+   */
+  async updateWarehouseCourierConfig(
     warehouseId: string,
     payload: {
-      storeId?: number | null;
+      provider: string;
+      storeId?: string | null;
       cityId?: number | null;
       zoneId?: number | null;
       areaId?: number | null;
@@ -80,55 +139,61 @@ export const inventoryApi = {
       otpNumber?: string;
     },
   ) {
-    const res = await api.patch(`/admin/inventory/warehouses/${warehouseId}/pathao`, payload);
+    const res = await api.patch(`/admin/inventory/warehouses/${warehouseId}/courier`, payload);
     clearCached('warehouses');
     return res.data;
   },
 
-  async fetchPathaoCities() {
-    const res = await api.get('/logistics/pathao/cities');
+  /**
+   * One level of a courier's location directory.
+   *
+   * Replaces the per-courier `cities` / `cities/{id}/zones` / `zones/{id}/areas`
+   * route tree with a single parameterised call, so a new courier needs no new
+   * client method and no new route.
+   */
+  async fetchCourierLocations(input: {
+    provider: string;
+    level: 'city' | 'zone' | 'area' | 'district' | 'postcode' | 'other';
+    parentId?: string | null;
+  }): Promise<CourierLocationResponse> {
+    const params = new URLSearchParams({ provider: input.provider, level: input.level });
+    if (input.parentId) params.set('parentId', input.parentId);
+
+    const res = await api.get<CourierLocationResponse>(`/logistics/locations?${params.toString()}`);
     return res.data;
   },
 
-  async fetchPathaoZones(cityId: number) {
-    const res = await api.get(`/logistics/pathao/cities/${cityId}/zones`);
+  /**
+   * Lists a courier's known pickup points.
+   *
+   * `provider` is required rather than optional because the endpoint has no
+   * sensible default: it returns 400 without one. Making it optional here is what
+   * allowed a caller to omit it and get an empty store list with no error.
+   */
+  async fetchCourierStores(input: { provider: string; warehouseId?: string }): Promise<CourierStoresResponse> {
+    const params = new URLSearchParams({ provider: input.provider });
+    if (input.warehouseId) params.set('warehouseId', input.warehouseId);
+
+    const res = await api.get<CourierStoresResponse>(`/logistics/stores?${params.toString()}`);
     return res.data;
   },
 
-  async fetchPathaoAreas(zoneId: number) {
-    const res = await api.get(`/logistics/pathao/zones/${zoneId}/areas`);
-    return res.data;
-  },
-
-  async fetchPathaoStores() {
-    const res = await api.get('/logistics/pathao/stores');
-    return res.data;
-  },
-
-  async fetchPathaoStoreInfo(storeId: number) {
-    const res = await api.get(`/logistics/pathao/stores/${storeId}`);
-    return res.data;
-  },
-
-  async createPathaoStore(payload: { warehouseId?: string } & Record<string, unknown>) {
-    const res = await api.post('/logistics/pathao/stores', payload);
-    return res.data;
-  },
-
-  async calculatePathaoPrice(payload: {
-    store_id: number;
-    item_type?: 1 | 2;
-    delivery_type?: 12 | 48;
-    item_weight?: number;
-    recipient_city: number;
-    recipient_zone: number;
-  }) {
-    const res = await api.post('/logistics/pathao/price', payload);
-    return res.data;
-  },
-
-  async fetchPathaoOrderInfo(consignmentId: string) {
-    const res = await api.get(`/logistics/pathao/orders/${encodeURIComponent(consignmentId)}/info`);
+  /**
+   * Registers a warehouse as a courier pickup point.
+   *
+   * The three location ids are required: a pickup point registered against a
+   * guessed location collects parcels from the wrong hub, and the courier would
+   * have no way of telling us we were wrong.
+   */
+  async createCourierStore(payload: {
+    provider: string;
+    warehouseId: string;
+    cityId: number;
+    zoneId: number;
+    areaId: number;
+  }): Promise<Record<string, unknown>> {
+    const res = await api.post<Record<string, unknown>>('/logistics/stores', payload);
+    clearCached('warehouses');
     return res.data;
   },
 
@@ -136,8 +201,8 @@ export const inventoryApi = {
     try {
       const cached = await getCached('suppliers');
       if (cached) return cached;
-      
-      const res = await api.get('/suppliers');
+
+      const res = await api.get<Supplier[]>('/suppliers');
       setCached('suppliers', res.data);
       return res.data;
     } catch {
@@ -146,7 +211,7 @@ export const inventoryApi = {
   },
 
   async createSupplier(supplier: Omit<Supplier, 'id'>): Promise<Supplier> {
-    const res = await api.post('/suppliers', supplier);
+    const res = await api.post<Supplier>('/suppliers', supplier);
     clearCached('suppliers');
     return res.data;
   },
@@ -155,8 +220,8 @@ export const inventoryApi = {
     try {
       const cached = await getCached('inventory');
       if (cached) return cached;
-      
-      const res = await api.get('/inventory');
+
+      const res = await api.get<InventoryItem[]>('/inventory');
       setCached('inventory', res.data);
       return res.data;
     } catch {
@@ -165,7 +230,7 @@ export const inventoryApi = {
   },
 
   async createInventoryItem(item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> {
-    const res = await api.post('/inventory', item);
+    const res = await api.post<InventoryItem>('/inventory', item);
     clearCached('inventory');
     return res.data;
   },
@@ -179,8 +244,8 @@ export const inventoryApi = {
     try {
       const cached = await getCached('purchaseOrders');
       if (cached) return cached;
-      
-      const res = await api.get('/purchaseOrders');
+
+      const res = await api.get<PurchaseOrder[]>('/purchaseOrders');
       setCached('purchaseOrders', res.data);
       return res.data;
     } catch {
@@ -189,7 +254,7 @@ export const inventoryApi = {
   },
 
   async createPurchaseOrder(po: Omit<PurchaseOrder, 'id'>): Promise<PurchaseOrder> {
-    const res = await api.post('/purchaseOrders', po);
+    const res = await api.post<PurchaseOrder>('/purchaseOrders', po);
     clearCached('purchaseOrders');
     return res.data;
   },

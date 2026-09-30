@@ -2,10 +2,15 @@ import React from 'react';
 import { useInventoryState } from '../../../features/inventory/state/InventoryContext';
 import toast from '@/lib/toast';
 import { useInventoryActions } from '@/features/inventory/hooks/useInventoryActions';
+import { useSearchParams } from '../../../lib/navigation';
 
 const PurchaseOrderList: React.FC = () => {
   const { purchaseOrders, warehouses, inventory, suppliers } = useInventoryState();
   const { createPO, cancelPO } = useInventoryActions();
+  const [searchParams] = useSearchParams();
+  const urlProduct = searchParams.get('product') || '';
+  const urlSection = searchParams.get('section') || '';
+  const urlPurchaseOrder = searchParams.get('po') || '';
   const [focusedProductId, setFocusedProductId] = React.useState('');
   const [focusedPurchaseOrderId, setFocusedPurchaseOrderId] = React.useState('');
   const [pendingCancelId, setPendingCancelId] = React.useState('');
@@ -17,21 +22,14 @@ const PurchaseOrderList: React.FC = () => {
   });
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextProductId = params.get('product');
-    const nextSection = params.get('section');
-    const nextPurchaseOrderId = params.get('po');
-
-    if (nextProductId) {
-      setFocusedProductId(nextProductId);
+    if (urlProduct) {
+      setFocusedProductId(urlProduct);
     }
-    if (nextPurchaseOrderId) {
-      setFocusedPurchaseOrderId(nextPurchaseOrderId);
+    if (urlPurchaseOrder) {
+      setFocusedPurchaseOrderId(urlPurchaseOrder);
     }
 
-    if (nextSection === 'po' || nextProductId) {
+    if (urlSection === 'po' || urlProduct) {
       const timeoutId = window.setTimeout(() => {
         document.getElementById('inventory-po-section')?.scrollIntoView({
           behavior: 'smooth',
@@ -41,7 +39,7 @@ const PurchaseOrderList: React.FC = () => {
 
       return () => window.clearTimeout(timeoutId);
     }
-  }, []);
+  }, [urlProduct, urlPurchaseOrder, urlSection]);
 
   const contextualInventoryItem = React.useMemo(
     () => inventory.find((item) => String(item.productId) === focusedProductId),

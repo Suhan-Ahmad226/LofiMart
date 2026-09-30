@@ -3,6 +3,7 @@ import { CheckCircle2, Loader2, Plus, XCircle, Zap } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
+import { useSearchParams } from '../../../lib/navigation';
 
 type FlashSaleEntry = {
   id: string;
@@ -42,6 +43,8 @@ const initialForm = {
 
 export const AdminFlashSalePage = () => {
   const { token } = useUser();
+  const [searchParams] = useSearchParams();
+  const urlEntry = searchParams.get('entry') || '';
   const [campaigns, setCampaigns] = useState<FlashSaleCampaign[]>([]);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
@@ -80,13 +83,10 @@ export const AdminFlashSalePage = () => {
   }, [token]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const nextEntry = params.get('entry');
-    if (nextEntry) {
-      setFocusedEntryId(nextEntry);
+    if (urlEntry) {
+      setFocusedEntryId(urlEntry);
     }
-  }, []);
+  }, [urlEntry]);
 
   const activeCampaigns = useMemo(
     () => campaigns.filter((campaign) => ['live', 'published', 'scheduled', 'draft'].includes(campaign.status)),

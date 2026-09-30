@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from '../../../lib/navigation';
+import { Link, useNavigate, useParams, useSearchParams } from '../../../lib/navigation';
 import { AlertTriangle, CheckCircle, ChevronLeft, Clock, CreditCard, Download, ExternalLink, Loader2, MapPin, Package, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import toast from '@/lib/toast';
 import { formatPrice } from '../../../lib/utils';
@@ -12,6 +12,9 @@ export const CustomerOrderDetails = () => {
   const { token } = useUser();
   const { replaceCart } = useCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlShipment = searchParams.get('shipment') || '';
+  const urlReturn = searchParams.get('return') || '';
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,21 +33,20 @@ export const CustomerOrderDetails = () => {
     { label: 'Delivered', statuses: ['delivered'], icon: <CheckCircle size={16} /> },
   ];
 
-  const getPathaoEventSummary = (shipment: any) => {
-    const metadata =
-      shipment?.shipment_metadata && typeof shipment.shipment_metadata === 'object'
-        ? (shipment.shipment_metadata as Record<string, unknown>)
-        : {};
+  /**
+   * The courier's last reported status, as a single line for the customer.
+   *
+   * Reads the generic `provider_status` column, not a Pathao-keyed metadata entry.
+   * The old lookup read `shipment_metadata.pathaoLastEvent` / `pathaoLastStatusSlug`,
+   * which the current sync path never writes, so it always rendered nothing — and it
+   * named a specific courier in a component that also renders other couriers.
+   */
+  const getCourierEventSummary = (shipment: any) => {
+    const providerStatus =
+      typeof shipment?.provider_status === 'string' ? shipment.provider_status.trim() : '';
+    if (!providerStatus) return null;
 
-    const lastEvent = typeof metadata.pathaoLastEvent === 'string' ? metadata.pathaoLastEvent : null;
-    const lastStatusSlug = typeof metadata.pathaoLastStatusSlug === 'string' ? metadata.pathaoLastStatusSlug : null;
-
-    if (!lastEvent && !lastStatusSlug) return null;
-
-    return {
-      event: lastEvent ? lastEvent.replaceAll('_', ' ').replaceAll('.', ' ') : null,
-      status: lastStatusSlug ? lastStatusSlug.replaceAll('_', ' ') : null,
-    };
+    return { event: providerStatus.replaceAll('_', ' ').replaceAll('.', ' ') };
   };
 
   useEffect(() => {
@@ -81,18 +83,13 @@ export const CustomerOrderDetails = () => {
   }, [token, id]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const params = new URLSearchParams(window.location.search);
-    const nextShipment = params.get('shipment');
-    const nextReturnRequest = params.get('return');
-    if (nextShipment) {
-      setFocusedShipmentId(nextShipment);
+    if (urlShipment) {
+      setFocusedShipmentId(urlShipment);
     }
-    if (nextReturnRequest) {
-      setFocusedReturnRequestId(nextReturnRequest);
+    if (urlReturn) {
+      setFocusedReturnRequestId(urlReturn);
     }
-  }, []);
+  }, [urlReturn, urlShipment]);
 
   useEffect(() => {
     if (!order || !focusedShipmentId || typeof window === 'undefined') return;
@@ -392,7 +389,7 @@ export const CustomerOrderDetails = () => {
               <div className="mt-6 space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Shipment breakdown</p>
                 {order.shipments.map((shipment: any) => {
-                  const pathaoEventSummary = getPathaoEventSummary(shipment);
+                  const courierEventSummary = getCourierEventSummary(shipment);
 
                   return (
                   <div
@@ -419,11 +416,10 @@ export const CustomerOrderDetails = () => {
                       <p>Tracking: <span className="font-semibold text-gray-900">{shipment.tracking_id || 'Pending'}</span></p>
                       <p>Items: <span className="font-semibold text-gray-900">{shipment.item_count || 0}</span></p>
                     </div>
-                    {pathaoEventSummary ? (
+                    {courierEventSummary ? (
                       <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-                        <span className="font-semibold">Courier event:</span>{' '}
-                        {pathaoEventSummary.event || 'event pending'}
-                        {pathaoEventSummary.status ? ` • ${pathaoEventSummary.status}` : ''}
+                        <span className="font-semibold">Courier update:</span>{' '}
+                        {courierEventSummary.event}
                       </div>
                     ) : null}
                     <div className="mt-3 grid gap-2 text-xs text-gray-500 sm:grid-cols-2">
