@@ -45,6 +45,8 @@ enum PaymentStatus {
   failed
   refunded
   partially_refunded
+  // Legacy live rows may still contain this value; keep it readable until the data is normalized.
+  unpaid
 
   @@schema("public")
 }
