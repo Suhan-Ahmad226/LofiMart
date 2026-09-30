@@ -186,19 +186,26 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   const destination = readDestination(input.shippingAddress);
   const collectibleAmount = Math.max(0, subtotal - discountAmount);
 
-  const quote = destination
-    ? await getShippingQuote({
-        items: normalizedItems,
-        destination,
-        codAmount: collectibleAmount,
-      })
-    : null;
+  if (!destination) {
+    throw new Error('A delivery city is required before the order can be placed.');
+  }
 
-  const deliveryFee = quote?.totalCustomerDeliveryFee ?? 0;
-  const deliveryFeeVerified = quote?.verified === true;
-  const deliveryQuoteWarnings = quote?.warnings ?? [
-    'No delivery city was supplied, so no delivery fee could be calculated.',
-  ];
+  const quote = await getShippingQuote({
+    items: normalizedItems,
+    destination,
+    codAmount: collectibleAmount,
+  });
+
+  if (!quote.verified) {
+    throw new Error(
+      quote.warnings[0] ||
+        'Live Pathao shipping price could not be verified. Please try again.',
+    );
+  }
+
+  const deliveryFee = quote.totalCustomerDeliveryFee;
+  const deliveryFeeVerified = true;
+  const deliveryQuoteWarnings = quote.warnings;
 
   const total = Math.max(0, subtotal - discountAmount) + platformFee + deliveryFee;
   const orderCode = buildOrderCode();
