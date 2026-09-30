@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import { AuthPurpose, isAuthPurpose, sendEmailOtp, sendPhoneOtp, OTP_RESEND_COOLDOWN_SECONDS } from '@/features/auth/server/auth-service';
+import { AuthPurpose, isAuthPurpose, sendEmailOtp, OTP_RESEND_COOLDOWN_SECONDS } from '@/features/auth/server/auth-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
