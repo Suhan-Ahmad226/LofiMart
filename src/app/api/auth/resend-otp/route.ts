@@ -20,6 +20,16 @@ export async function POST(request: NextRequest) {
     const purpose = body.purpose as AuthPurpose;
     const clientIp = getClientIp(request);
 
+    const cooldownKey = `otp:resend-cooldown:${purpose}:${body.identifier}:${clientIp}`;
+    const cooldown = await takeRateLimit(cooldownKey, { limit: 1, windowMs: OTP_RESEND_COOLDOWN_SECONDS * 1000 });
+    if (!cooldown.allowed) {
+      const retryAfter = Math.max(1, Math.ceil(cooldown.resetAfterMs / 1000));
+      return NextResponse.json(
+        { error: `আবার OTP পাঠাতে ${retryAfter} সেকেন্ড অপেক্ষা করুন।`, code: 'RESEND_COOLDOWN' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+      );
+    }
+
     const rateLimitKey = `otp:resend:${purpose}:${body.identifier}:${clientIp}`;
     const { allowed } = await takeRateLimit(rateLimitKey, { limit: 3, windowMs: 5 * 60 * 1000 });
 
