@@ -5,6 +5,7 @@ import { isCourierError } from '@/features/courier/core/errors';
 import { getShipmentStatusLabel } from '@/features/courier/core/status';
 import { createNotification } from '@/features/shared/services/notifications/notificationService';
 import { syncResellerSettlementFromShipmentStatus } from '@/features/reseller/services/resellerSettlement';
+import { syncOrderStatusFromShipments } from '@/features/courier/services/orderStatusService';
 import { prisma } from '@/lib/server';
 import { logger } from '@/lib/logger';
 
@@ -66,6 +67,11 @@ export async function POST(
             metadata: { orderId, shipmentId, status, courierProvider: providerCode },
           });
         }
+
+        // The marketplace Order is an aggregate of all seller shipments. Keep it
+        // derived from shipment state so one seller/courier update cannot overwrite
+        // another seller's progress.
+        await syncOrderStatusFromShipments(orderId);
 
         // Reseller payouts depend on the delivery outcome, so this has to run
         // whenever the status moves — including a redelivery-driven transition
