@@ -1,288 +1,121 @@
-# Environment Variables
+# LofiMart Environment Variables
 
-## Executive Summary
+All secrets must remain outside source control. Use Vercel/environment-specific secret storage in deployed environments.
 
-LofiMart requires 70+ environment variables across 12 categories: application, database, Redis, authentication, payment gateways, courier services, AI, media, Telegram, email, and security. All sensitive values must be stored securely and never committed to version control.
+## Core application
 
----
-
-## Environment Categories
-
-```mermaid
-mindmap
-  root((Environment<br/>Variables))
-    Application
-      NODE_ENV
-      PORT
-      FRONTEND_URL
-      NEXT_PUBLIC_*
-    Database
-      DATABASE_URL
-      DIRECT_URL
-    Redis
-      REDIS_URL
-      REDIS_PREFIX
-      REDIS_*_TIMEOUTS
-    Authentication
-      JWT_SECRET
-      NEXT_PUBLIC_SUPABASE_URL
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-      NEXT_PUBLIC_SUPABASE_ANON_KEY
-      SUPABASE_SERVICE_ROLE_KEY
-    Payments
-      BKASH_*
-      STRIPE_*
-      SSLCOMMERZ_*
-    Couriers
-      PATHAO_*
-    AI
-      GEMINI_API_KEY
-    Media
-      CLOUDINARY_*,
-      NEXT_PUBLIC_CLOUDINARY_*
-    Telegram
-      TELEGRAM_BOT_TOKEN
-      TELEGRAM_BOT_USERNAME
-      TELEGRAM_WEBHOOK_SECRET
-    Email
-      SMTP_HOST
-      SMTP_USER
-      SMTP_PASS
-    Security
-      CSRF_SECRET
-      ENCRYPTION_KEY
-    Feature Flags
-      LOW_STOCK_THRESHOLD
-      CACHE_TTL_SECONDS
-```
-
----
-
-## Application
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NODE_ENV` | Yes | `development` | `development` or `production` |
-| `PORT` | No | `3000` | HTTP server port |
-| `FRONTEND_URL` | Yes | — | Base URL (e.g., `https://lofimart.com`) |
-| `NEXT_PUBLIC_FRONTEND_URL` | Yes | — | Client-safe base URL |
-| `LOW_STOCK_THRESHOLD` | No | `5` | Default low stock alert threshold |
-| `CACHE_TTL_SECONDS` | No | `300` | Default cache TTL (5 minutes) |
-
----
+| Variable | Required | Purpose |
+|---|---:|---|
+| `NODE_ENV` | Yes | Runtime mode |
+| `PORT` | No | Application port |
+| `FRONTEND_URL` | Yes | Server-side canonical frontend URL |
+| `NEXT_PUBLIC_FRONTEND_URL` | Yes | Client-safe frontend URL |
+| `LOW_STOCK_THRESHOLD` | No | Inventory alert threshold |
+| `CACHE_TTL_SECONDS` | No | Default cache TTL |
 
 ## Database
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (pooled) |
-| `DIRECT_URL` | Yes | PostgreSQL connection string (direct, for migrations) |
+| Variable | Required | Purpose |
+|---|---:|---|
+| `DATABASE_URL` | Yes | PostgreSQL pooled connection |
+| `DIRECT_URL` | Yes | PostgreSQL direct connection for migrations |
 
-**Security Notes:**
-- Use connection pooling (PgBouncer) for `DATABASE_URL`
-- `DIRECT_URL` bypasses pooling for schema migrations
-- Never expose connection strings in client-side code
+Never expose database URLs to client code.
 
----
+## Redis / application infrastructure
 
-## Redis
+| Variable | Required | Purpose |
+|---|---:|---|
+| `REDIS_URL` | Yes | Redis connection |
+| `REDIS_PREFIX` | No | Redis key namespace |
+| `REDIS_COMMAND_TIMEOUT_MS` | No | Command timeout |
+| `REDIS_CONNECT_TIMEOUT_MS` | No | Connection timeout |
+| `REDIS_MAX_RETRIES_PER_REQUEST` | No | Redis retry limit |
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `REDIS_URL` | Yes | — | Redis connection string |
-| `REDIS_PREFIX` | No | `lofimart` | Key prefix for namespacing |
-| `REDIS_COMMAND_TIMEOUT_MS` | No | `5000` | Command timeout |
-| `REDIS_CONNECT_TIMEOUT_MS` | No | `5000` | Connection timeout |
-| `REDIS_MAX_RETRIES_PER_REQUEST` | No | `3` | Max retries per request |
+Redis is used for application infrastructure such as cache, rate limiting, BullMQ and coordination. It is **not** the source of truth for authentication sessions.
 
-**Security Notes:**
-- Use TLS for Redis in production
-- Set strong Redis password
-- Use separate Redis databases for cache vs queues
+## Authentication — Supabase
 
----
-
-## Authentication (Supabase)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
+| Variable | Required | Purpose |
+|---|---:|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes* | Supabase publishable key (client-safe, new format `sb_publishable_*`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes* | Legacy Supabase anonymous key (fallback for publishable key) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-side only) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes* | Client-safe Supabase publishable key |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Compatibility | Legacy key alias still accepted by compatibility code |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase admin key |
+| `SUPABASE_AUTH_WEBHOOK_SECRET` | If used | Secret for the Supabase Auth deletion webhook |
 
-\* Set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` (at least one; publishable preferred).
+* The preferred production configuration is `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
-**Security Notes:**
-- `SUPABASE_SERVICE_ROLE_KEY` has admin privileges — never expose to client
-- Publishable/anon keys are safe for client-side use
-- Rotate keys periodically
+### Authentication security rules
 
----
+- Never expose `SUPABASE_SERVICE_ROLE_KEY`.
+- Do not create a second LofiMart login JWT.
+- Do not add an `access_token` authentication cookie.
+- Do not store LofiMart authentication tokens in localStorage.
+- Supabase owns the browser authentication session.
 
-## JWT & Session
+## Application signing and security secrets
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `JWT_SECRET` | Yes | Secret key for JWT signing (HS256) |
-| `CSRF_SECRET` | Yes | Secret key for CSRF token generation |
+`JWT_SECRET` is **not a user-authentication secret** in the current architecture. If retained by a server feature, it must be described according to that feature's actual purpose (for example, signing a Telegram invoice payload).
 
-**Security Notes:**
-- Use at least 256-bit random strings
-- Rotate secrets quarterly
-- Use separate secrets for JWT and CSRF
+| Variable | Purpose |
+|---|---|
+| `JWT_SECRET` | Server-side application signing where explicitly required; not used to issue user login sessions |
+| `CSRF_SECRET` | CSRF token generation/validation |
+| `FIELD_ENCRYPTION_KEY` | Encryption of selected sensitive business fields |
 
----
+Do not reuse one secret for unrelated security purposes.
 
-## bKash Payment Gateway
+## Pathao
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BKASH_BASE_URL` | Yes | bKash API base URL |
-| `BKASH_USERNAME` | Yes | bKash merchant username |
-| `BKASH_PASSWORD` | Yes | bKash merchant password |
-| `BKASH_APP_KEY` | Yes | bKash app key |
-| `BKASH_APP_SECRET` | Yes | bKash app secret |
-
-**Security Notes:**
-- All bKash credentials are server-side only
-- Never expose to client-side code
-- Use sandbox URL for development
-
----
-
-## Stripe Payment Gateway
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `STRIPE_SECRET_KEY` | Yes | Stripe secret API key |
-| `STRIPE_PUBLISHABLE_KEY` | Yes | Stripe publishable key (client-safe) |
-| `STRIPE_WEBHOOK_SECRET` | Yes | Stripe webhook signing secret |
-
-**Security Notes:**
-- `STRIPE_SECRET_KEY` is server-side only
-- `STRIPE_PUBLISHABLE_KEY` is safe for client-side
-- Verify webhook signatures
-
----
-
-## SSLCommerz Gateway
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SSLCOMMERZ_STORE_ID` | Yes | SSLCommerz store ID |
-| `SSLCOMMERZ_STORE_PASS` | Yes | SSLCommerz store password |
-| `SSLCOMMERZ_BASE_URL` | Yes | SSLCommerz API base URL |
-| `SSLCOMMERZ_IS_LIVE` | No | `false` for sandbox |
-
----
-
-## Courier Services
-
-### Pathao
-
-| Variable | Required | Description |
-|----------|----------|-------------|
+| Variable | Required | Purpose |
+|---|---:|---|
 | `PATHAO_CLIENT_ID` | Yes | Pathao OAuth client ID |
 | `PATHAO_CLIENT_SECRET` | Yes | Pathao OAuth client secret |
-| `PATHAO_BASE_URL` | Yes | Pathao API base URL. Production: `https://api-hermes.pathao.com`. Sandbox: `https://courier-api-sandbox.pathao.com` |
+| `PATHAO_BASE_URL` | Yes | Pathao API base URL |
 | `PATHAO_USERNAME` | Yes | Pathao merchant username |
 | `PATHAO_PASSWORD` | Yes | Pathao merchant password |
-| `PATHAO_BOOKING_ENDPOINT` | No | Overrides the consignment endpoint. Defaults to the documented `/aladdin/api/v1/orders` |
-| `PATHAO_WEBHOOK_TOKEN` | No | Shared secret Pathao presents on webhooks. There is deliberately no fallback to `PATHAO_CLIENT_SECRET`: the webhook endpoint is public, so reusing an OAuth secret would let anyone who obtains it forge shipment status events. Unset means Pathao webhooks are rejected (fails closed) and status must be synced via the API or the reconciliation worker instead. |
+| `PATHAO_BOOKING_ENDPOINT` | No | Optional booking endpoint override |
+| `PATHAO_WEBHOOK_TOKEN` | No | Pathao webhook verification secret |
 
----
+## Media
 
-## AI Services
+| Variable | Required | Purpose |
+|---|---:|---|
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Yes | Client-safe Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | Yes | Server-side Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Yes | Server-side Cloudinary API secret |
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
+## Email / notifications
 
----
+| Variable | Required | Purpose |
+|---|---:|---|
+| `SMTP_HOST` | If SMTP used | SMTP host |
+| `SMTP_PORT` | No | SMTP port |
+| `SMTP_USER` | If SMTP used | SMTP username |
+| `SMTP_PASS` | If SMTP used | SMTP password |
+| `SMTP_FROM` | If SMTP used | Sender address |
+| `TELEGRAM_BOT_TOKEN` | If Telegram used | Telegram bot credential |
+| `TELEGRAM_BOT_USERNAME` | If Telegram used | Telegram bot username |
+| `TELEGRAM_WEBHOOK_SECRET` | If used | Telegram webhook verification |
 
-## Media (Cloudinary)
+## Other integrations
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Yes | Cloudinary cloud name (client-safe) |
-| `CLOUDINARY_API_KEY` | Yes | Cloudinary API key (server-side) |
-| `CLOUDINARY_API_SECRET` | Yes | Cloudinary API secret (server-side) |
-| `SUPABASE_AUTH_WEBHOOK_SECRET` | Yes | Shared secret for the authenticated Supabase Auth deletion webhook |
+See the corresponding feature documentation for provider-specific variables. Removed payment/courier providers must not be documented as active integrations.
 
----
+## Secret classification
 
-## Telegram Bot
+| Type | Examples | Client-safe? |
+|---|---|---|
+| Public | `NEXT_PUBLIC_*` | Usually yes |
+| Server secret | `SUPABASE_SERVICE_ROLE_KEY`, `*_SECRET` | No |
+| Infrastructure credential | `DATABASE_URL`, `REDIS_URL` | No |
+| External API credential | `PATHAO_CLIENT_SECRET`, `CLOUDINARY_API_SECRET` | No |
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token |
-| `TELEGRAM_BOT_USERNAME` | Yes | Telegram bot username (e.g., `@lofimart_bot`) |
-| `TELEGRAM_WEBHOOK_SECRET` | No | Webhook secret token validation |
+## Production rules
 
----
-
-## Email (SMTP)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SMTP_HOST` | Yes | SMTP server hostname |
-| `SMTP_PORT` | No | SMTP port (default: 587) |
-| `SMTP_USER` | Yes | SMTP username |
-| `SMTP_PASS` | Yes | SMTP password |
-| `SMTP_FROM` | Yes | Sender email address |
-
----
-
-## Security Best Practices
-
-### Secrets Management
-
-| Practice | Description |
-|----------|-------------|
-| Never commit `.env` | `.env` is in `.gitignore` |
-| Use `.env.example` | Template without real values |
-| Separate environments | `.env.development`, `.env.production` |
-| Rotate regularly | Rotate secrets quarterly |
-| Minimum privilege | Use service role keys only when needed |
-| No client exposure | Server-only secrets never in `NEXT_PUBLIC_*` |
-
-### Variable Classification
-
-| Classification | Examples | Handling |
-|---------------|----------|----------|
-| **Public** | `NEXT_PUBLIC_*` | Safe in client bundle |
-| **Secret** | `JWT_SECRET`, `*_SECRET_KEY` | Server-only, never in client |
-| **Credential** | `DATABASE_URL`, `REDIS_URL` | Infrastructure secrets |
-| **API Key** | `*_API_KEY` | External service access |
-
----
-
-## Development vs Production
-
-| Variable | Development | Production |
-|----------|-------------|------------|
-| `NODE_ENV` | `development` | `production` |
-| `DATABASE_URL` | Local PostgreSQL | Cloud PostgreSQL |
-| `REDIS_URL` | Local Redis | Cloud Redis |
-| `BKASH_BASE_URL` | Sandbox | Production |
-| `STRIPE_SECRET_KEY` | `sk_test_*` | `sk_live_*` |
-| `SSLCOMMERZ_IS_LIVE` | `false` | `true` |
-
----
-
-## Known Limitations
-
-1. No secrets rotation automation
-2. No vault integration (HashiCorp Vault, AWS Secrets Manager)
-3. No environment variable validation at startup
-4. No encrypted `.env` files for team sharing
-5. No runtime configuration updates
-
-## Future Improvements
-
-1. Add startup validation for required environment variables
-2. Integrate with secrets manager (AWS SSM, Vault)
-3. Implement automatic secret rotation
-4. Add encrypted `.env` sharing for team development
-5. Create environment-specific feature flags
+1. Configure environment variables in the deployment platform.
+2. Never commit real credentials.
+3. Prefer the Supabase publishable key over the legacy anon-key alias.
+4. Keep service-role and infrastructure secrets server-only.
+5. Do not introduce environment variables for a removed custom authentication layer.
