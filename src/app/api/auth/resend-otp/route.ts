@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import { AuthPurpose, sendEmailOtp, sendPhoneOtp, OTP_RESEND_COOLDOWN_SECONDS } from '@/features/auth/server/auth-service';
+import { AuthPurpose, isAuthPurpose, sendEmailOtp, sendPhoneOtp, OTP_RESEND_COOLDOWN_SECONDS } from '@/features/auth/server/auth-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,10 +17,22 @@ const ResendOtpSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = ResendOtpSchema.parse(await request.json());
-    const purpose = body.purpose as AuthPurpose;
-    const clientIp = getClientIp(request);
+    if (!isAuthPurpose(body.purpose)) {
+      return NextResponse.json(
+        { error: 'OTP purpose is not supported.', code: 'INVALID_PURPOSE' },
+        { status: 400 },
+      );
+    }
 
-    const cooldownKey = `otp:resend-cooldown:${purpose}:${body.identifier}:${clientIp}`;
+    const purpose = body.purpose as AuthPurpose;
+    const classified = classifyLoginIdentifier(body.identifier);
+    if (classified.type === 'invalid') {
+      return NextResponse.json({ success: true });
+    }
+
+    const clientIp = getClientIp(request);
+    const normalizedIdentifier = classified.value;
+    const cooldownKey = `otp:resend-cooldown:${purpose}:${normalizedIdentifier}:${clientIp}`;
     const cooldown = await takeRateLimit(cooldownKey, { limit: 1, windowMs: OTP_RESEND_COOLDOWN_SECONDS * 1000 });
     if (!cooldown.allowed) {
       const retryAfter = Math.max(1, Math.ceil(cooldown.resetAfterMs / 1000));
@@ -30,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimitKey = `otp:resend:${purpose}:${body.identifier}:${clientIp}`;
+    const rateLimitKey = `otp:resend:${purpose}:${normalizedIdentifier}:${clientIp}`;
     const { allowed } = await takeRateLimit(rateLimitKey, { limit: 3, windowMs: 5 * 60 * 1000 });
 
     if (!allowed) {
@@ -38,11 +50,6 @@ export async function POST(request: NextRequest) {
         { error: 'অনেকবার OTP পাঠানো হয়েছে। কিছুক্ষণ অপেক্ষা করুন।', code: 'RATE_LIMITED' },
         { status: 429, headers: { 'Retry-After': '300' } },
       );
-    }
-
-    const classified = classifyLoginIdentifier(body.identifier);
-    if (classified.type === 'invalid') {
-      return NextResponse.json({ success: true });
     }
 
     let email: string | null = null;
