@@ -192,14 +192,14 @@ describe('auth hardening', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('ready')).toHaveTextContent('true');
-      expect(screen.getByTestId('user')).toHaveTextContent('Fresh Server Profile');
-      expect(screen.getByTestId('token')).toHaveTextContent('access-token-1');
-      expect(screen.getByTestId('refresh')).toHaveTextContent('refresh-token-1');
+      expect(screen.getByTestId('ready').textContent).toBe('true');
+      expect(screen.getByTestId('user').textContent).toBe('Fresh Server Profile');
+      expect(screen.getByTestId('token').textContent).toBe('access-token-1');
+      expect(screen.getByTestId('refresh').textContent).toBe('refresh-token-1');
     });
 
-    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
-    expect(screen.getByTestId('user')).not.toHaveTextContent('Stale Local User');
+    expect(screen.getByTestId('authenticated').textContent).toBe('true');
+    expect(screen.getByTestId('user').textContent).not.toContain('Stale Local User');
     expect(localStorage.getItem('user')).toBe(JSON.stringify(staleUser));
     expect(localStorage.getItem('token')).toBe('stale-token');
     expect(localStorage.getItem('refreshToken')).toBe('stale-refresh-token');
