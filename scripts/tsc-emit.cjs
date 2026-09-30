@@ -2,9 +2,11 @@
 const { execSync } = require('child_process');
 
 try {
-  execSync('npx tsc --noEmit --project tsconfig.json --excludeFiles "src/tests/**/*.ts"', { 
+  // tsconfig.json already excludes src/tests, so no unsupported CLI
+  // exclusion flag is needed here.
+  execSync('npx tsc --noEmit --project tsconfig.json', {
     stdio: 'inherit',
-    cwd: process.cwd()
+    cwd: process.cwd(),
   });
   console.log('TypeScript check passed');
 } catch (error) {
