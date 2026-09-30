@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/client';
 
 export interface User {
@@ -23,7 +22,7 @@ export interface User {
 
 interface UserContextType {
   user: User | null;
-    login: (user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
@@ -34,10 +33,10 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<User | null>(null);
-    const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
-  const setInternalUser = useCallback((nextUser: User | null, _session: Session | null = null) => {
+  const setInternalUser = useCallback((nextUser: User | null) => {
     setUserState(nextUser);
   }, []);
 
@@ -87,7 +86,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // getUser() is the verified identity check. Supabase owns the session
         // and token lifecycle; this context only mirrors the application profile.
         const { data: userData } = await supabase.auth.getUser();
-        const { data: sessionData } = await supabase.auth.getSession();
 
         if (!active) return;
 
@@ -105,7 +103,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     ...payload.user,
                     name: payload.user.name || '',
                   } as User,
-                  sessionData.session,
                 );
               } else {
                 setInternalUser(null);
@@ -147,7 +144,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const supabase = supabaseRef.current ?? createClient();
         supabaseRef.current = supabase;
 
-        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
+        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session) => {
           if (!active) return;
 
           if (!session?.user) {
@@ -214,7 +211,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <UserContext.Provider
       value={{
         user,
-         login,
+        login,
         logout,
         setUser,
         isAuthenticated: !!user,
