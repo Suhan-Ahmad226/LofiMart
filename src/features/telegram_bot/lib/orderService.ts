@@ -539,10 +539,13 @@ export async function updateSellerOrderStatus(input: {
   });
 
   const currentStatus = String(existingShipment?.status || '');
+  if (input.action === 'deliver') {
+    throw new Error('Delivery completion is controlled by the courier webhook; sellers cannot mark a Pathao shipment delivered manually.');
+  }
+
   const validTransition =
     (input.action === 'accept' && ['processing'].includes(currentStatus)) ||
     (input.action === 'ship' && ['processing', 'packed', 'ready_for_pickup'].includes(currentStatus)) ||
-    (input.action === 'deliver' && ['picked_up', 'in_transit', 'out_for_delivery'].includes(currentStatus)) ||
     (input.action === 'reject' && ['processing'].includes(currentStatus));
 
   if (!validTransition) {
@@ -575,33 +578,8 @@ export async function updateSellerOrderStatus(input: {
     );
   }
 
-  // The parent order is a marketplace aggregate. Its status must be derived
-  // from all seller shipments, never overwritten by one seller's state.
-  const allShipments = await prisma.orderShipment.findMany({
-    where: { orderId: input.orderId },
-    select: { status: true },
-  });
-
-  const shipmentStatuses = allShipments.map((item) => String(item.status));
-  const parentStatus =
-    shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'cancelled')
-      ? 'cancelled'
-      : shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'delivered')
-        ? 'delivered'
-        : shipmentStatuses.some((item) =>
-              ['picked_up', 'in_transit', 'out_for_delivery'].includes(item),
-            )
-          ? 'picked_up'
-          : 'processing';
-
-  await prisma.order.update({
-    where: { id: input.orderId },
-    data: {
-      status: parentStatus,
-      ...(parentStatus === 'picked_up' ? { pickedUpAt: new Date() } : {}),
-      ...(parentStatus === 'delivered' ? { deliveredAt: new Date() } : {}),
-    },
-  });
+  const { syncOrderStatusFromShipments } = await import('@/features/courier/services/orderStatusService');
+  await syncOrderStatusFromShipments(input.orderId);
 
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
