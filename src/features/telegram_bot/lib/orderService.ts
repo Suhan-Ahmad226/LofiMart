@@ -508,6 +508,17 @@ export async function updateSellerOrderStatus(input: {
     },
   });
 
+  const currentStatus = String(existingShipment?.status || '');
+  const validTransition =
+    (input.action === 'accept' && ['processing'].includes(currentStatus)) ||
+    (input.action === 'ship' && ['processing', 'packed', 'ready_for_pickup'].includes(currentStatus)) ||
+    (input.action === 'deliver' && ['picked_up', 'in_transit', 'out_for_delivery'].includes(currentStatus)) ||
+    (input.action === 'reject' && ['processing'].includes(currentStatus));
+
+  if (!validTransition) {
+    throw new Error(`Invalid shipment transition: ${currentStatus} -> ${status}`);
+  }
+
   const shipment = await prisma.orderShipment.updateMany({
     where: {
       orderId: input.orderId,
