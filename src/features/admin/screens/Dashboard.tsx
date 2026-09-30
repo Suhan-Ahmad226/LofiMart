@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { DollarSign, Loader2, ShoppingBag, Store, Users } from 'lucide-react';
+import { DollarSign, ShoppingBag, Store, Users } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 import { DashboardSection, DashboardKpiCard, DashboardAlert, DashboardStatsGrid } from '@/features/shared/ui/dashboard';
@@ -223,8 +223,18 @@ export const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading admin dashboard">
+        <div className="h-28 animate-pulse rounded-2xl border border-black/5 bg-white shadow-sm" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-28 animate-pulse rounded-2xl border border-black/5 bg-white shadow-sm" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="h-80 animate-pulse rounded-2xl border border-black/5 bg-white shadow-sm" />
+          <div className="h-80 animate-pulse rounded-2xl border border-black/5 bg-white shadow-sm" />
+        </div>
+        <div className="h-72 animate-pulse rounded-2xl border border-black/5 bg-white shadow-sm" />
       </div>
     );
   }
