@@ -42,28 +42,66 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Valid rating is required' }, { status: 400 });
     }
 
-    await prisma.review.create({
-      data: {
-        productId: id,
-        userId: String(user.id),
-        rating,
-        comment: body.comment ? String(body.comment) : null,
-      },
-    });
-
-    const stats = await prisma.review.aggregate({
-      where: { productId: id },
-      _avg: { rating: true },
-      _count: { _all: true },
-    });
-
-    await prisma.product.update({
+    const product = await prisma.product.findUnique({
       where: { id },
-      data: {
-        rating: stats._avg.rating ?? 0,
-        reviewsCount: stats._count._all,
-      },
+      select: { id: true },
     });
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    const purchased = await prisma.orderItem.findFirst({
+      where: {
+        productId: id,
+        order: {
+          userId: String(user.id),
+          status: 'delivered',
+        },
+      },
+      select: { id: true },
+    });
+    if (!purchased) {
+      return NextResponse.json(
+        { error: 'You can review a product only after purchasing it.' },
+        { status: 403 },
+      );
+    }
+
+    const existingReview = await prisma.review.findFirst({
+      where: { productId: id, userId: String(user.id) },
+      select: { id: true },
+    });
+    if (existingReview) {
+      return NextResponse.json(
+        { error: 'You have already reviewed this product.' },
+        { status: 409 },
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.review.create({
+        data: {
+          productId: id,
+          userId: String(user.id),
+          rating,
+          comment: body.comment ? String(body.comment).trim().slice(0, 2000) : null,
+        },
+      });
+
+      const stats = await tx.review.aggregate({
+        where: { productId: id },
+        _avg: { rating: true },
+        _count: { _all: true },
+      });
+
+      await tx.product.update({
+        where: { id },
+        data: {
+          rating: stats._avg.rating ?? 0,
+          reviewsCount: stats._count._all,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
 
     return NextResponse.json({ success: true });
   } catch (error) {

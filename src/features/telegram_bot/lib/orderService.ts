@@ -4,6 +4,7 @@ import { getShippingQuote } from '@/features/courier/services/quoteService';
 import { restoreStockForOrder } from './inventoryService';
 import { ensureTelegramInvoice, sendInvoiceToTelegram } from './invoiceService';
 import { sendLowStockAlert, sendNewOrderNotification, sendOrderStatusNotification } from './notificationService';
+import { isKnownCheckoutPaymentMethod } from '@/lib/commerce-channels';
 
 type CreateOrderLine = {
   productId: string;
@@ -125,6 +126,11 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   let discountAmount = 0;
   let couponSnapshot: Record<string, unknown> | null = null;
 
+  const paymentMethod = String(input.paymentMethod || 'cod').trim().toLowerCase();
+  if (!isKnownCheckoutPaymentMethod(paymentMethod)) {
+    throw new Error('Unsupported payment method');
+  }
+
   const couponCode = String(input.couponCode || '').trim();
   if (couponCode) {
     const coupon = await prisma.coupon.findUnique({
@@ -173,26 +179,31 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   // Placed after the coupon block because the collectible amount depends on the
   // discount: the courier charges a COD fee on what the rider actually collects.
   //
-  // A missing destination or an unreachable courier yields a configured flat
-  // fallback, and the order is recorded with `deliveryFeeVerified: false` so the
-  // figure can be reconciled against the courier invoice rather than mistaken
-  // for a confirmed price.
+  // Production checkout requires a real destination and a verified live courier
+  // quote. A fallback fee must never silently become a customer order total.
   const destination = readDestination(input.shippingAddress);
   const collectibleAmount = Math.max(0, subtotal - discountAmount);
 
-  const quote = destination
-    ? await getShippingQuote({
-        items: normalizedItems,
-        destination,
-        codAmount: collectibleAmount,
-      })
-    : null;
+  if (!destination) {
+    throw new Error('A delivery city is required before the order can be placed.');
+  }
 
-  const deliveryFee = quote?.totalCustomerDeliveryFee ?? 0;
-  const deliveryFeeVerified = quote?.verified === true;
-  const deliveryQuoteWarnings = quote?.warnings ?? [
-    'No delivery city was supplied, so no delivery fee could be calculated.',
-  ];
+  const quote = await getShippingQuote({
+    items: normalizedItems,
+    destination,
+    codAmount: collectibleAmount,
+  });
+
+  if (!quote.verified) {
+    throw new Error(
+      quote.warnings[0] ||
+        'Live Pathao shipping price could not be verified. Please try again.',
+    );
+  }
+
+  const deliveryFee = quote.totalCustomerDeliveryFee;
+  const deliveryFeeVerified = true;
+  const deliveryQuoteWarnings = quote.warnings;
 
   const total = Math.max(0, subtotal - discountAmount) + platformFee + deliveryFee;
   const orderCode = buildOrderCode();
@@ -226,7 +237,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         total,
         status: 'processing',
         orderCode,
-        paymentMethod: input.paymentMethod || 'cod',
+        paymentMethod,
         paymentStatus: 'pending',
         shippingAddress: input.shippingAddress || undefined,
         shipmentMetadata: {
@@ -286,30 +297,47 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
       }
 
       const inventoryItem = await tx.inventoryItem.findFirst({
-        where: { productId: item.productId },
-        orderBy: { updatedAt: 'desc' },
+        where: {
+          productId: item.productId,
+          quantity: { gte: item.quantity },
+        },
+        orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
       });
 
-      if (inventoryItem) {
-        warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
-
-        await tx.inventoryItem.update({
-          where: { id: inventoryItem.id },
-          data: {
-            quantity: Math.max(0, inventoryItem.quantity - item.quantity),
-            movements: {
-              create: {
-                productId: item.productId,
-                warehouseId: inventoryItem.warehouseId,
-                type: 'sale',
-                quantityDelta: -item.quantity,
-                reason: 'order_created',
-                reference: created.id,
-              },
-            },
-          },
-        });
+      if (!inventoryItem) {
+        throw new Error(
+          `Insufficient warehouse inventory for ${productById.get(item.productId)?.name || item.productId}`,
+        );
       }
+
+      warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
+
+      const inventoryUpdated = await tx.inventoryItem.updateMany({
+        where: {
+          id: inventoryItem.id,
+          quantity: { gte: item.quantity },
+        },
+        data: {
+          quantity: { decrement: item.quantity },
+        },
+      });
+
+      if (inventoryUpdated.count !== 1) {
+        throw new Error(
+          `Inventory changed while placing the order for ${productById.get(item.productId)?.name || item.productId}. Please try again.`,
+        );
+      }
+
+      await tx.inventoryMovement.create({
+        data: {
+          productId: item.productId,
+          warehouseId: inventoryItem.warehouseId,
+          type: 'sale',
+          quantityDelta: -item.quantity,
+          reason: 'order_created',
+          reference: created.id,
+        },
+      });
 
       const product = productById.get(item.productId)!;
       const nextStock = product.stock - item.quantity;
@@ -491,6 +519,17 @@ export async function updateSellerOrderStatus(input: {
     },
   });
 
+  const currentStatus = String(existingShipment?.status || '');
+  const validTransition =
+    (input.action === 'accept' && ['processing'].includes(currentStatus)) ||
+    (input.action === 'ship' && ['processing', 'packed', 'ready_for_pickup'].includes(currentStatus)) ||
+    (input.action === 'deliver' && ['picked_up', 'in_transit', 'out_for_delivery'].includes(currentStatus)) ||
+    (input.action === 'reject' && ['processing'].includes(currentStatus));
+
+  if (!validTransition) {
+    throw new Error(`Invalid shipment transition: ${currentStatus} -> ${status}`);
+  }
+
   const shipment = await prisma.orderShipment.updateMany({
     where: {
       orderId: input.orderId,
@@ -517,12 +556,31 @@ export async function updateSellerOrderStatus(input: {
     );
   }
 
+  // The parent order is a marketplace aggregate. Its status must be derived
+  // from all seller shipments, never overwritten by one seller's state.
+  const allShipments = await prisma.orderShipment.findMany({
+    where: { orderId: input.orderId },
+    select: { status: true },
+  });
+
+  const shipmentStatuses = allShipments.map((item) => String(item.status));
+  const parentStatus =
+    shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'cancelled')
+      ? 'cancelled'
+      : shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'delivered')
+        ? 'delivered'
+        : shipmentStatuses.some((item) =>
+              ['picked_up', 'in_transit', 'out_for_delivery'].includes(item),
+            )
+          ? 'picked_up'
+          : 'processing';
+
   await prisma.order.update({
     where: { id: input.orderId },
     data: {
-      status,
-      ...(status === 'picked_up' ? { pickedUpAt: new Date() } : {}),
-      ...(status === 'delivered' ? { deliveredAt: new Date() } : {}),
+      status: parentStatus,
+      ...(parentStatus === 'picked_up' ? { pickedUpAt: new Date() } : {}),
+      ...(parentStatus === 'delivered' ? { deliveredAt: new Date() } : {}),
     },
   });
 

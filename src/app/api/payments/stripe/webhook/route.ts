@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     keyPrefix: 'api:payments:stripe:webhook',
     limit: 120,
     enforceOriginForMutations: false,
+    requireAuth: false,
   });
   if (securityResult instanceof Response) return securityResult;
 

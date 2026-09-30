@@ -300,6 +300,10 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     );
   }
 
+  if (byWarehouse.size === 0) {
+    throw new Error('No warehouse stock is available for one or more cart items.');
+  }
+
   const recipientLocation = await resolveRecipientLocation(providerCode, request.destination, warnings);
 
   const shipments: ShipmentQuote[] = [];
