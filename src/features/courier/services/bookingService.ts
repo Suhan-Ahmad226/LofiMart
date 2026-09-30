@@ -249,6 +249,23 @@ async function buildBookingRequest(
 
   const codAmount = Math.max(0, Math.round(toNumber(shipment.codAmount ?? shipment.total)));
 
+  if (!warehouse) {
+    throw new Error('Shipment has no pickup warehouse configured.');
+  }
+  if (!recipientName || recipientName.trim().length < 3) {
+    throw new Error('A valid recipient name is required before courier booking.');
+  }
+  if (!recipientPhone || !/^01\\d{9}$/.test(recipientPhone.replace(/\\s|-/g, ''))) {
+    throw new Error('A valid Bangladesh recipient phone number is required before courier booking.');
+  }
+  const recipientAddress = readString(address, 'address', 'fullAddress', 'street', 'deliveryAddress');
+  if (!recipientAddress || recipientAddress.trim().length < 10) {
+    throw new Error('A complete delivery address is required before courier booking.');
+  }
+  if (!recipientCity) {
+    throw new Error('A delivery city is required before courier booking.');
+  }
+
   const storeMapping =
     warehouse?.courierStores.find((entry) => entry.provider === providerCode) ?? null;
 
@@ -285,11 +302,26 @@ async function buildBookingRequest(
           }
         : null;
 
+  if (!pickupStore) {
+    throw new Error('No active Pathao pickup store is mapped to this warehouse.');
+  }
+  if (!pickupLocation || pickupLocation.cityId == null || pickupLocation.zoneId == null || pickupLocation.areaId == null) {
+    throw new Error('The warehouse Pathao location mapping is incomplete.');
+  }
+
+  if (weightKg < 0.5 || weightKg > 10) {
+    throw new Error('Pathao parcel weight must be between 0.5 kg and 10 kg. Split or correct the shipment before booking.');
+  }
+
   const recipientLocation = await provider.resolveLocation({
     city: recipientCity,
     zone: readString(address, 'zone', 'thana'),
     area: readString(address, 'area'),
   });
+
+  if (!recipientLocation) {
+    throw new Error('The delivery address is not currently mapped to a serviceable Pathao area.');
+  }
 
   return {
     orderId: shipment.orderId,
@@ -300,7 +332,7 @@ async function buildBookingRequest(
       name: recipientName,
       phone: recipientPhone,
       secondaryPhone: readString(address, 'secondaryPhone', 'alternativePhone'),
-      address: readString(address, 'address', 'fullAddress', 'street', 'deliveryAddress'),
+      address: recipientAddress,
       city: recipientCity,
       location: recipientLocation,
     },
