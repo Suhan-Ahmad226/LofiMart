@@ -285,10 +285,21 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         throw new Error(`Insufficient stock for ${product?.name || item.productId}`);
       }
 
-      const inventoryItem = await tx.inventoryItem.findFirst({
+      const inventoryRows = await tx.inventoryItem.findMany({
         where: { productId: item.productId },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
+        take: 2,
       });
+
+      const inventoryItem =
+        inventoryRows.find((row) => row.quantity >= item.quantity) ??
+        (inventoryRows.length === 0 ? null : undefined);
+
+      if (inventoryItem === undefined) {
+        throw new Error(
+          `Insufficient warehouse inventory for ${productById.get(item.productId)?.name || item.productId}`,
+        );
+      }
 
       if (inventoryItem) {
         warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
@@ -296,7 +307,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         await tx.inventoryItem.update({
           where: { id: inventoryItem.id },
           data: {
-            quantity: Math.max(0, inventoryItem.quantity - item.quantity),
+            quantity: { decrement: item.quantity },
             movements: {
               create: {
                 productId: item.productId,
@@ -517,12 +528,30 @@ export async function updateSellerOrderStatus(input: {
     );
   }
 
+  // The parent order is a marketplace aggregate. Its status must be derived
+  // from all seller shipments, never overwritten by one seller's state.
+  const allShipments = await prisma.orderShipment.findMany({
+    where: { orderId: input.orderId },
+    select: { status: true },
+  });
+
+  const shipmentStatuses = allShipments.map((item) => String(item.status));
+  const parentStatus =
+    shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'cancelled')
+      ? 'cancelled'
+      : shipmentStatuses.length > 0 && shipmentStatuses.every((item) => item === 'delivered')
+        ? 'delivered'
+        : shipmentStatuses.some((item) =>
+              ['picked_up', 'in_transit', 'out_for_delivery'].includes(item),
+            )
+          ? 'picked_up'
+          : 'processing';
+
   await prisma.order.update({
     where: { id: input.orderId },
     data: {
-      status,
-      ...(status === 'picked_up' ? { pickedUpAt: new Date() } : {}),
-      ...(status === 'delivered' ? { deliveredAt: new Date() } : {}),
+      status: parentStatus,
+      ...(parentStatus === 'delivered' ? { deliveredAt: new Date() } : {}),
     },
   });
 
