@@ -2,12 +2,8 @@
 -- Safe to run whether the courier core migration was recorded as applied or not.
 -- No DROP, DELETE, TRUNCATE, ALTER TYPE removal, or destructive rewrite.
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'PaymentStatus') THEN
-    ALTER TYPE "PaymentStatus" ADD VALUE IF NOT EXISTS 'unpaid';
-  END IF;
-END $$;
+-- PaymentStatus is created by the baseline migrations that precede this repair.
+ALTER TYPE "PaymentStatus" ADD VALUE IF NOT EXISTS 'unpaid';
 
 ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "weightKg" DOUBLE PRECISION;
 ALTER TABLE "TenantSetting"
