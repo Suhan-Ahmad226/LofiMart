@@ -48,11 +48,11 @@ export async function POST(request: NextRequest) {
 
     const clientIp = getClientIp(request);
     const rateLimitKey = `otp:verify:${purpose}:${classified.value}:${clientIp}`;
-    const { allowed } = await takeRateLimit(rateLimitKey, { limit: 10, windowMs: 5 * 60 * 1000 });
+    const { allowed } = await takeRateLimit(rateLimitKey, { limit: 5, windowMs: 5 * 60 * 1000 });
 
     if (!allowed) {
       return NextResponse.json(
-        { error: 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ অপেক্ষা করুন।', code: 'RATE_LIMITED' },
+        { error: VERIFY_MESSAGES.MAX_ATTEMPTS, code: 'MAX_ATTEMPTS' },
         { status: 429, headers: { 'Retry-After': '300' } },
       );
     }
