@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/server';
 import { requireApiUser } from '../../_compat/shared';
-import { syncSupabasePassword } from '@/features/auth/services/password-sync';
+import { createSupabaseServerClient } from '@/app/api/auth/supabase/shared';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,22 +59,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (dbUser.supabaseAuthId) {
-    const sync = await syncSupabasePassword({
-      supabaseAuthId: dbUser.supabaseAuthId,
-      newPassword,
-    });
+  const supabase = createSupabaseServerClient(false);
+  const { data: passwordCheck, error: passwordCheckError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: String(currentPassword),
+  });
 
-    if (!sync.ok) {
-      return NextResponse.json(
-        {
-          error:
-            'Your password could not be updated right now. Please try again. If the problem continues, use "Forgot password" to reset it.',
-          code: 'PASSWORD_SYNC_FAILED',
-        },
-        { status: 502 },
-      );
-    }
+  if (passwordCheckError || !passwordCheck.user || passwordCheck.user.id !== dbUser.supabaseAuthId) {
+    return NextResponse.json(
+      { error: 'Current password is incorrect.', code: 'CURRENT_PASSWORD_INVALID' },
+      { status: 400 },
+    );
+  }
+
+  const adminSupabase = createSupabaseServerClient(true);
+  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(dbUser.supabaseAuthId, {
+    password: String(newPassword),
+  });
+
+  if (updateError) {
+    return NextResponse.json(
+      {
+        error:
+          'Your password could not be updated right now. Please try again. If the problem continues, use "Forgot password" to reset it.',
+        code: 'PASSWORD_UPDATE_FAILED',
+      },
+      { status: 502 },
+    );
   }
 
   await markLoginActivitiesRevoked(String(user.id));
