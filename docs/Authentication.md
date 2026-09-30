@@ -1,304 +1,204 @@
-# Authentication System
+# LofiMart Authentication
 
-## Executive Summary
+## Current architecture
 
-LofiMart uses a hybrid authentication system combining **Supabase** (OAuth/email identity provider) with custom **JWT + Redis** session management. The system supports email/password login, Google/Facebook OAuth, phone verification, and role-based session management with different TTLs per role.
+LofiMart uses **Supabase Auth as the single authentication and identity authority**.
 
----
+Prisma is not a second authentication provider. The local `User` table represents the LofiMart business identity linked to the Supabase identity through `supabaseAuthId`.
 
-## Authentication Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant NextJS as Next.js API
-    participant Supabase
-    participant Express as Express API
-    participant Redis
-    participant DB as PostgreSQL
-
-    Note over Client,DB: === Email/Password Registration ===
-    Client->>NextJS: POST /api/auth/register
-    NextJS->>Supabase: Create Supabase user
-    Supabase-->>NextJS: Supabase user ID
-    NextJS->>DB: Create local User record
-    DB-->>NextJS: User
-    NextJS->>Redis: Create session
-    Redis-->>NextJS: Session token
-    NextJS-->>Client: { user, token, refreshToken }
-
-    Note over Client,DB: === Email/Password Login ===
-    Client->>Express: POST /api/auth/login
-    Express->>Express: Check brute-force lockout
-    Express->>Supabase: Verify credentials
-    Supabase-->>Express: Auth result
-    Express->>Redis: Create session (role-based TTL)
-    Redis-->>Express: Session ID
-    Express->>DB: Update login activity
-    Express-->>Client: { user, token, refreshToken }
-
-    Note over Client,DB: === OAuth Login (Google/Facebook) ===
-    Client->>Client: Redirect to Supabase OAuth
-    Client->>NextJS: GET /auth/callback?code=...
-    NextJS->>Supabase: Exchange code for tokens
-    Supabase-->>NextJS: Access token
-    NextJS->>Express: POST /api/auth/supabase/exchange
-    Express->>DB: Find/create local user
-    Express->>Redis: Create session
-    Express-->>NextJS: Local session tokens
-    NextJS-->>Client: Redirect to dashboard
-
-    Note over Client,DB: === Token Refresh ===
-    Client->>NextJS: POST /api/auth/refresh
-    NextJS->>Redis: Validate refresh token
-    Redis-->>NextJS: Session data
-    NextJS->>Redis: Rotate refresh token
-    Redis-->>NextJS: New tokens
-    NextJS-->>Client: { token, refreshToken }
+```text
+                    SUPABASE AUTH
+        ┌─────────────────────────────────┐
+        │ Email/password                   │
+        │ Email OTP                        │
+        │ Google/Facebook OAuth             │
+        │ Session + refresh                 │
+        │ Identity / credential verification│
+        └────────────────┬────────────────┘
+                         │ supabaseAuthId
+                         ▼
+                 LOFIMART PRISMA
+        ┌─────────────────────────────────┐
+        │ User profile                    │
+        │ role                             │
+        │ seller/store state               │
+        │ tenant                           │
+        │ blocked/deactivated state        │
+        └────────────────┬────────────────┘
+                         ▼
+                  LOFIMART RBAC
+                         ▼
+                API / dashboard access
 ```
 
----
+## What is authoritative?
 
-## Session Architecture
+| Concern | Authority |
+|---|---|
+| User identity | Supabase Auth |
+| Password verification | Supabase Auth |
+| Email OTP | Supabase Auth / configured LofiMart verification flow |
+| OAuth identity | Supabase Auth |
+| Browser session | Supabase SSR session |
+| Access-token verification | Supabase Auth |
+| Business profile | Prisma `User` |
+| Marketplace role | Prisma `User.role` + LofiMart RBAC |
+| Seller/store ownership | Prisma |
+| Block/deactivation | Prisma |
+| Permissions | LofiMart RBAC |
 
-### Token Types
+## Server authentication flow
 
-| Token | Storage | TTL | Purpose |
-|-------|---------|-----|---------|
-| Access Token (JWT) | Cookie + localStorage | Role-based | API authentication |
-| Refresh Token | Redis + Cookie | Sliding | Token rotation |
-| CSRF Token | Cookie + Header | Per-request | State change protection |
+For an authenticated API request:
 
-### Role-Based Session TTLs
-
-| Role | Access Token TTL | Refresh Token TTL |
-|------|-----------------|-------------------|
-| Customer | 24 hours | 7 days |
-| Seller | 1 hour | 7 days |
-| Reseller | 1 hour | 7 days |
-| Admin | 1 hour | 7 days |
-
-### Session Data Model
-
-```typescript
-interface SessionUser {
-  id: string;
-  email?: string;
-  name?: string;
-  role: 'customer' | 'seller' | 'reseller' | 'admin';
-  tenantId?: string;
-}
+```text
+Request
+  │
+  ├─ Authorization: Bearer <Supabase access token>
+  │          │
+  │          └─► supabase.auth.getUser(token)
+  │
+  └─ no Bearer token
+             │
+             └─► Supabase SSR cookie session
+                        │
+                        ▼
+                 verified Supabase user
+                        │
+                        ▼
+              Prisma User by supabaseAuthId
+                        │
+                        ├─ role validation
+                        ├─ blocked check
+                        └─ deactivated check
+                        │
+                        ▼
+                AuthenticatedUser
 ```
 
-**Redis Session Key Pattern:**
-- Session: `session:{refreshTokenHash}` → `{ user, accessToken, deviceInfo, expiresAt }`
-- User Sessions Set: `user-sessions:{userId}` → Set of active refresh token hashes
+Implementation: `src/server/auth.ts`.
 
----
+### Important rule
 
-## OAuth Integration
+The Prisma `User` row does not replace Supabase identity verification. A request must first resolve to a valid Supabase identity, then the corresponding LofiMart user is loaded.
 
-### Supported Providers
+## Middleware
 
-| Provider | Scope | Notes |
-|----------|-------|-------|
-| Google | email, profile | Via Supabase |
-| Facebook | email, profile | Via Supabase |
+LofiMart runs Supabase SSR middleware in `src/middleware.ts`.
 
-### OAuth Flow
+The middleware:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant App
-    participant Supabase
-    participant DB
+1. Creates a Supabase SSR client using request/response cookies.
+2. Calls `supabase.auth.getClaims()` to verify/refresh the session.
+3. Preserves Supabase cookies on the response.
+4. Applies security headers and route-specific cache controls.
 
-    User->>App: Click "Login with Google"
-    App->>Supabase: Redirect to Google OAuth
-    Supabase->>Google: Authorization request
-    Google-->>Supabase: Authorization code
-    Supabase->>Supabase: Exchange code for tokens
-    Supabase-->>App: Callback with tokens
-    App->>App: Exchange Supabase tokens for local session
-    App->>DB: Find or create user
-    App->>App: Issue JWT + Redis session
-    App-->>User: Redirect to role-based dashboard
+For Next.js 15, `middleware.ts` is the correct convention. Supabase's current documentation recommends `getClaims()` for protecting pages/data and reserves `getSession()` for cases where the raw session/token is actually needed.
+
+## OAuth callback
+
+`src/app/auth/callback/page.tsx` handles the browser OAuth callback.
+
+The callback can:
+
+- exchange a PKCE authorization code with `exchangeCodeForSession()`;
+- handle a Supabase session returned in the OAuth callback;
+- obtain the raw Supabase access token when the LofiMart account-link/exchange flow requires it;
+- call the LofiMart Supabase exchange endpoint;
+- resolve/create the local Prisma user;
+- enforce the requested role/registration flow;
+- redirect to the appropriate dashboard.
+
+The callback may call `getSession()` because it needs the raw Supabase access token for the exchange. The returned client-side session object is not used as the server's authorization authority.
+
+## Email OTP
+
+OTP policy is intentionally separate from application login JWTs:
+
+- 6-digit OTP
+- 5-minute expiry
+- maximum 5 verification attempts
+- 60-second resend cooldown
+- no automatic verification bypass
+- no custom login JWT issuance
+
+Email delivery is configured through the selected Supabase/email delivery setup.
+
+## API authentication
+
+Authenticated API routes use:
+
+- `getCurrentUser()`
+- `requireUser()`
+- `requireApiUser()`
+- `secureApiRoute()`
+
+Role/permission checks are applied after authentication.
+
+Bearer example:
+
+```http
+Authorization: Bearer <SUPABASE_ACCESS_TOKEN>
 ```
 
-### Pending OAuth State
+The old `access_token` cookie is intentionally ignored.
 
-The `AuthPages.tsx` component stores pending OAuth redirect state in `sessionStorage` to handle the redirect flow:
-1. User clicks OAuth button
-2. Pending redirect target saved to `sessionStorage`
-3. OAuth flow completes via `/auth/callback`
-4. Exchange happens for local session
-5. User redirected to saved target
+## Authorization
 
----
+Authentication answers **who is this?**
 
-## Password Security
+Authorization answers **what may this user do?**
 
-### Hashing
-- **Algorithm:** bcrypt via Supabase Auth
-- **Salt rounds:** 12
+The authorization chain is:
 
-### Password Reset Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant API
-    participant Redis
-    participant Email
-
-    User->>API: POST /api/auth/request-reset { email }
-    API->>API: Generate reset token (crypto.randomBytes)
-    API->>Redis: Store token with 1h TTL
-    API->>Email: Send reset link
-    API-->>User: "Reset email sent"
-
-    User->>API: Click reset link
-    API->>API: Display reset form
-
-    User->>API: POST /api/auth/reset-password { token, password }
-    API->>Redis: Validate token
-    API->>API: Hash new password
-    API->>API: Update user password
-    API->>Redis: Revoke all sessions
-    API-->>User: "Password updated"
+```text
+Supabase verified identity
+        ↓
+Prisma User
+        ↓
+LofiMart role
+        ↓
+Permission / ownership check
+        ↓
+Resource access
 ```
 
----
+Roles:
 
-## Brute-Force Protection
+- `guest`
+- `customer`
+- `seller`
+- `reseller`
+- `admin`
 
-```mermaid
-graph LR
-    LoginAttempt["Login Attempt"] --> CheckLockout{"Locked<br/>Out?"}
-    CheckLockout -->|"Yes"| Reject["429 Locked Out<br/>(15 min)"]
-    CheckLockout -->|"No"| Validate["Validate<br/>Credentials"]
-    Validate -->|"Success"| Reset["Reset<br/>Counter"]
-    Validate -->|"Fail"| Increment["Increment<br/>Counter"]
-    Increment --> CheckThreshold{"≥5<br/>Failures?"}
-    CheckThreshold -->|"Yes"| Lock["Lock Account<br/>(15 min)"]
-    CheckThreshold -->|"No"| Retry["Allow Retry"]
-```
+Admin access is granted by explicit RBAC rules, not by trusting a client-provided role.
 
-**Implementation Details:**
-- Counter key: `auth:lockout:{email}`
-- Lockout duration: 15 minutes
-- Threshold: 5 failed attempts
-- Redis-backed with in-memory fallback
+## Session model
 
----
+There is **no separate LofiMart login-session store** that competes with Supabase.
 
-## Multi-Device Session Management
+Do not reintroduce:
 
-### Features
-- **Device tracking:** Name, IP address, user agent, geolocation
-- **Concurrent sessions:** Multiple devices supported
-- **Session listing:** Users can view all active sessions
-- **Per-device logout:** Revoke individual sessions
-- **Global logout:** Revoke all sessions for a user
+- custom application access JWTs;
+- custom application refresh tokens;
+- `access_token` authentication cookies;
+- localStorage-based LofiMart authentication tokens;
+- Redis-backed authentication sessions.
 
-### Session Lifecycle
+Redis is still used by LofiMart for non-auth workloads such as caching, rate limiting, BullMQ and recovery/coordination workflows.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Active: Login
-    Active --> Active: Token Refresh
-    Active --> Expired: TTL Reached
-    Active --> Revoked: User Logout
-    Active --> Revoked: Admin Revoke
-    Expired --> [*]: Cleanup
-    Revoked --> [*]: Cleanup
-```
+## Security notes
 
----
+- Never trust a role or user ID supplied by the client request body.
+- Never use an unverified cookie payload as the authenticated identity.
+- Use `getClaims()` in server middleware/protection where claim verification is sufficient.
+- Use `getUser()` when the current Auth user record must be fetched from Supabase.
+- Use `getSession()` only when the raw access/refresh session is explicitly required.
+- Keep the Supabase service-role key server-only.
+- Do not add a second authentication system without an explicit architecture decision.
 
-## Phone Verification
+## Migration status
 
-```
-POST /api/auth/send-phone-verification → Sends OTP
-POST /api/auth/verify-phone           → Verifies OTP
-```
+The legacy custom JWT/Redis authentication path has been removed from the current authentication code path. Documentation should describe only the Supabase-based architecture above.
 
-OTP stored in `PhoneVerificationToken` with expiry.
-
----
-
-## Client-Side Auth State
-
-**Implementation:** `UserContext.tsx`
-
-```mermaid
-graph TB
-    Init["App Init"] --> Hydrate{"localStorage<br/>has session?"}
-    Hydrate -->|"No"| Unauth["Unauthenticated<br/>State"]
-    Hydrate -->|"Yes"| Refresh["Attempt<br/>Token Refresh"]
-    Refresh -->|"Success"| Authenticated["Authenticated<br/>State"]
-    Refresh -->|"Fail"| ExpiredToken{"Access Token<br/>Still Valid?"}
-    ExpiredToken -->|"Yes"| Authenticated
-    ExpiredToken -->|"No"| Unauth
-
-    Authenticated --> AutoRefresh["Auto-refresh<br/>on Expiry"]
-    Authenticated --> ProfileRefresh["Silent Profile<br/>Refresh"]
-    Authenticated --> LogoutTimer["Logout Timer<br/>(JWT exp)"]
-```
-
-**State Persistence:**
-- `localStorage`: user, token, refreshToken
-- Automatic logout on token expiry
-- Silent refresh on app load
-- Profile data refreshed silently after login
-
----
-
-## Supabase Integration
-
-### Client Setup
-
-```typescript
-// Browser client
-const supabase = createSupabaseBrowserClient();
-
-// Server client
-const supabase = createSupabaseServerClient();
-```
-
-### Token Exchange Flow
-
-1. Supabase provides OAuth/email tokens
-2. Local system exchanges for custom JWT
-3. Local user record created/linked
-4. Session stored in Redis
-
----
-
-## Best Practices
-
-1. **Use httpOnly cookies** for refresh tokens — Prevents XSS access
-2. **Rotate refresh tokens** on every use — Limits token reuse window
-3. **Validate JWT signature AND Redis session** — Double verification
-4. **Apply role-based TTLs** — Admin sessions expire faster
-5. **Log all auth events** — Enable forensic analysis
-6. **Revoke sessions on password change** — Prevent stale access
-7. **Use timing-safe comparison** for all token validations
-8. **Store tokens in memory only** when possible — Reduce localStorage exposure
-
-## Known Limitations
-
-1. No hardware key (FIDO2/WebAuthn) support
-2. No TOTP/2FA integration (field exists but not enforced)
-3. OAuth tokens stored in sessionStorage — Vulnerable to XSS
-4. No IP-based session binding
-5. No anomalous login detection
-
-## Future Improvements
-
-1. Implement TOTP-based 2FA for seller/admin accounts
-2. Add FIDO2/WebAuthn support
-3. Add IP-based session binding for high-privilege roles
-4. Implement login anomaly detection (new device, new location)
-5. Add session idle timeout in addition to absolute TTL
+Historical migration notes may mention the old system, but they must be clearly labelled as historical and must not be presented as the current implementation.
