@@ -330,6 +330,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
 
       await tx.inventoryMovement.create({
         data: {
+          inventoryItemId: inventoryItem.id,
           productId: item.productId,
           warehouseId: inventoryItem.warehouseId,
           type: 'sale',
