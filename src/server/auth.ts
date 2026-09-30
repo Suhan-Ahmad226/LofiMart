@@ -21,7 +21,7 @@ export type { Role };
 
 type RequestLike = Request | NextRequest | undefined;
 
-function readAccessToken(req: RequestLike): string | null {
+function readBearerToken(req: RequestLike): string | null {
   if (!req) {
     return null;
   }
@@ -32,12 +32,12 @@ function readAccessToken(req: RequestLike): string | null {
     return bearer;
   }
 
-  return (req as NextRequest).cookies?.get?.('access_token')?.value ?? null;
+  return null;
 }
 
 export async function getCurrentUser(req?: RequestLike): Promise<AuthenticatedUser | null> {
   const supabase = await createClient();
-  const accessToken = readAccessToken(req);
+  const accessToken = readBearerToken(req);
   const { data, error } = accessToken
     ? await supabase.auth.getUser(accessToken)
     : await supabase.auth.getUser();
