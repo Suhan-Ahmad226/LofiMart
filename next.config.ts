@@ -1,12 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
-import bundleAnalyzer from "@next/bundle-analyzer";
 
 const isProd = process.env.NODE_ENV === "production";
-
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
-});
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -126,4 +121,4 @@ const nextConfig: NextConfig = {
   compress: true,
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;
