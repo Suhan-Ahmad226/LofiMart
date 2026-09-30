@@ -310,26 +310,34 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         );
       }
 
-      if (inventoryItem) {
-        warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
+      warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
 
-        await tx.inventoryItem.update({
-          where: { id: inventoryItem.id },
-          data: {
-            quantity: { decrement: item.quantity },
-            movements: {
-              create: {
-                productId: item.productId,
-                warehouseId: inventoryItem.warehouseId,
-                type: 'sale',
-                quantityDelta: -item.quantity,
-                reason: 'order_created',
-                reference: created.id,
-              },
-            },
-          },
-        });
+      const inventoryUpdated = await tx.inventoryItem.updateMany({
+        where: {
+          id: inventoryItem.id,
+          quantity: { gte: item.quantity },
+        },
+        data: {
+          quantity: { decrement: item.quantity },
+        },
+      });
+
+      if (inventoryUpdated.count !== 1) {
+        throw new Error(
+          `Inventory changed while placing the order for ${productById.get(item.productId)?.name || item.productId}. Please try again.`,
+        );
       }
+
+      await tx.inventoryMovement.create({
+        data: {
+          productId: item.productId,
+          warehouseId: inventoryItem.warehouseId,
+          type: 'sale',
+          quantityDelta: -item.quantity,
+          reason: 'order_created',
+          reference: created.id,
+        },
+      });
 
       const product = productById.get(item.productId)!;
       const nextStock = product.stock - item.quantity;
