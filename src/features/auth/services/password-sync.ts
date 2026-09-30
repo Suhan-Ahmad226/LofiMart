@@ -5,12 +5,8 @@ export type SupabasePasswordSyncResult =
   | { ok: false; reason: 'no-supabase-identity' | 'not-configured' | 'supabase-error' };
 
 /**
- * Updates the Supabase auth password for an account that has a Supabase
- * identity. The app's password login always authenticates through Supabase, so
- * the Supabase password must be kept in sync with the local password store.
- *
- * Uses the same admin client as set-password / reset-password — no second
- * Supabase client implementation.
+ * Updates the Supabase Auth password for an account linked to a LofiMart
+ * Prisma user. Supabase remains the sole password authority.
  */
 export async function syncSupabasePassword(opts: {
   supabaseAuthId?: string | null;
@@ -45,34 +41,3 @@ export async function syncSupabasePassword(opts: {
   }
 }
 
-/**
- * Best-effort rollback used when the local password record fails to update
- * AFTER the Supabase password already changed. Restores the (verified)
- * previous plain password so both stores stay in sync.
- */
-export async function rollbackSupabasePassword(opts: {
-  supabaseAuthId: string;
-  previousPassword: string;
-}): Promise<boolean> {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return false;
-
-  try {
-    const supabase = createSupabaseServerClient(true);
-    const { error } = await supabase.auth.admin.updateUserById(opts.supabaseAuthId, {
-      password: opts.previousPassword,
-    });
-
-    if (error) {
-      console.warn('[auth:password] Supabase password rollback failed', error.message);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.warn(
-      '[auth:password] Supabase password rollback threw',
-      error instanceof Error ? error.message : error,
-    );
-    return false;
-  }
-}
