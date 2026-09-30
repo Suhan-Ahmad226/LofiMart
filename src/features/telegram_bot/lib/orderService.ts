@@ -191,6 +191,9 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   const quote = await getShippingQuote({
     items: normalizedItems,
     destination,
+    // Quote COD fees against the server-calculated merchandise amount. Pathao
+    // charges COD against the amount collected, so this must never be the same
+    // full order amount once multiple warehouse parcels exist.
     codAmount: collectibleAmount,
   });
 
@@ -351,6 +354,21 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
           threshold,
         });
       }
+    }
+
+    // The quote and the order must use the exact same warehouse allocation.
+    // If stock changed between quote and order placement and a different
+    // warehouse would now be selected, abort the transaction instead of silently
+    // charging the customer for one pickup point and booking another.
+    const quoteWarehouseIds = new Set((quote.shipments || []).map((parcel) => parcel.warehouseId));
+    const allocatedWarehouseIds = new Set([...warehouseIdByProductId.values()]);
+    if (
+      quoteWarehouseIds.size !== allocatedWarehouseIds.size ||
+      [...quoteWarehouseIds].some((warehouseId) => !allocatedWarehouseIds.has(warehouseId))
+    ) {
+      throw new Error(
+        'Stock changed while preparing your shipment. Please refresh the checkout and request a new delivery quote.',
+      );
     }
 
     const itemsBySeller = new Map<string, typeof pricedItems>();
