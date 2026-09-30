@@ -101,7 +101,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           reviewsCount: stats._count._all,
         },
       });
-    });
+    }, { isolationLevel: 'Serializable' });
 
     return NextResponse.json({ success: true });
   } catch (error) {
