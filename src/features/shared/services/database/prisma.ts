@@ -10,7 +10,6 @@ const tenantScopedModels = new Set([
   'Product',
   'Order',
   'Warehouse',
-  'Tenant',
   'Store',
 ]);
 
