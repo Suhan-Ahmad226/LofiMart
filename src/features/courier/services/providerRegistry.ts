@@ -1,38 +1,18 @@
-import type { CourierAdapter, CourierProviderRegistry, CourierProviderView } from '@/src/modules/logistics/contracts';
-import { PathaoApiAdapter } from './pathaoApiAdapter';
-import { getCourierProviderSetupStatus } from './providerConfig';
+/**
+ * Compatibility facade for the courier registry.
+ *
+ * The active Pathao-only registry lives under ./registry and the provider
+ * contract lives under ./core. This file is kept as a stable import surface for
+ * older service code while avoiding imports of the removed legacy adapter files.
+ */
 
-const pathaoProvider: CourierProviderView = {
-  code: 'pathao',
-  name: 'Pathao Courier',
-  mode: 'manual',
-  supportsCod: true,
-  supportsTrackingSync: false,
-  supportsPickupBooking: true,
-  brandColor: '#ef4444',
-  shortLabel: 'PT',
-};
-
-function getProviders(): CourierProviderView[] {
-  const setup = getCourierProviderSetupStatus('pathao');
-  return [{
-    ...pathaoProvider,
-    ...setup,
-    mode: setup.setupStatus === 'api_ready' ? 'api' : pathaoProvider.mode,
-    supportsTrackingSync: setup.setupStatus === 'api_ready',
-  }];
-}
-
-class InMemoryCourierProviderRegistry implements CourierProviderRegistry {
-  listProviders(): CourierProviderView[] {
-    return getProviders();
-  }
-
-  getProvider(code: string): CourierAdapter | null {
-    if (String(code || '').toLowerCase() !== 'pathao') return null;
-    const provider = getProviders()[0];
-    return new PathaoApiAdapter(provider);
-  }
-}
-
-export const courierProviderRegistry: CourierProviderRegistry = new InMemoryCourierProviderRegistry();
+export {
+  courierRegistry as courierProviderRegistry,
+  listCourierProviders,
+  getCourierProviderView,
+  getCourierProvider,
+  requireCourierProvider,
+  assertSupports,
+  createRegistryForTests,
+  isCourierError,
+} from '../registry/providerRegistry';
