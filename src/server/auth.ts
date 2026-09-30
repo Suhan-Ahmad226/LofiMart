@@ -38,17 +38,23 @@ function readBearerToken(req: RequestLike): string | null {
 export async function getCurrentUser(req?: RequestLike): Promise<AuthenticatedUser | null> {
   const supabase = await createClient();
   const accessToken = readBearerToken(req);
+  // getClaims verifies the JWT and is the preferred fast server-side auth check.
+  // getUser performs an Auth network request on every call, which made dashboard
+  // navigation unnecessarily slow. We only need the verified subject here;
+  // Prisma remains the source for the application's role/profile data.
   const { data, error } = accessToken
-    ? await supabase.auth.getUser(accessToken)
-    : await supabase.auth.getUser();
-  const supabaseUser = data?.user;
+    ? await supabase.auth.getClaims(accessToken)
+    : await supabase.auth.getClaims();
+  const claims = data?.claims;
+  const authUserId = typeof claims?.sub === 'string' ? claims.sub : '';
+  const authEmail = typeof claims?.email === 'string' ? claims.email : null;
 
-  if (error || !supabaseUser?.id) {
+  if (error || !authUserId) {
     return null;
   }
 
   const dbUser = await prisma.user.findUnique({
-    where: { supabaseAuthId: supabaseUser.id },
+    where: { supabaseAuthId: authUserId },
     select: {
       id: true,
       role: true,
@@ -70,11 +76,12 @@ export async function getCurrentUser(req?: RequestLike): Promise<AuthenticatedUs
   }
 
   return {
-    authUserId: supabaseUser.id,
+    authUserId,
+
     userId: dbUser.id,
     id: dbUser.id,
     role: dbUser.role,
-    email: dbUser.email,
+    email: dbUser.email ?? authEmail,
     phone: dbUser.phone,
     name: dbUser.name,
     tenantId: dbUser.tenantId ?? null,
