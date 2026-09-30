@@ -71,12 +71,12 @@ describe('getCurrentUser bearer token support', () => {
     expect(getUser).toHaveBeenCalledWith('jwt-header');
   });
 
-  it('uses the access_token cookie when no bearer header is sent', async () => {
+  it('ignores the legacy access_token cookie when no bearer header is sent', async () => {
     const getUser = mockSupabase({ user: { id: AUTH_UID } });
 
     await getCurrentUser(apiRequest({ cookieToken: 'jwt-cookie' }));
 
-    expect(getUser).toHaveBeenCalledWith('jwt-cookie');
+    expect(getUser).toHaveBeenCalledWith();
   });
 
   it('falls back to the cookie session when called with no request', async () => {
