@@ -55,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         productId: id,
         order: {
           userId: String(user.id),
-          status: { not: 'cancelled' },
+          status: 'delivered',
         },
       },
       select: { id: true },
