@@ -34,54 +34,17 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const USER_STORAGE_KEY = 'user';
-
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUserState] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-
-  const getBrowserStorage = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      return window.localStorage;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const clearStoredSession = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const storage = getBrowserStorage();
-    storage?.removeItem(USER_STORAGE_KEY);
-    storage?.removeItem('token');
-    storage?.removeItem('refreshToken');
-  }, [getBrowserStorage]);
-
-  const persistUser = useCallback(
-    (nextUser: User | null) => {
-      const storage = getBrowserStorage();
-      if (!storage) return;
-      if (nextUser) {
-        storage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
-      } else {
-        storage.removeItem(USER_STORAGE_KEY);
-      }
-    },
-    [getBrowserStorage],
-  );
-
-  const setInternalUser = useCallback(
-    (nextUser: User | null) => {
-      setUserState(nextUser);
-      setToken(nextUser ? 'authenticated' : null);
-      setRefreshToken(null);
-      persistUser(nextUser);
-    },
-    [persistUser],
-  );
+function applySessionState(
+  setUserState: React.Dispatch<React.SetStateAction<User | null>>,
+  setToken: React.Dispatch<React.SetStateAction<string | null>>,
+  setRefreshToken: React.Dispatch<React.SetStateAction<string | null>>,
+  nextUser: User | null,
+  session: Session | null = null,
+) {
+  setUserState(nextUser);
+  setToken(nextUser ? session?.access_token ?? null : null);
+  setRefreshToken(nextUser ? session?.refresh_token ?? null : null);
+}
 
   const logout = useCallback(() => {
     void fetch('/api/auth/logout', {
@@ -99,8 +62,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // ignore
     }
     setInternalUser(null);
-    clearStoredSession();
-  }, [setInternalUser, clearStoredSession]);
+  }, [setInternalUser]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -126,45 +88,34 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase = createClient();
         supabaseRef.current = supabase;
 
-        const { data } = await supabase.auth.getUser();
+        const { data: userData } = await supabase.auth.getUser();
+        const { data: sessionData } = await supabase.auth.getSession();
 
         if (!active) return;
 
-        if (data.user) {
-          const cachedUser = (() => {
-            const storage = getBrowserStorage();
-            const saved = storage?.getItem(USER_STORAGE_KEY);
-            if (!saved) return null;
-            try {
-              return JSON.parse(saved) as User;
-            } catch {
-              return null;
-            }
-          })();
-
-          if (cachedUser) {
-            setInternalUser(cachedUser);
-          } else {
-            try {
-              const response = await fetch('/api/users/profile', {
-                credentials: 'include',
-              });
-              if (response.ok) {
-                const payload = await response.json().catch(() => null);
-                if (payload?.user) {
-                  setInternalUser({
+        if (userData.user) {
+          try {
+            const response = await fetch('/api/users/profile', {
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const payload = await response.json().catch(() => null);
+              if (payload?.user) {
+                setInternalUser(
+                  {
                     ...payload.user,
                     name: payload.user.name || '',
-                  } as User);
-                } else {
-                  setInternalUser(null);
-                }
+                  } as User,
+                  sessionData.session,
+                );
               } else {
                 setInternalUser(null);
               }
-            } catch {
+            } else {
               setInternalUser(null);
             }
+          } catch {
+            setInternalUser(null);
           }
         } else {
           setInternalUser(null);
@@ -185,7 +136,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       active = false;
     };
-  }, [getBrowserStorage, setInternalUser]);
+  }, [setInternalUser]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -237,7 +188,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       void cleanup;
     };
-  }, [setInternalUser, getBrowserStorage]);
+  }, [setInternalUser]);
 
   const login = useCallback(
     (nextUser: User) => {
