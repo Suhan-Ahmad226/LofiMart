@@ -233,6 +233,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     return sum + toNumber(product.price) * item.quantity;
   }, 0);
 
+  const requestedCodAmount = Math.max(0, toNumber(request.codAmount, 0));
   let assumedWeight = false;
 
   type WarehouseGroup = {
@@ -333,7 +334,9 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
           weightKg: round2(entry.weightKg),
           itemType: 'parcel' as CourierItemType,
           deliverySpeed,
-          codAmount: request.codAmount ?? 0,
+          // COD is per parcel. Passing the full order amount to every warehouse
+          // would multiply the COD fee on multi-warehouse orders.
+          codAmount: subtotal > 0 ? round2(requestedCodAmount * (entry.subtotal / subtotal)) : 0,
         });
 
         courierCharge = quote.courierCharge;
@@ -382,7 +385,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     verified: shipments.length > 0 && shipments.every((shipment) => shipment.verified),
     freeShippingApplied: qualifiesForFreeShipping,
     freeShippingThreshold,
-    amountToCollect: 0,
+    amountToCollect: round2(requestedCodAmount),
     totalCustomerDeliveryFee,
     totalCourierCharge: round2(totalCourierCharge),
     shipments,
