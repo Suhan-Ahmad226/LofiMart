@@ -1,264 +1,169 @@
-# Role-Based Access Control (RBAC)
+# LofiMart RBAC
 
-## Executive Summary
+## Purpose
 
-LofiMart implements a 5-role, 9-permission RBAC system controlling access to dashboards, API endpoints, and business operations. Roles are enforced at both the middleware layer (Express routes) and the server component layer (Next.js App Router).
+LofiMart separates **authentication** from **authorization**.
 
----
+Supabase Auth establishes the authenticated identity. LofiMart RBAC determines what that authenticated LofiMart user may access.
 
-## Role Hierarchy
-
-```mermaid
-graph TB
-    Admin["Admin<br/>(Full Access)"]
-    Seller["Seller<br/>(Product/Order Management)"]
-    Reseller["Reseller<br/>(Catalog/Orders Read-only)"]
-    Customer["Customer<br/>(Orders Read-only)"]
-    Guest["Guest<br/>(Catalog Read-only)"]
-
-    Admin -->|"can also do"| Seller
-    Admin -->|"can also do"| Reseller
-    Admin -->|"can also do"| Customer
-    Admin -->|"can also do"| Guest
+```text
+Supabase Auth
+    │
+    ▼
+supabaseAuthId
+    │
+    ▼
+Prisma User
+    │
+    ├── role
+    ├── tenant
+    ├── seller/store ownership
+    └── account status
+    │
+    ▼
+LofiMart RBAC
+    │
+    ├── permission checks
+    └── resource ownership checks
 ```
-
----
 
 ## Roles
 
-| Role | Description | Dashboard | Access Scope |
-|------|-------------|-----------|--------------|
-| `guest` | Unauthenticated visitor | None | Read catalog only |
-| `customer` | Registered buyer | `/account/*` | Read catalog, read own orders |
-| `seller` | Multi-vendor seller | `/seller/*` | Full product/order/inventory CRUD |
-| `reseller` | Affiliate reseller | `/reseller-dashboard/*` | Read catalog, read orders |
-| `admin` | Platform administrator | `/admin/*` | Full access to all features |
+| Role | Main scope |
+|---|---|
+| `guest` | Public storefront |
+| `customer` | Own account and orders |
+| `seller` | Own products, inventory, orders and store operations |
+| `reseller` | Reseller/catalog/order functionality |
+| `admin` | Platform administration |
 
----
+Roles are defined in `src/modules/rbac/roles.ts`.
 
 ## Permissions
 
-| Permission | Description | Roles |
-|-----------|-------------|-------|
-| `catalog:read` | View products, categories | guest, customer, seller, reseller, admin |
-| `catalog:write` | Create/edit/delete products | seller, admin |
-| `orders:read` | View orders | customer, seller, reseller, admin |
-| `orders:write` | Create/update/fulfill orders | seller, admin |
-| `inventory:read` | View stock levels | seller, admin |
-| `inventory:write` | Adjust stock | seller, admin |
-| `users:read` | View user data | admin |
-| `users:write` | Modify users/roles | admin |
-| `admin:access` | Access admin features | admin |
+Permissions are defined in `src/modules/rbac/permissions.ts` and evaluated by `src/modules/rbac/authorize.ts`.
 
----
+The current permission families include:
 
-## Permission Matrix
+- `catalog:read`
+- `catalog:write`
+- `orders:read`
+- `orders:write`
+- `inventory:read`
+- `inventory:write`
+- `users:read`
+- `users:write`
+- `admin:access`
 
-| Resource | guest | customer | seller | reseller | admin |
-|----------|-------|----------|--------|----------|-------|
-| View products | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Create products | ❌ | ❌ | ✅ | ❌ | ✅ |
-| Edit products | ❌ | ❌ | ✅ (own) | ❌ | ✅ |
-| Delete products | ❌ | ❌ | ❌ | ❌ | ✅ |
-| View own orders | ❌ | ✅ | ✅ (own) | ✅ | ✅ |
-| Create orders | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Update order status | ❌ | ❌ | ✅ (own) | ❌ | ✅ |
-| View inventory | ❌ | ❌ | ✅ (own) | ❌ | ✅ |
-| Adjust inventory | ❌ | ❌ | ✅ (own) | ❌ | ✅ |
-| Manage users | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Manage sellers | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Access accounting | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Manage settings | ❌ | ❌ | ❌ | ❌ | ✅ |
-| View analytics | ❌ | ❌ | ✅ (own) | ✅ (own) | ✅ |
-| Manage coupons | ❌ | ❌ | ✅ (own) | ❌ | ✅ |
-| Process refunds | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Manage flash sales | ❌ | ❌ | ✅ (submit) | ❌ | ✅ |
+## Server authorization flow
 
----
+```text
+HTTP request
+   ↓
+Supabase identity verification
+   ↓
+Prisma User lookup by supabaseAuthId
+   ↓
+blocked/deactivated check
+   ↓
+role validation
+   ↓
+permission check
+   ↓
+resource ownership check
+   ↓
+handler
+```
 
-## Implementation
+The core authentication helpers are in `src/server/auth.ts`.
 
-### RBAC Module (`src/modules/rbac/`)
+## Dashboard access
 
-```typescript
-// roles.ts
-export const roles = ['guest', 'customer', 'seller', 'reseller', 'admin'] as const;
+`requireDashboardAccess()` resolves the current Supabase-authenticated user and checks the allowed LofiMart roles.
 
-// permissions.ts
-export const permissions = [
-  'catalog:read', 'catalog:write',
-  'orders:read', 'orders:write',
-  'inventory:read', 'inventory:write',
-  'users:read', 'users:write',
-  'admin:access'
-] as const;
+Typical dashboard routes:
 
-// authorize.ts
-const rolePermissions: Record<Role, Permission[]> = {
-  guest: ['catalog:read'],
-  customer: ['catalog:read', 'orders:read'],
-  seller: ['catalog:read', 'catalog:write', 'orders:read', 'orders:write', 'inventory:read', 'inventory:write'],
-  reseller: ['catalog:read', 'orders:read'],
-  admin: permissions, // all permissions
-};
+- `/account`
+- `/seller`
+- `/reseller-dashboard`
+- `/admin`
 
-export function can(role: Role, permission: Permission): boolean {
-  return rolePermissions[role]?.includes(permission) ?? false;
+A missing authenticated user is redirected to login. An authenticated user without the required role is redirected away from the protected dashboard.
+
+## API access
+
+API handlers should authenticate first and authorize second.
+
+Preferred pattern:
+
+```ts
+const result = await requireApiUser(request);
+
+if (result instanceof Response) {
+  return result;
+}
+
+const user = result;
+
+// Then apply role/permission/ownership checks.
+```
+
+For reusable permission checks:
+
+```ts
+const forbidden = requirePermission(user, 'orders:write');
+
+if (forbidden) {
+  return forbidden;
 }
 ```
 
-### Express Route Protection
+## Ownership
 
-```typescript
-// src/server/auth.ts
-export function createAuthenticateToken(prisma) {
-  return async (req, res, next) => {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    const user = await validateAccessToken(token);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
-    req.user = user;
-    next();
-  };
-}
+Role checks alone are not enough.
 
-// Usage in routes
-router.get('/seller/products', authenticateToken, requireRole('seller'), handler);
-router.get('/admin/users', authenticateToken, requireRole('admin'), handler);
-```
+Seller/customer resources must also be scoped to the authenticated LofiMart user or tenant. Never accept `userId`, `sellerId`, `role`, or equivalent authorization fields from an untrusted request body when they can be derived from the authenticated identity.
 
-### Next.js Route Protection
+## Account status
 
-```typescript
-// src/server/next/apiSecurity.ts
-export async function secureApiRoute(req, options) {
-  // 1. Rate limit check
-  // 2. Origin validation
-  // 3. Authentication (JWT + Redis)
-  // 4. Role check
-  // 5. Permission check
-}
+Authentication succeeds only when:
 
-// src/server/next/requireDashboardAccess.ts
-export async function requireDashboardAccess(allowedRoles, currentPath) {
-  // Reads access_token from cookie
-  // Validates JWT + Redis session
-  // Redirects unauthorized to role home page
-}
-```
+1. Supabase identifies the user;
+2. a matching Prisma `User` exists;
+3. the LofiMart role is recognized;
+4. the account is not blocked;
+5. the account is not deactivated.
 
-### Dashboard Access Control
+## Security boundary
 
-```mermaid
-graph TB
-    Request["Dashboard Request"] --> ExtractCookie["Extract access_token<br/>from cookie"]
-    ExtractCookie --> ValidateJWT["Validate JWT"]
-    ValidateJWT --> CheckRedis["Check Redis Session"]
-    CheckRedis --> MatchRole{"Role in<br/>allowedRoles?"}
-    MatchRole -->|"Yes"| Allow["Allow Access"]
-    MatchRole -->|"No"| Redirect["Redirect to<br/>Role Home Page"]
-```
+The following are **not** authorization authorities:
 
-**Role Home Pages:**
-| Role | Home | Redirect On Unauthorized |
-|------|------|------------------------|
-| customer | `/account` | `/account` |
-| seller | `/seller` | `/seller` |
-| reseller | `/reseller-dashboard` | `/reseller-dashboard` |
-| admin | `/admin` | `/admin` |
+- client-side role state;
+- URL parameters;
+- request-body `role`;
+- request-body `userId`;
+- an `access_token` cookie;
+- an unverified Supabase session object;
+- Redis session records from the old authentication design.
 
----
+## Current authentication boundary
 
-## Navigation Filtering
+Supabase owns:
 
-**Implementation:** `src/lib/role-navigation.ts`
+- credentials;
+- identity;
+- OAuth;
+- browser session;
+- refresh.
 
-Navigation links are filtered by role using `visibleTo` properties:
+LofiMart owns:
 
-```typescript
-type NavigationRole = 'guest' | 'customer' | 'seller' | 'reseller' | 'admin';
+- business profile;
+- roles;
+- permissions;
+- seller/store state;
+- tenant membership;
+- resource ownership;
+- account blocking/deactivation.
 
-function isRoleAllowed(visibleTo: NavigationRole[], role: NavigationRole): boolean {
-  return visibleTo.includes(role);
-}
-
-function filterRoleAwareLinks(links, role): NavigationLink[] {
-  return links.filter(link => isRoleAllowed(link.visibleTo, role));
-}
-```
-
----
-
-## Seller Status Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> Draft: Register as Seller
-    Draft --> PendingReview: Complete Onboarding
-    PendingReview --> UnderReview: Admin Reviews
-    UnderReview --> Approved: Meets Requirements
-    UnderReview --> Rejected: Fails Review
-    Rejected --> PendingReview: Reapply
-    Approved --> Suspended: Policy Violation
-    Suspended --> PendingReview: Appeal
-```
-
-**Seller Status Values:**
-- `draft` — Initial state, incomplete profile
-- `pending_review` — Onboarding complete, awaiting admin review
-- `under_review` — Admin actively reviewing
-- `approved` — Full seller access granted
-- `rejected` — Application denied
-- `suspended` — Access revoked (policy violation)
-
----
-
-## Tenant-Level RBAC
-
-### TenantMembership
-
-Users can belong to multiple tenants with different roles:
-
-```typescript
-TenantMembership {
-  userId: string
-  tenantId: string  // unique pair
-  role: string      // tenant-specific role
-  isPrimary: boolean
-  invitedById: string
-  acceptedAt: DateTime
-}
-```
-
-### Tenant Isolation
-
-All data queries are automatically scoped to the current tenant via Prisma middleware:
-- Products, Orders, Users, Warehouses are tenant-scoped
-- Platform settings, categories, banners are global
-
----
-
-## Best Practices
-
-1. **Deny by default** — Explicitly grant only required permissions
-2. **Check permissions at both layers** — Middleware (Express) and server components (Next.js)
-3. **Use the lowest-privilege role** — Don't give admin access when seller suffices
-4. **Audit role changes** — Log all `users:write` operations
-5. **Regular access reviews** — Periodically review seller/admin permissions
-6. **Separate duties** — No single role should have unchecked financial access
-
-## Known Limitations
-
-1. **No dynamic permissions** — Roles are hardcoded, cannot be customized per tenant
-2. **No permission inheritance** — Admin doesn't automatically get seller permissions via hierarchy
-3. **No row-level security** — Seller can only see own data, but enforced at application level
-4. **No API key scopes** — External integrations use full user permissions
-5. **No audit of permission checks** — Only data mutations are audited, not access checks
-
-## Future Improvements
-
-1. **Dynamic permission system** — Database-driven roles and permissions
-2. **Row-level security** — PostgreSQL RLS policies for tenant/seller isolation
-3. **Custom role builder** — Allow tenants to define custom roles
-4. **Permission audit logging** — Log all access checks, not just mutations
-5. **API key scoping** — Granular permission sets for third-party integrations
-6. **Time-bound permissions** — Temporary elevated access with auto-expiry
+This boundary must remain explicit when adding new features.
