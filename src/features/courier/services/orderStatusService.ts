@@ -52,6 +52,10 @@ export async function syncOrderStatusFromShipments(orderId: string) {
   });
 
   const status = deriveOrderStatus(shipments.map((shipment) => shipment.status));
+  const existingOrder = await prismaDirect.order.findUnique({
+    where: { id: orderId },
+    select: { pickedUpAt: true, deliveredAt: true },
+  });
 
   const data: {
     status: OrderStatus;
@@ -59,10 +63,16 @@ export async function syncOrderStatusFromShipments(orderId: string) {
     deliveredAt?: Date;
   } = { status };
 
-  if (status === 'picked_up' || status === 'in_transit' || status === 'out_for_delivery' || status === 'delivered') {
+  if (
+    (status === 'picked_up' ||
+      status === 'in_transit' ||
+      status === 'out_for_delivery' ||
+      status === 'delivered') &&
+    !existingOrder?.pickedUpAt
+  ) {
     data.pickedUpAt = new Date();
   }
-  if (status === 'delivered') {
+  if (status === 'delivered' && !existingOrder?.deliveredAt) {
     data.deliveredAt = new Date();
   }
 
