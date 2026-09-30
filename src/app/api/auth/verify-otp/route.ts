@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import { AuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail } from '@/features/auth/server/auth-service';
+import { isAuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail } from '@/features/auth/server/auth-service';
 import { attachPasswordResetSessionCookie, createPasswordResetSession } from '@/features/auth/server/reset-session';
 
 export const runtime = 'nodejs';
@@ -24,7 +24,15 @@ const VERIFY_MESSAGES: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const body = VerifyOtpSchema.parse(await request.json());
-    const purpose = body.purpose as AuthPurpose;
+
+    if (!isAuthPurpose(body.purpose)) {
+      return NextResponse.json(
+        { error: 'OTP purpose is not supported.', code: 'INVALID_PURPOSE' },
+        { status: 400 },
+      );
+    }
+
+    const purpose = body.purpose;
 
     if (purpose === 'guest_claim') {
       return NextResponse.json(
