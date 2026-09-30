@@ -7,13 +7,20 @@ import { consumePasswordResetSession } from '@/features/auth/server/reset-sessio
 import { sanitizeRegistrationRole } from '@/modules/rbac/registration';
 import { randomUUID } from 'node:crypto';
 
-export type AuthPurpose =
-  | 'register'
-  | 'verify_email'
-  | 'reset_password'
-  | 'set_password'
-  | 'verify_phone'
-  | 'guest_claim';
+export const AUTH_PURPOSES = [
+  'register',
+  'verify_email',
+  'reset_password',
+  'set_password',
+  'verify_phone',
+  'guest_claim',
+] as const;
+
+export type AuthPurpose = (typeof AUTH_PURPOSES)[number];
+
+export function isAuthPurpose(value: string): value is AuthPurpose {
+  return (AUTH_PURPOSES as readonly string[]).includes(value);
+}
 
 export interface OtpChallengeResult {
   success: true;
@@ -212,6 +219,20 @@ export async function registerUser(params: {
       },
     });
   } catch (insertError) {
+    // The Supabase identity is created before the local profile. If the
+    // profile write fails, remove that identity so registration is atomic
+    // from the user's perspective and cannot leave an orphaned auth user.
+    if (supabaseAuthId) {
+      const supabase = getServiceRoleClient();
+      const { error: cleanupError } = await supabase.auth.admin.deleteUser(supabaseAuthId);
+      if (cleanupError) {
+        console.error('[auth:register] failed to clean up orphaned Supabase user', {
+          supabaseAuthId,
+          message: cleanupError.message,
+        });
+      }
+    }
+
     if ((insertError as { code?: string })?.code === 'P2002') {
       return { success: false, error: 'এই ইমেইল বা ফোন নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে। Login করুন।', code: 'ACCOUNT_EXISTS' };
     }
