@@ -1,144 +1,119 @@
 # LofiMart — Commerce OS
 
-A large-scale multi-vendor ecommerce platform built with **Next.js**, **Express.js**, **Prisma**, **PostgreSQL**, and **Redis**.
+A Bangladesh-focused multi-vendor ecommerce platform built with Next.js, React, Prisma/PostgreSQL, Redis, BullMQ, Cloudinary and Supabase Auth.
 
-> **Current payment model:** checkout is **Cash on Delivery only**. Online gateways (Stripe, bKash, SSLCommerz) have been removed. See [CHANGES.md](./CHANGES.md) and the [Full Audit Report](./PROJECT_FULL_AUDIT_REPORT.md).
-
----
+> **Current authentication authority:** Supabase Auth is the sole authority for user identity, credentials and browser sessions. LofiMart's Prisma `User` record stores business profile, role, tenant and marketplace state. LofiMart does **not** issue a separate application login JWT or use an `access_token` cookie.
 
 ## Features
 
-- **Multi-Vendor Marketplace** — Multiple sellers with independent dashboards
-- **Customer Dashboard** — Orders, wallet, loyalty rewards
-- **Seller Dashboard** — Products, orders, inventory, analytics, courier management
-- **Reseller Network** — Referral system, markup management, custom storefronts
-- **Admin Dashboard** — Full platform management, monitoring, flash sales, coupons
-- **Cash on Delivery** — Checkout collects orders COD; collect-on-delivery settlement
-- **Courier Integration** — Pathao (provider registry ready for more couriers)
-- **Telegram Bot** — Order notifications, seller management via Telegram
-- **Loyalty & Rewards** — Reward points, referral credits
-- **Push Notifications** — Browser push via web-push
-
----
+- Multi-vendor marketplace
+- Customer, seller, reseller and admin dashboards
+- Cash on Delivery checkout
+- Pathao Courier integration
+- Product, inventory and warehouse management
+- Seller stores and marketplace orders
+- Telegram notifications/operations
+- Cloudinary media management
+- Push notifications
+- Role-based access control
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 15+ (App Router, React Server Components) |
-| Backend | Express.js (custom server) |
-| Database | PostgreSQL (Prisma ORM, 72 models) |
+| Frontend | Next.js 15+ (App Router, React 19) |
+| Backend | Next.js API/Server Components plus existing server compatibility code |
+| Database | PostgreSQL (Prisma ORM) |
 | Cache | Redis (ioredis) |
-| Queue | BullMQ (10 background workers) |
-| Auth | Supabase (OAuth) + JWT + Redis sessions |
+| Queue | BullMQ |
+| Authentication | Supabase Auth + `@supabase/ssr` |
+| Authorization | LofiMart RBAC + Prisma business identity |
 | Media | Cloudinary |
 | Realtime | WebSocket (ws) |
-| Container | Docker + Docker Compose |
+| Courier | Pathao |
 
----
+## Authentication Architecture
 
-## Quick Start
-
-```bash
-# Clone
-git clone <repository-url>
-cd shop
-
-# Install
-npm install
-
-# Environment
-cp .env.example .env
-
-# Database
-npx prisma migrate dev
-npx prisma db seed
-
-# Run
-npm run dev
+```text
+Browser
+  │
+  ├── Email/password
+  ├── Email OTP
+  └── Google/Facebook OAuth
+  │
+  ▼
+Supabase Auth
+  │
+  ├── Identity
+  ├── Credentials
+  ├── Session / refresh
+  └── OAuth
+  │
+  │ supabaseAuthId
+  ▼
+Prisma User
+  │
+  ├── profile
+  ├── role
+  ├── seller/store state
+  ├── tenant
+  └── blocked/deactivated state
+  │
+  ▼
+LofiMart RBAC
+  │
+  ▼
+Protected pages / API routes
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+### Authentication rules
 
----
+- Supabase Auth is the identity/session authority.
+- Server authorization uses a verified Supabase identity and then loads the matching Prisma `User`.
+- API callers may use `Authorization: Bearer <Supabase access token>`.
+- Browser sessions are managed by Supabase SSR cookies.
+- Middleware uses `supabase.auth.getClaims()` to verify/refresh the session.
+- Server user resolution uses `supabase.auth.getUser()` when a current Auth user record is required.
+- The legacy LofiMart `access_token` cookie is not an authentication source.
+- LofiMart does not create a second login JWT/refresh-token session layer.
+- Redis remains infrastructure for cache, queues, rate limiting and other application workloads; it is not the source of truth for authentication sessions.
+- `getSession()` is used only where the raw Supabase session/access token is explicitly needed; its user object is not used as a server authorization authority.
 
 ## Documentation
 
-Complete technical documentation is available in the [`docs/`](./docs/) folder. The current, authoritative audit is in [**`PROJECT_FULL_AUDIT_REPORT.md`**](./PROJECT_FULL_AUDIT_REPORT.md).
-
 | Document | Description |
 |----------|-------------|
-| [Architecture](./docs/Architecture.md) | System architecture, design patterns, diagrams |
-| [Database](./docs/Database.md) | Schema, 72 models, ER diagrams, multi-tenancy |
-| [API Reference](./docs/API.md) | All endpoints with request/response examples |
-| [Security](./docs/Security.md) | Security layers, encryption, audit logging |
-| [Authentication](./docs/Authentication.md) | Auth flows, OAuth, session management |
-| [RBAC](./docs/RBAC.md) | Roles, permissions, access control matrix |
-| [Business Rules](./docs/Business-Rules.md) | Validation rules, constraints, workflows |
-| [Order Flow](./docs/Order-Flow.md) | Order lifecycle, multi-vendor splitting |
-| [Seller Flow](./docs/Seller-Flow.md) | Seller lifecycle, onboarding, operations |
-| [Error Handling](./docs/Error-Handling.md) | Error patterns, response formats |
-| [Environment Variables](./docs/Environment-Variables.md) | All env vars with security notes |
-| [Deployment](./docs/Deployment.md) | Docker, CI/CD, infrastructure |
-| [Monitoring](./docs/Monitoring.md) | Health checks, logging, alerting |
-| [Setup Guide](./docs/Setup.md) | Development environment setup |
-| [Folder Structure](./docs/Folder-Structure.md) | Codebase organization |
-| [Changelog](./docs/Changelog.md) | Version history |
-
-> Note: `docs/Features.md`, `docs/Phases.md`, `docs/Payment-Flow.md`, `docs/PROJECT_DOCUMENTATION.md` still describe removed features (AI, AR/3D, bKash/Stripe, POS, PWA) and are kept as historical records. The current state is reflected in this README and `PROJECT_FULL_AUDIT_REPORT.md`.
-
----
+| [Architecture](./docs/Architecture.md) | Current system and authentication architecture |
+| [Authentication](./docs/Authentication.md) | Supabase Auth flows and server authorization |
+| [RBAC](./docs/RBAC.md) | Roles, permissions and ownership rules |
+| [Security](./docs/Security.md) | Security controls and authentication boundaries |
+| [Database](./docs/Database.md) | Prisma/PostgreSQL data model |
+| [API Reference](./docs/API.md) | API endpoints |
+| [Environment Variables](./docs/Environment-Variables.md) | Runtime configuration |
+| [Setup Guide](./docs/Setup.md) | Development setup |
 
 ## Project Structure
 
+```text
+src/
+├── app/            # Next.js pages and API routes
+├── features/       # Feature modules
+├── modules/        # Domain modules and RBAC
+├── server/         # Server utilities and compatibility code
+├── lib/            # Shared utilities and Supabase clients
+└── workers/        # BullMQ workers
+
+prisma/             # Prisma schema, migrations and seed
+docs/               # Technical documentation
 ```
-shop/
-├── src/
-│   ├── app/            # Next.js pages + API routes
-│   ├── features/       # Feature modules (shop, seller, admin, courier, orders, push, …)
-│   ├── modules/        # Domain modules (rbac, inventory, logistics, reservation, …)
-│   ├── server/         # Express middleware, routes, controllers, services, security
-│   ├── components/     # Shared React components
-│   ├── lib/            # Utility libraries
-│   ├── hooks/          # React hooks
-│   ├── events/         # Domain event system
-│   └── workers/        # BullMQ background workers (10 queues/processors)
-├── prisma/             # Database schema + seed
-├── tests/              # Test suites (Vitest)
-├── docs/               # Technical documentation
-├── server.ts           # Express entrypoint (bootstrap lives in src/server/)
-├── Dockerfile          # Container build
-└── docker-compose.yml  # Local development services
-```
-
----
-
-## Default Credentials (Development)
-
-| User | Email | Password | Role |
-|------|-------|----------|------|
-| Admin | `admin@amarshop.local` | `ChangeMe123!` | admin |
-| Seller | `seller@amarshop.local` | `ChangeMe123!` | seller |
-
-> **Warning:** Change these credentials before deploying to production.
-
----
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run test` | Run Vitest tests |
-| `npx prisma migrate dev` | Create migration |
-| `npx prisma db seed` | Seed database |
-| `npx prisma studio` | Open Prisma Studio |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest |
 
----
-
-## License
-
-Private — All rights reserved.
+Private project — All rights reserved.
