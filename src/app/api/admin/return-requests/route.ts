@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/app/api/products/shared';
-import { requireRole } from '@/app/api/_compat/shared';
+import { requireAdminRole } from '@/app/api/_compat/shared';
 import { prisma } from '@/lib/server';
 
 export const runtime = 'nodejs';
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   const user = await requireApiUser(request);
   if (user instanceof NextResponse) return user;
 
-  const roleError = requireRole([''])(user);
+  const roleError = requireAdminRole(user);
   if (roleError) return roleError;
 
   const requests = await prisma.accountActionRequest.findMany({
