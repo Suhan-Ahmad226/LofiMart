@@ -125,6 +125,12 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   let discountAmount = 0;
   let couponSnapshot: Record<string, unknown> | null = null;
 
+  const paymentMethod = String(input.paymentMethod || 'cod').trim().toLowerCase();
+  const allowedPaymentMethods = new Set(['cod', 'bkash', 'bank', 'gateway']);
+  if (!allowedPaymentMethods.has(paymentMethod)) {
+    throw new Error('Unsupported payment method');
+  }
+
   const couponCode = String(input.couponCode || '').trim();
   if (couponCode) {
     const coupon = await prisma.coupon.findUnique({
@@ -226,7 +232,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         total,
         status: 'processing',
         orderCode,
-        paymentMethod: input.paymentMethod || 'cod',
+        paymentMethod,
         paymentStatus: 'pending',
         shippingAddress: input.shippingAddress || undefined,
         shipmentMetadata: {
