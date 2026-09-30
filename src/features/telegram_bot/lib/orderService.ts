@@ -179,10 +179,8 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   // Placed after the coupon block because the collectible amount depends on the
   // discount: the courier charges a COD fee on what the rider actually collects.
   //
-  // A missing destination or an unreachable courier yields a configured flat
-  // fallback, and the order is recorded with `deliveryFeeVerified: false` so the
-  // figure can be reconciled against the courier invoice rather than mistaken
-  // for a confirmed price.
+  // Production checkout requires a real destination and a verified live courier
+  // quote. A fallback fee must never silently become a customer order total.
   const destination = readDestination(input.shippingAddress);
   const collectibleAmount = Math.max(0, subtotal - discountAmount);
 
