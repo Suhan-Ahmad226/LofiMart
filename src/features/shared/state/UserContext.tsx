@@ -23,9 +23,7 @@ export interface User {
 
 interface UserContextType {
   user: User | null;
-  token: string | null;
-  refreshToken: string | null;
-  login: (user: User) => void;
+    login: (user: User) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
@@ -36,17 +34,11 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<User | null>(null);
-  // Tokens are held only in React memory. Supabase remains the session authority
-  // and persists/refreshes its own SSR-compatible session storage.
-  const [token, setToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
+    const [isReady, setIsReady] = useState(false);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
 
-  const setInternalUser = useCallback((nextUser: User | null, session: Session | null = null) => {
+  const setInternalUser = useCallback((nextUser: User | null, _session: Session | null = null) => {
     setUserState(nextUser);
-    setToken(nextUser ? session?.access_token ?? null : null);
-    setRefreshToken(nextUser ? session?.refresh_token ?? null : null);
   }, []);
 
   const logout = useCallback(() => {
@@ -92,9 +84,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase = createClient();
         supabaseRef.current = supabase;
 
-        // getUser() is the verified identity check. getSession() is used only
-        // to expose the current raw token to legacy client API callers; server
-        // authorization never trusts this React state.
+        // getUser() is the verified identity check. Supabase owns the session
+        // and token lifecycle; this context only mirrors the application profile.
         const { data: userData } = await supabase.auth.getUser();
         const { data: sessionData } = await supabase.auth.getSession();
 
@@ -223,9 +214,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <UserContext.Provider
       value={{
         user,
-        token,
-        refreshToken,
-        login,
+         login,
         logout,
         setUser,
         isAuthenticated: !!user,
