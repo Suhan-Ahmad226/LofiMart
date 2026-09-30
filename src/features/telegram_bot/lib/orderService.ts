@@ -568,6 +568,7 @@ export async function updateSellerOrderStatus(input: {
     where: { id: input.orderId },
     data: {
       status: parentStatus,
+      ...(parentStatus === 'picked_up' ? { pickedUpAt: new Date() } : {}),
       ...(parentStatus === 'delivered' ? { deliveredAt: new Date() } : {}),
     },
   });
