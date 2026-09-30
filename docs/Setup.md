@@ -1,211 +1,121 @@
-# Development Setup
+# LofiMart Development Setup
 
 ## Prerequisites
 
 | Software | Version | Purpose |
-|----------|---------|---------|
-| Node.js | 18+ | Runtime |
-| npm | 9+ | Package manager |
-| PostgreSQL | 14+ | Primary database |
-| Redis | 7+ | Cache, sessions, queues |
+|---|---|---|
+| Node.js | 20+ | Runtime |
+| npm | Current supported version | Package manager |
+| PostgreSQL | Supported project version | Primary database |
+| Redis | Supported project version | Cache, queues and application infrastructure |
 | Git | Latest | Version control |
 
-Optional: Docker and Docker Compose for containerized development.
-
----
-
-## Quick Start
+## Quick start
 
 ```bash
-# Clone
 git clone <repository-url>
-cd shop
-
-# Install
+cd LofiMart
 npm install
-
-# Environment
 cp .env.example .env
-
-# Database
-npx prisma migrate dev
-npx prisma db seed
-
-# Run
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open `http://localhost:3000`.
 
----
+## Required Supabase configuration
 
-## Environment Setup
-
-### Required Variables
+Set:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/lofimart?schema=public"
-DIRECT_URL="postgresql://user:password@localhost:5432/lofimart?schema=public"
-REDIS_URL="redis://localhost:6379"
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="your-publishable-key"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-JWT_SECRET="your-256-bit-secret"
-CSRF_SECRET="your-csrf-secret"
-NODE_ENV="development"
-FRONTEND_URL="http://localhost:3000"
-NEXT_PUBLIC_FRONTEND_URL="http://localhost:3000"
+SUPABASE_SERVICE_ROLE_KEY="your-server-only-service-role-key"
 ```
 
----
+The preferred configuration uses the publishable key. The legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` is retained only as compatibility fallback in existing code and should not be introduced in new code.
 
-## Database Setup
+## Authentication development model
 
-### Option A: Local PostgreSQL
-
-```bash
-createdb lofimart
-npx prisma migrate dev
-npx prisma db seed
-npx prisma studio
+```text
+Browser
+  ↓
+Supabase Auth
+  ↓
+Supabase SSR session
+  ↓
+LofiMart server authentication
+  ↓
+Prisma User
+  ↓
+RBAC
 ```
 
-### Option B: Docker PostgreSQL
+Do not configure a separate LofiMart JWT secret for browser login. Do not create an `access_token` cookie or localStorage auth token.
+
+## Database
+
+Use the project's existing Prisma migrations.
 
 ```bash
-docker run -d --name lofimart-postgres \
-  -e POSTGRES_DB=lofimart \
-  -e POSTGRES_USER=user \
-  -e POSTGRES_PASSWORD=password \
-  -p 5432:5432 \
-  postgres:16-alpine
-
-npx prisma migrate dev
-npx prisma db seed
+npx prisma generate
+npx prisma migrate deploy
 ```
 
-### Seed Data
+For local development, use the normal Prisma workflow approved for the project. Do not run destructive database reset commands against production.
 
-- Admin user: admin@amarshop.local / ChangeMe123!
-- Seller user: seller@amarshop.local / ChangeMe123!
-- 8 product categories
-- 2 sample products
-- 2 coupons
-- 1 banner, 1 blog post
-- 2 ledger accounts
+## Redis
 
----
-
-## Redis Setup
+Redis is required for application infrastructure used by caching, rate limiting, queues and coordination.
 
 ```bash
-# Local
 redis-server
+```
 
-# Docker
-docker run -d --name lofimart-redis -p 6379:6379 redis:7-alpine
+Verify:
 
-# Verify
+```bash
 redis-cli ping
 ```
 
----
-
-## Development Server
+## Development checks
 
 ```bash
-npm run dev
-```
-
-Starts: Next.js dev server (port 3000), WebSocket server (port 3001), 9 BullMQ workers.
-
----
-
-## Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| npm run dev | Start development server |
-| npm run build | Build for production |
-| npm start | Start production server |
-| npm run lint | Run ESLint |
-| npm run test | Run Vitest tests |
-| npx prisma migrate dev | Create and apply migration |
-| npx prisma migrate deploy | Apply pending migrations |
-| npx prisma db seed | Seed database |
-| npx prisma studio | Open Prisma Studio GUI |
-| npx prisma generate | Regenerate Prisma client |
-
----
-
-## Testing
-
-```bash
+npm run lint
 npm run test
-npx vitest run tests/server/
-npx vitest run tests/lib/
+npm run build
 ```
 
-### Test Structure
+## Authentication troubleshooting
 
-```
-tests/
-  server/
-    validation.test.ts
-    origin.test.ts
-    logisticsHelpers.test.ts
-    httpCache.test.ts
-    csrf.test.ts
-    cookies.test.ts
-  lib/
-    utils.test.ts
-    sellerApproval.test.ts
-    security.test.ts
-    roleNavigation.test.ts
-    exports.test.ts
-    browserActions.test.ts
-    blog.test.ts
-    bangladesh.test.ts
-    apiResponse.test.ts
-```
+### Supabase client not configured
 
----
+Verify:
 
-## Docker Development
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-```bash
-docker compose up -d
-docker compose logs -f app
-docker compose down
-docker compose up -d --build
-```
+### API returns 401
 
----
+Check:
 
-## Common Issues
+1. the Supabase session exists;
+2. the access token is valid;
+3. the request uses `Authorization: Bearer <token>` when calling a token-authenticated API directly;
+4. the matching Prisma `User.supabaseAuthId` exists;
+5. the user is not blocked or deactivated.
 
-| Error | Solution |
-|-------|----------|
-| Can't reach database server | Ensure PostgreSQL is running and DATABASE_URL is correct |
-| connect ECONNREFUSED 127.0.0.1:6379 | Ensure Redis is running |
-| PrismaClientKnownRequestError | Run npx prisma generate |
-| listen EADDRINUSE :::3000 | Kill existing process or change PORT |
+### Do not troubleshoot with legacy auth
 
----
+Do not add:
 
-## Known Limitations
+- `access_token` cookies;
+- custom JWT generation;
+- Redis authentication sessions;
+- localStorage authentication tokens;
+- local bcrypt verification.
 
-1. No hot module replacement for server-side code
-2. Database seeding is destructive
-3. No local email sending (requires SMTP relay)
-4. WebSocket development requires separate port
+Those are not part of the current architecture.
 
-## Future Improvements
+## Production deployment
 
-1. Docker Compose with pre-configured services
-2. Development seed scripts with more test data
-3. Local email testing (Mailhog/Mailpit)
-4. Development dashboard for queue monitoring
-
----
+Configure Supabase and server secrets in the deployment platform. Never commit production credentials to the repository.
