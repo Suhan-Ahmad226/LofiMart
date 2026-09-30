@@ -14,7 +14,7 @@ const PROGRESS_RANK: Record<string, number> = {
 
 const TERMINAL_EXCEPTIONS = new Set(['delivery_failed', 'returned', 'cancelled']);
 
-function deriveStatus(statuses: ShipmentStatus[]): OrderStatus {
+export function deriveOrderStatus(statuses: ShipmentStatus[]): OrderStatus {
   if (statuses.length === 0) return 'processing';
   if (statuses.every((status) => status === 'cancelled')) return 'cancelled';
   if (statuses.every((status) => status === 'delivered')) return 'delivered';
@@ -51,7 +51,7 @@ export async function syncOrderStatusFromShipments(orderId: string) {
     select: { status: true },
   });
 
-  const status = deriveStatus(shipments.map((shipment) => shipment.status));
+  const status = deriveOrderStatus(shipments.map((shipment) => shipment.status));
 
   const data: {
     status: OrderStatus;
