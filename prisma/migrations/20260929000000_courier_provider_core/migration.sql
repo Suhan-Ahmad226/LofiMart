@@ -6,29 +6,29 @@
 -- ============================================================
 -- OrderShipment: generic courier identity
 -- ============================================================
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "merchantReference" TEXT;
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "providerReference" TEXT;
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "providerStatus" TEXT;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "merchantReference" TEXT;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "providerReference" TEXT;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "providerStatus" TEXT;
 
 -- ============================================================
 -- OrderShipment: financial separation
 -- ============================================================
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "customerDeliveryFee" DECIMAL(65,30);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "courierCharge" DECIMAL(65,30);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "codAmount" DECIMAL(65,30);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "codFee" DECIMAL(65,30);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "deliveryFeeVerified" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "customerDeliveryFee" DECIMAL(65,30);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "courierCharge" DECIMAL(65,30);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "codAmount" DECIMAL(65,30);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "codFee" DECIMAL(65,30);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "deliveryFeeVerified" BOOLEAN NOT NULL DEFAULT false;
 
 -- ============================================================
 -- OrderShipment: booking state machine + reconciliation bookkeeping
 -- ============================================================
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "bookingState" TEXT NOT NULL DEFAULT 'pending';
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "bookingAttemptCount" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "lastBookingError" TEXT;
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "lastBookingErrorCode" TEXT;
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "lastBookedAt" TIMESTAMP(3);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "lastReconciledAt" TIMESTAMP(3);
-ALTER TABLE "public"."OrderShipment" ADD COLUMN "nextReconcileAt" TIMESTAMP(3);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "bookingState" TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "bookingAttemptCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "lastBookingError" TEXT;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "lastBookingErrorCode" TEXT;
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "lastBookedAt" TIMESTAMP(3);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "lastReconciledAt" TIMESTAMP(3);
+ALTER TABLE "public"."OrderShipment" ADD COLUMN IF NOT EXISTS "nextReconcileAt" TIMESTAMP(3);
 
 -- Seed the reconciliation cursor for shipments that already carry a tracking id
 -- so the first reconciliation sweep does not immediately re-poll old parcels.
@@ -38,18 +38,18 @@ WHERE "trackingId" IS NOT NULL AND "bookingState" = 'pending';
 
 -- The unique index makes (provider, merchantReference) the database-level
 -- guarantee that one physical parcel maps to one consignment reference.
-CREATE UNIQUE INDEX "OrderShipment_courierProvider_merchantReference_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "OrderShipment_courierProvider_merchantReference_key"
   ON "public"."OrderShipment"("courierProvider", "merchantReference");
 
-CREATE INDEX "OrderShipment_courierProvider_status_createdAt_idx"
+CREATE INDEX IF NOT EXISTS "OrderShipment_courierProvider_status_createdAt_idx"
   ON "public"."OrderShipment"("courierProvider", "status", "createdAt");
 
-CREATE INDEX "OrderShipment_bookingState_nextReconcileAt_idx"
+CREATE INDEX IF NOT EXISTS "OrderShipment_bookingState_nextReconcileAt_idx"
   ON "public"."OrderShipment"("bookingState", "nextReconcileAt");
 
 -- Webhook intake and reconciliation both look consignments up by tracking id.
 -- Without this index each delivery is a sequential scan of the whole table.
-CREATE INDEX "OrderShipment_trackingId_idx"
+CREATE INDEX IF NOT EXISTS "OrderShipment_trackingId_idx"
   ON "public"."OrderShipment"("trackingId");
 
 
@@ -60,11 +60,11 @@ CREATE INDEX "OrderShipment_trackingId_idx"
 -- quote is impossible. These are nullable/defaulted so every existing row keeps
 -- working; the quote service falls back to `defaultProductWeightKg` and flags
 -- the resulting quote as unverified.
-ALTER TABLE "public"."Product" ADD COLUMN "weightKg" DOUBLE PRECISION;
+ALTER TABLE "public"."Product" ADD COLUMN IF NOT EXISTS "weightKg" DOUBLE PRECISION;
 
 ALTER TABLE "public"."TenantSetting"
-  ADD COLUMN "defaultProductWeightKg" DOUBLE PRECISION NOT NULL DEFAULT 0.5,
-  ADD COLUMN "fallbackDeliveryFee" DECIMAL(65,30) NOT NULL DEFAULT 130;
+  ADD COLUMN IF NOT EXISTS "defaultProductWeightKg" DOUBLE PRECISION NOT NULL DEFAULT 0.5,
+  ADD COLUMN IF NOT EXISTS "fallbackDeliveryFee" DECIMAL(65,30) NOT NULL DEFAULT 130;
 
 -- Deliberately NOT backfilling `Product.weightKg`. Seeding a guessed weight
 -- would make every quote look verified while resting on an assumption. Leaving
@@ -75,7 +75,7 @@ ALTER TABLE "public"."TenantSetting"
 -- ============================================================
 -- ShipmentEvent: append-only status audit trail
 -- ============================================================
-CREATE TABLE "public"."ShipmentEvent" (
+CREATE TABLE IF NOT EXISTS "public"."ShipmentEvent" (
     "id" TEXT NOT NULL,
     "shipmentId" TEXT NOT NULL,
     "source" TEXT NOT NULL,
@@ -90,13 +90,13 @@ CREATE TABLE "public"."ShipmentEvent" (
     CONSTRAINT "ShipmentEvent_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "ShipmentEvent_shipmentId_source_eventId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "ShipmentEvent_shipmentId_source_eventId_key"
   ON "public"."ShipmentEvent"("shipmentId", "source", "eventId");
 
-CREATE INDEX "ShipmentEvent_shipmentId_occurredAt_idx"
+CREATE INDEX IF NOT EXISTS "ShipmentEvent_shipmentId_occurredAt_idx"
   ON "public"."ShipmentEvent"("shipmentId", "occurredAt");
 
-CREATE INDEX "ShipmentEvent_source_occurredAt_idx"
+CREATE INDEX IF NOT EXISTS "ShipmentEvent_source_occurredAt_idx"
   ON "public"."ShipmentEvent"("source", "occurredAt");
 
 ALTER TABLE "public"."ShipmentEvent"
@@ -106,7 +106,7 @@ ALTER TABLE "public"."ShipmentEvent"
 -- ============================================================
 -- CourierBookingAttempt: per-call booking audit
 -- ============================================================
-CREATE TABLE "public"."CourierBookingAttempt" (
+CREATE TABLE IF NOT EXISTS "public"."CourierBookingAttempt" (
     "id" TEXT NOT NULL,
     "shipmentId" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
@@ -124,13 +124,13 @@ CREATE TABLE "public"."CourierBookingAttempt" (
     CONSTRAINT "CourierBookingAttempt_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "CourierBookingAttempt_shipmentId_attemptNumber_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "CourierBookingAttempt_shipmentId_attemptNumber_key"
   ON "public"."CourierBookingAttempt"("shipmentId", "attemptNumber");
 
-CREATE INDEX "CourierBookingAttempt_provider_startedAt_idx"
+CREATE INDEX IF NOT EXISTS "CourierBookingAttempt_provider_startedAt_idx"
   ON "public"."CourierBookingAttempt"("provider", "startedAt");
 
-CREATE INDEX "CourierBookingAttempt_outcome_startedAt_idx"
+CREATE INDEX IF NOT EXISTS "CourierBookingAttempt_outcome_startedAt_idx"
   ON "public"."CourierBookingAttempt"("outcome", "startedAt");
 
 ALTER TABLE "public"."CourierBookingAttempt"
@@ -140,7 +140,7 @@ ALTER TABLE "public"."CourierBookingAttempt"
 -- ============================================================
 -- WebhookDelivery: replay / duplicate protection
 -- ============================================================
-CREATE TABLE "public"."WebhookDelivery" (
+CREATE TABLE IF NOT EXISTS "public"."WebhookDelivery" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "eventId" TEXT NOT NULL,
@@ -154,17 +154,17 @@ CREATE TABLE "public"."WebhookDelivery" (
     CONSTRAINT "WebhookDelivery_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "WebhookDelivery_provider_eventId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "WebhookDelivery_provider_eventId_key"
   ON "public"."WebhookDelivery"("provider", "eventId");
 
-CREATE INDEX "WebhookDelivery_provider_receivedAt_idx"
+CREATE INDEX IF NOT EXISTS "WebhookDelivery_provider_receivedAt_idx"
   ON "public"."WebhookDelivery"("provider", "receivedAt");
 
 -- ============================================================
 -- CourierStoreMapping: generic warehouse <-> courier pickup point
 -- Replaces per-provider Warehouse columns as the source of truth.
 -- ============================================================
-CREATE TABLE "public"."CourierStoreMapping" (
+CREATE TABLE IF NOT EXISTS "public"."CourierStoreMapping" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "warehouseId" TEXT NOT NULL,
@@ -183,13 +183,13 @@ CREATE TABLE "public"."CourierStoreMapping" (
     CONSTRAINT "CourierStoreMapping_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "CourierStoreMapping_provider_warehouseId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "CourierStoreMapping_provider_warehouseId_key"
   ON "public"."CourierStoreMapping"("provider", "warehouseId");
 
-CREATE UNIQUE INDEX "CourierStoreMapping_provider_externalStoreId_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "CourierStoreMapping_provider_externalStoreId_key"
   ON "public"."CourierStoreMapping"("provider", "externalStoreId");
 
-CREATE INDEX "CourierStoreMapping_provider_status_idx"
+CREATE INDEX IF NOT EXISTS "CourierStoreMapping_provider_status_idx"
   ON "public"."CourierStoreMapping"("provider", "status");
 
 ALTER TABLE "public"."CourierStoreMapping"
