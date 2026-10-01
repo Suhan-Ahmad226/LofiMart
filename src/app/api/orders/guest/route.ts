@@ -100,11 +100,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const message = error instanceof Error ? error.message : '';
+    const safeError = /insufficient|stock|courier|shipping|coupon|delivery|address|payment|unsupported/i.test(message)
+      ? message
+      : 'Unable to create the order. Please review your checkout details and try again.';
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create guest order',
-      },
+      { success: false, error: safeError },
       { status: 400 },
     );
   }
