@@ -136,6 +136,83 @@ describe('price integrity', () => {
   });
 });
 
+describe('warehouse quantity selection', () => {
+  it('chooses a warehouse that can fulfill the requested quantity instead of a partial-stock warehouse', async () => {
+    seedProduct({
+      inventoryItems: [
+        {
+          quantity: 2,
+          warehouse: {
+            id: 'wh-partial',
+            name: 'Partial Hub',
+            city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 },
+            outsideDhakaFee: { toNumber: () => 130 },
+            freeShippingThresholdOverride: null,
+            courierStores: [{ provider: 'pathao', externalStoreId: '111', externalStoreName: 'Partial', isActive: true, status: 'active' }],
+            pathaoStoreId: 111,
+          },
+        },
+        {
+          quantity: 5,
+          warehouse: {
+            id: 'wh-full',
+            name: 'Full Hub',
+            city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 },
+            outsideDhakaFee: { toNumber: () => 130 },
+            freeShippingThresholdOverride: null,
+            courierStores: [{ provider: 'pathao', externalStoreId: '222', externalStoreName: 'Full', isActive: true, status: 'active' }],
+            pathaoStoreId: 222,
+          },
+        },
+      ],
+    });
+
+    const quote = await getShippingQuote({
+      items: [{ productId: 'prod-1', quantity: 5 }],
+      destination: { city: 'Chattogram' },
+    });
+
+    expect(quote.verified).toBe(true);
+    expect(quote.shipments[0].warehouseId).toBe('wh-full');
+  });
+
+  it('returns a controlled fallback when no single warehouse can fulfill the line', async () => {
+    seedProduct({
+      inventoryItems: [
+        {
+          quantity: 2,
+          warehouse: {
+            id: 'wh-a', name: 'A', city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 }, outsideDhakaFee: { toNumber: () => 130 },
+            freeShippingThresholdOverride: null,
+            courierStores: [{ provider: 'pathao', externalStoreId: '111', externalStoreName: 'A', isActive: true, status: 'active' }], pathaoStoreId: 111,
+          },
+        },
+        {
+          quantity: 2,
+          warehouse: {
+            id: 'wh-b', name: 'B', city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 }, outsideDhakaFee: { toNumber: () => 130 },
+            freeShippingThresholdOverride: null,
+            courierStores: [{ provider: 'pathao', externalStoreId: '222', externalStoreName: 'B', isActive: true, status: 'active' }], pathaoStoreId: 222,
+          },
+        },
+      ],
+    });
+
+    const quote = await getShippingQuote({
+      items: [{ productId: 'prod-1', quantity: 5 }],
+      destination: { city: 'Chattogram' },
+    });
+
+    expect(quote.verified).toBe(false);
+    expect(quote.shipments).toHaveLength(0);
+    expect(quote.warnings.join(' ')).toMatch(/enough stock/i);
+  });
+});
+
 describe('verified provider quotes', () => {
   it('uses the courier price for a served city', async () => {
     const quote = await getShippingQuote({
