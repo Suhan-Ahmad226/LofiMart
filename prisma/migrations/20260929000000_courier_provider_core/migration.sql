@@ -99,9 +99,12 @@ CREATE INDEX IF NOT EXISTS "ShipmentEvent_shipmentId_occurredAt_idx"
 CREATE INDEX IF NOT EXISTS "ShipmentEvent_source_occurredAt_idx"
   ON "public"."ShipmentEvent"("source", "occurredAt");
 
-ALTER TABLE "public"."ShipmentEvent"
-  ADD CONSTRAINT "ShipmentEvent_shipmentId_fkey" FOREIGN KEY ("shipmentId")
-  REFERENCES "public"."OrderShipment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ShipmentEvent_shipmentId_fkey') THEN
+    ALTER TABLE "public"."ShipmentEvent" ADD CONSTRAINT "ShipmentEvent_shipmentId_fkey" FOREIGN KEY ("shipmentId") REFERENCES "public"."OrderShipment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $;
 
 -- ============================================================
 -- CourierBookingAttempt: per-call booking audit
@@ -133,9 +136,12 @@ CREATE INDEX IF NOT EXISTS "CourierBookingAttempt_provider_startedAt_idx"
 CREATE INDEX IF NOT EXISTS "CourierBookingAttempt_outcome_startedAt_idx"
   ON "public"."CourierBookingAttempt"("outcome", "startedAt");
 
-ALTER TABLE "public"."CourierBookingAttempt"
-  ADD CONSTRAINT "CourierBookingAttempt_shipmentId_fkey" FOREIGN KEY ("shipmentId")
-  REFERENCES "public"."OrderShipment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CourierBookingAttempt_shipmentId_fkey') THEN
+    ALTER TABLE "public"."CourierBookingAttempt" ADD CONSTRAINT "CourierBookingAttempt_shipmentId_fkey" FOREIGN KEY ("shipmentId") REFERENCES "public"."OrderShipment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $;
 
 -- ============================================================
 -- WebhookDelivery: replay / duplicate protection
@@ -192,9 +198,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "CourierStoreMapping_provider_externalStoreId_
 CREATE INDEX IF NOT EXISTS "CourierStoreMapping_provider_status_idx"
   ON "public"."CourierStoreMapping"("provider", "status");
 
-ALTER TABLE "public"."CourierStoreMapping"
-  ADD CONSTRAINT "CourierStoreMapping_warehouseId_fkey" FOREIGN KEY ("warehouseId")
-  REFERENCES "public"."Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'CourierStoreMapping_warehouseId_fkey') THEN
+    ALTER TABLE "public"."CourierStoreMapping" ADD CONSTRAINT "CourierStoreMapping_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "public"."Warehouse"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $;
 
 -- Backfill: promote the existing Warehouse.pathao* columns into the generic
 -- mapping so no warehouse has to be re-mapped by hand. Idempotent.
