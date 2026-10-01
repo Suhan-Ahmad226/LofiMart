@@ -5,6 +5,7 @@ type StockLine = {
   productId: string;
   quantity: number;
   reference: string;
+  warehouseId?: string;
 };
 
 export async function reduceStockForOrder(lines: StockLine[]) {
@@ -34,7 +35,10 @@ export async function reduceStockForOrder(lines: StockLine[]) {
     });
 
     const inventoryItem = await prisma.inventoryItem.findFirst({
-      where: { productId: product.id },
+      where: {
+        productId: product.id,
+        ...(line.warehouseId ? { warehouseId: line.warehouseId } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
     });
 
@@ -82,7 +86,10 @@ export async function restoreStockForOrder(lines: StockLine[]) {
     });
 
     const inventoryItem = await prisma.inventoryItem.findFirst({
-      where: { productId: product.id },
+      where: {
+        productId: product.id,
+        ...(line.warehouseId ? { warehouseId: line.warehouseId } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
     });
 
