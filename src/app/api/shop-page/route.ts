@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { getPublicPublishedProductWhere, productSellerInclude, serializeProduct } from '../products/shared';
+import { getPublicPublishedProductWhere, serializeProduct } from '../products/shared';
 import { raceWithTimeout } from '../_utils/route-timeout';
 
 export const runtime = 'nodejs';
@@ -34,7 +34,33 @@ export async function GET() {
         raceWithTimeout(
           prisma.product.findMany({
             where: getPublicPublishedProductWhere(),
-            include: productSellerInclude,
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              slug: true,
+              price: true,
+              oldPrice: true,
+              image: true,
+              category: true,
+              stock: true,
+              rating: true,
+              reviewsCount: true,
+              productStatus: true,
+              sellerId: true,
+              createdAt: true,
+              publishedAt: true,
+              seller: {
+                select: {
+                  name: true,
+                  avatarUrl: true,
+                  storeName: true,
+                  storefrontSlug: true,
+                  responseTimeHours: true,
+                  verificationSubmission: { select: { status: true } },
+                },
+              },
+            },
             orderBy: { createdAt: 'desc' },
             take: 60,
           }),
@@ -85,15 +111,8 @@ export async function GET() {
             icon: null,
           }));
 
-    const groups = groupHomepageProducts(productPayload);
-
     return NextResponse.json({
       products: productPayload,
-      homepage: {
-        products: groups,
-        sellers: [],
-      },
-      groups,
       categories: categoryPayload,
       banners: banners.map((banner) => ({
         id: banner.id,
