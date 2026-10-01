@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { requireApiUser } from '../products/shared';
 import { serializeOrder } from '../_compat/shared';
-import { createMarketplaceOrder } from '../../../features/telegram_bot';
+import { createMarketplaceOrder } from '../../../features/orders/services/orderService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
