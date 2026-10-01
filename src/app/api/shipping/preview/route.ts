@@ -118,8 +118,14 @@ export async function POST(request: NextRequest) {
       warnings: quote.warnings,
     });
   } catch (error) {
-    if (error instanceof Error && /requires at least one item|delivery city|no longer available/.test(error.message)) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (
+      error instanceof Error &&
+      /requires at least one item|delivery city|no longer available|not have enough stock in a single warehouse/.test(
+        error.message,
+      )
+    ) {
+      const status = /not have enough stock in a single warehouse/.test(error.message) ? 409 : 400;
+      return NextResponse.json({ error: error.message }, { status });
     }
 
     console.error('POST /api/shipping/preview error:', isCourierError(error) ? error.code : error);
