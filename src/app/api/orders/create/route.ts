@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       shippingAddress: body.shippingAddress || body.fullAddressSummary || undefined,
       refCode: body.refCode ? String(body.refCode) : undefined,
       couponCode: body.couponCode ? String(body.couponCode) : undefined,
+      idempotencyKey: String(body.idempotencyKey || request.headers.get('x-idempotency-key') || crypto.randomUUID()),
     });
 
     return NextResponse.json(
