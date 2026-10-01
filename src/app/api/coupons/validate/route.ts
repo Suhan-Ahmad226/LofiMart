@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const code = String(body.code || '').trim().toUpperCase();
-  const orderValue = Number(body.orderValue ?? body.cartTotal ?? 0);
+  const rawOrderValue = Number(body.orderValue ?? body.cartTotal ?? 0);
+  const orderValue = Number.isFinite(rawOrderValue) ? Math.max(0, rawOrderValue) : 0;
 
   if (!code) {
     return NextResponse.json({ error: 'Coupon code is required' }, { status: 400 });
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
   if (discountType === 'percentage' && discountValue > 100) {
     return NextResponse.json({ error: 'Percentage discount cannot exceed 100%' }, { status: 400 });
   }
-  const discountAmount = discountType === 'percentage' ? (Math.max(orderValue, 0) * discountValue) / 100 : discountValue;
+  const rawDiscountAmount = discountType === 'percentage' ? (orderValue * discountValue) / 100 : discountValue;
+  const discountAmount = Math.min(orderValue, Math.max(0, rawDiscountAmount));
 
   return NextResponse.json({
     code: coupon.code,
