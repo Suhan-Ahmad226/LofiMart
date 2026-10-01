@@ -72,23 +72,84 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { status, courierProvider, trackingId, deliveryFailureReason } = body as Record<string, any>;
   const { id: orderId } = await params;
 
-  if (userRole === 'seller') {
-    const hasProduct = await prisma.orderItem.findFirst({
-      where: {
-        orderId,
-        product: {
-          sellerId: String(user.id),
-        },
-      },
-      select: { id: true },
-    });
-
-    if (!hasProduct) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-  }
-
   try {
+    if (userRole === 'seller') {
+      const sellerId = String(user.id);
+      const sellerShipments = await prisma.orderShipment.findMany({
+        where: { orderId, sellerId },
+        select: { id: true },
+      });
+
+      if (sellerShipments.length === 0) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+
+      const timestampData: Record<string, unknown> = {};
+      if (status === 'pickup_requested') timestampData.pickupRequestedAt = new Date();
+      if (status === 'picked_up') timestampData.pickedUpAt = new Date();
+      if (status === 'out_for_delivery') timestampData.outForDeliveryAt = new Date();
+      if (status === 'delivered') timestampData.deliveredAt = new Date();
+      if (status !== 'delivery_failed') timestampData.deliveryFailureReason = null;
+      if (status === 'delivery_failed' && typeof deliveryFailureReason === 'string' && deliveryFailureReason.trim()) {
+        timestampData.deliveryFailureReason = deliveryFailureReason.trim();
+      }
+
+      await prisma.orderShipment.updateMany({
+        where: { orderId, sellerId },
+        data: {
+          status: status as any,
+          courierProvider: undefined,
+          trackingId: undefined,
+          ...timestampData,
+        } as any,
+      });
+
+      if (typeof courierProvider === 'string' && courierProvider.trim()) {
+        await prisma.orderShipment.updateMany({
+          where: { orderId, sellerId },
+          data: { courierProvider: courierProvider.trim() },
+        });
+      }
+      if (typeof trackingId === 'string' && trackingId.trim()) {
+        await prisma.orderShipment.updateMany({
+          where: { orderId, sellerId },
+          data: { trackingId: trackingId.trim() },
+        });
+      }
+
+      const shipments = await prisma.orderShipment.findMany({
+        where: { orderId },
+        select: { status: true },
+      });
+      const statuses = shipments.map((shipment) => String(shipment.status));
+      const orderStatus =
+        statuses.length > 0 && statuses.every((value) => value === 'delivered')
+          ? 'delivered'
+          : statuses.length > 0 && statuses.every((value) => value === 'cancelled')
+            ? 'cancelled'
+            : statuses.some((value) => value === 'delivery_failed')
+              ? 'delivery_failed'
+              : statuses.some((value) => value === 'out_for_delivery')
+                ? 'out_for_delivery'
+                : statuses.some((value) => value === 'picked_up')
+                  ? 'picked_up'
+                  : statuses.some((value) => value === 'pickup_requested')
+                    ? 'pickup_requested'
+                    : 'processing';
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: orderStatus as any },
+      });
+
+      if (orderStatus === 'delivered') {
+        await settleResellerCommissionsForOrder(updatedOrder.id);
+      } else if (orderStatus === 'cancelled' || orderStatus === 'returned' || orderStatus === 'delivery_failed') {
+        await reverseResellerCommissionsForOrder(updatedOrder.id, orderStatus as 'cancelled' | 'returned' | 'delivery_failed');
+      }
+
+      return NextResponse.json({ success: true });
+    }
     const timestampData: Record<string, unknown> = {};
 
     if (status === 'pickup_requested') timestampData.pickupRequestedAt = new Date();
