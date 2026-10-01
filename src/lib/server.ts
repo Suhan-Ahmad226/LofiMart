@@ -7,6 +7,8 @@ export {
   requireApiUser,
   requireDashboardAccess,
   requireRole,
+  requireAdminRole,
+  requireSellerRole,
   requirePermission,
   secureApiRoute,
   type AuthenticatedUser,
