@@ -42,15 +42,6 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY || ''
   );
 
-  const clearExpiredAuth = useCallback(() => {
-    try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    } catch {
-      // Ignore storage cleanup failures.
-    }
-  }, []);
-
   const ensureServiceWorker = useCallback(async () => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
       throw new Error('Service workers are not available in this environment');
