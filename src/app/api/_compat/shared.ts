@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/server';
+import { prisma, requireAdminRole, requireSellerRole, requireRole as requireCanonicalRole, type AuthenticatedUser } from '@/lib/server';
 import { ensureRedis } from '../../../features/shared/services/messaging/redis';
 import { getServerEnv } from '../../../lib/env';
 
@@ -272,13 +272,7 @@ export function jsonUnauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
-export function requireSellerRole(user: { role?: string }) {
-  if (!['seller', 'admin'].includes(String(user.role || ''))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-
-  return null;
-}
+export { requireAdminRole, requireSellerRole };
 
 export function serializeFlashSaleEntry(entry: any) {
   return {
@@ -375,17 +369,9 @@ export function buildWeeklyHeatmapFromOrders(orders: Array<{ createdAt: Date }>)
   return buckets;
 }
 
-export function requireAdminRole(user: { role?: string }) {
-  if (String(user.role || '') !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-
-  return null;
-}
-
 export function requireRole(allowedRoles: string[]) {
-  return (user: any): NextResponse | null => {
-    const role = String(user?.role || '');
-    return allowedRoles.includes(role) ? null : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  };
+  const roles = allowedRoles.filter((role): role is AuthenticatedUser['role'] =>
+    ['guest', 'customer', 'seller', 'reseller', 'admin'].includes(role),
+  );
+  return (user: AuthenticatedUser): NextResponse | null => requireCanonicalRole(user, roles);
 }
