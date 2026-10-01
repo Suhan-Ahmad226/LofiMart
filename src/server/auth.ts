@@ -129,7 +129,7 @@ export function requireAdminRole(user: AuthenticatedUser): NextResponse | null {
 }
 
 export function requireSellerRole(user: AuthenticatedUser): NextResponse | null {
-  return requireRole(user, ['seller']);
+  return requireRole(user, ['seller', 'admin']);
 }
 
 export function requireRole(user: AuthenticatedUser, roles: Role[]): NextResponse | null {
