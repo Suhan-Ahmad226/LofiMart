@@ -50,6 +50,7 @@ type ShippingPreview = {
   free_shipping_threshold: number;
   qualifies_for_free_shipping: boolean;
   checkout_note: string;
+  courier_price_verified?: boolean;
   zone: string;
   cod_available: boolean;
   warehouse_rule_applied?: boolean;
@@ -305,7 +306,7 @@ export const CheckoutPage = () => {
           body: JSON.stringify({
             city: formData.district || formData.city,
             zone: formData.upazila || undefined,
-            codAmount: Math.max(0, totalPrice),
+            codAmount: Math.max(0, totalPrice + PLATFORM_FEE),
             subtotal,
             itemCount,
             items: items.map((item) => ({
@@ -380,6 +381,10 @@ export const CheckoutPage = () => {
 
     if (!shippingPreview) {
       setError('Delivery cost is still being estimated for this address. Please wait a moment and try again.');
+      return;
+    }
+    if (shippingPreview.courier_price_verified === false) {
+      setError('Live Pathao delivery pricing is unavailable for this address right now. Please try again in a moment.');
       return;
     }
 
@@ -1000,6 +1005,9 @@ export const CheckoutPage = () => {
                           : 'Add city'}
                     </span>
                   </div>
+                  {shippingPreview && shippingPreview.courier_price_verified === false ? (
+                    <p className="text-xs leading-5 text-amber-600">Live courier pricing is temporarily unavailable, so this order cannot be placed yet.</p>
+                  ) : null}
                   {shippingPreviewLoading ? (
                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                       <Loader2 size={14} className="animate-spin" aria-hidden="true" />
