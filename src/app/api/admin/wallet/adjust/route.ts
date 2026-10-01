@@ -23,29 +23,48 @@ export async function POST(request: NextRequest) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: parsed.data.user_id },
-    select: { tenantId: true },
+    select: { id: true, tenantId: true },
   });
 
   if (!targetUser) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
+  const amount = Number(parsed.data.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'Amount must be greater than zero' }, { status: 400 });
+  }
+
+  const transaction = await prisma.$transaction(async (tx) => {
+    const updated = parsed.data.type === 'debit'
+      ? await tx.user.updateMany({ where: { id: targetUser.id, walletBalance: { gte: amount } }, data: { walletBalance: { decrement: amount } } })
+      : await tx.user.updateMany({ where: { id: targetUser.id }, data: { walletBalance: { increment: amount } } });
+    if (updated.count !== 1) throw new Error(parsed.data.type === 'debit' ? 'Insufficient wallet balance' : 'Wallet update failed');
+    const wallet = await tx.user.findUnique({ where: { id: targetUser.id }, select: { walletBalance: true } });
+    return tx.walletTransaction.create({
+      data: {
+        userId: targetUser.id,
+        tenantId: targetUser.tenantId ?? null,
+        type: parsed.data.type,
+        amount, currency: 'BDT', status: 'completed',
+        source: parsed.data.source || 'admin_adjustment',
+        description: parsed.data.description || (parsed.data.type === 'debit' ? 'Admin wallet debit' : 'Admin wallet credit'),
+        balanceAfter: wallet?.walletBalance ?? 0,
+        metadata: { adjustmentType: parsed.data.type, source: parsed.data.source || 'admin_adjustment', actor: 'admin' },
+      },
+    });
+  });
+
   await createNotification({
-    userId: parsed.data.user_id,
+    userId: targetUser.id,
     tenantId: targetUser.tenantId ?? null,
     type: 'reward',
     title: parsed.data.type === 'debit' ? 'Wallet adjustment applied' : 'Wallet credit added',
-    message:
-      parsed.data.description ||
-      (parsed.data.type === 'debit'
-        ? `An admin adjusted ${parsed.data.amount.toLocaleString()} BDT from your wallet balance.`
-        : `${parsed.data.amount.toLocaleString()} BDT was added to your wallet balance.`),
+    message: parsed.data.description || (parsed.data.type === 'debit'
+      ? 'An admin adjusted ' + amount.toLocaleString() + ' BDT from your wallet balance.'
+      : amount.toLocaleString() + ' BDT was added to your wallet balance.'),
     actionUrl: '/account/wallet',
-    metadata: {
-      amount: parsed.data.amount,
-      adjustmentType: parsed.data.type,
-      source: parsed.data.source,
-    },
+    metadata: { amount, adjustmentType: parsed.data.type, source: parsed.data.source, transactionId: transaction.id },
   });
 
   return NextResponse.json({ success: true });
