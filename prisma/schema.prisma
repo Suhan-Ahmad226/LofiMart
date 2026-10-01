@@ -305,6 +305,7 @@ model Order {
   guestEmail            String?
   guestPhone            String?
   claimedAt             DateTime?
+  idempotencyKey         String?        @unique
   tenantId              String?
   total                 Decimal
   status                OrderStatus    @default(processing)
