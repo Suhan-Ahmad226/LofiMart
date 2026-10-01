@@ -142,6 +142,7 @@ const ProductCardComponent = ({
             heightHint={320}
             fit="limit"
             eager={eager}
+            sizes="(max-width: 640px) 44vw, (max-width: 768px) 30vw, 18vw"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </Link>
@@ -185,6 +186,7 @@ const ProductCardComponent = ({
             heightHint={160}
             fit="limit"
             eager={eager}
+            sizes="112px"
             className="h-full w-full object-cover"
           />
           {discount > 0 && (
@@ -288,6 +290,7 @@ const ProductCardComponent = ({
             heightHint={500}
             fit="limit"
             eager={eager}
+            sizes="(max-width: 640px) 44vw, (max-width: 768px) 30vw, (max-width: 1024px) 22vw, 18vw"
             className="h-full w-full object-contain object-center transition-transform duration-500 ease-out group-hover:scale-105"
           />
         </Link>
