@@ -7,20 +7,23 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function takeProducts<T>(products: T[], start: number, count: number) {
-  const result: T[] = [];
-  const end = Math.min(products.length, start + count);
+  return products.slice(start, start + count);
+}
 
-  for (let index = start; index < end; index += 1) {
-    result.push(products[index]);
-  }
-
-  return result;
+function groupHomepageProducts<T>(products: T[]) {
+  return {
+    flashSale: takeProducts(products, 0, 4),
+    featured: takeProducts(products, 4, 8),
+    bestSelling: takeProducts(products, 12, 6),
+    newArrivals: takeProducts(products, 18, 6),
+    trending: takeProducts(products, 24, 6),
+  };
 }
 
 export async function GET() {
   try {
     const now = new Date();
-    const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: banners }, { value: flashSaleCampaign }] =
+    const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: flashSaleCampaign }, { value: banners }] =
       await Promise.all([
         raceWithTimeout(
           prisma.product.findMany({
@@ -73,7 +76,7 @@ export async function GET() {
         raceWithTimeout(
           prisma.flashSaleCampaign.findFirst({
             where: {
-              status: 'active',
+              status: { in: ['active', 'published', 'live'] },
               startsAt: { lte: now },
               endsAt: { gt: now },
             },
@@ -117,8 +120,15 @@ export async function GET() {
             icon: null,
           }));
 
+    const groups = groupHomepageProducts(productPayload);
+
     return NextResponse.json({
       products: productPayload,
+      homepage: {
+        products: groups,
+        sellers: [],
+      },
+      groups,
       flashSaleEndsAt: flashSaleCampaign?.endsAt?.toISOString() ?? null,
       categories: categoryPayload,
       banners: banners.map((banner) => ({
