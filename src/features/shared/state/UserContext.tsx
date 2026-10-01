@@ -82,134 +82,92 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window === 'undefined') return;
 
     let active = true;
-    let supabase: ReturnType<typeof createClient> | null = null;
+    let subscription: { unsubscribe: () => void } | null = null;
+    let hydrated = false;
 
-    const init = async () => {
+    const loadProfile = async (session: Session | null) => {
+      if (!active) return;
+
+      if (!session?.user) {
+        setInternalUser(null);
+        setToken(null);
+        return;
+      }
+
+      setToken(session.access_token ?? null);
+
       try {
-        supabase = createClient();
-        supabaseRef.current = supabase;
-
-        // Supabase owns the session/token lifecycle. getSession() is used here
-        // only to obtain the short-lived access token required by legacy client
-        // API calls; it is never used as the authorization source on the server.
-        const { data: sessionData } = await supabase.auth.getSession();
-        const session = sessionData.session;
-        const userData = session?.user ?? null;
-        if (session?.access_token) setToken(session.access_token);
+        const response = await fetch('/api/users/profile?minimal=1', {
+          credentials: 'include',
+          headers: session.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : undefined,
+        });
 
         if (!active) return;
 
-        if (userData) {
-          try {
-            const response = await fetch('/api/users/profile?minimal=1', {
-              credentials: 'include',
-              headers: session?.access_token
-                ? { Authorization: `Bearer ${session.access_token}` }
-                : undefined,
-            });
+        if (!response.ok) {
+          setInternalUser(null);
+          return;
+        }
 
-            if (response.ok) {
-              const payload = await response.json().catch(() => null);
-              if (payload?.user) {
-                setInternalUser(
-                  {
-                    ...payload.user,
-                    name: payload.user.name || '',
-                  } as User,
-                );
-              } else {
-                setInternalUser(null);
-              }
-            } else {
-              setInternalUser(null);
-            }
-          } catch {
-            setInternalUser(null);
-          }
+        const payload = (await response.json().catch(() => null)) as { user?: User } | null;
+        if (payload?.user) {
+          setInternalUser({
+            ...payload.user,
+            name: payload.user.name || '',
+          });
         } else {
           setInternalUser(null);
-          setToken(null);
         }
+      } catch {
+        if (active) setInternalUser(null);
+      }
+    };
+
+    const init = async () => {
+      try {
+        const supabase = createClient();
+        supabaseRef.current = supabase;
+
+        // Supabase owns the session lifecycle. The short-lived access token is
+        // only mirrored in memory for legacy API transport; authorization stays
+        // server-side.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!active) return;
+
+        hydrated = true;
+        await loadProfile(sessionData.session);
       } catch {
         if (active) {
           setInternalUser(null);
           setToken(null);
         }
       } finally {
-        if (active) {
-          setIsReady(true);
-        }
+        if (active) setIsReady(true);
       }
     };
 
     void init();
 
+    const supabase = supabaseRef.current ?? createClient();
+    supabaseRef.current = supabase;
+
+    const { data } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+      if (!active) return;
+
+      // getSession() above is the single initial hydration path. Supabase can
+      // emit INITIAL_SESSION immediately as well; ignoring pre-hydration events
+      // prevents duplicate profile requests and dashboard flicker.
+      if (!hydrated) return;
+
+      void loadProfile(session);
+    });
+    subscription = data.subscription;
+
     return () => {
       active = false;
-    };
-  }, [setInternalUser]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let active = true;
-
-    const setupListener = async () => {
-      try {
-        const supabase = supabaseRef.current ?? createClient();
-        supabaseRef.current = supabase;
-
-        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
-          if (!active) return;
-
-          if (!session?.user) {
-            setInternalUser(null);
-            setToken(null);
-            return;
-          }
-
-          setToken(session.access_token ?? null);
-
-          try {
-            const response = await fetch('/api/users/profile?minimal=1', {
-              credentials: 'include',
-              headers: session?.access_token
-                ? { Authorization: `Bearer ${session.access_token}` }
-                : undefined,
-            });
-
-            if (response.ok) {
-              const payload = (await response.json().catch(() => null)) as { user?: User } | null;
-              if (payload?.user) {
-                setInternalUser(
-                  {
-                    ...payload.user,
-                    name: payload.user.name || '',
-                  },
-                );
-              } else {
-                setInternalUser(null);
-              }
-            } else {
-              setInternalUser(null);
-            }
-          } catch {
-            setInternalUser(null);
-          }
-        });
-
-        return () => {
-          data?.subscription?.unsubscribe();
-        };
-      } catch {
-        return () => {};
-      }
-    };
-
-    const cleanup = setupListener();
-
-    return () => {
-      void cleanup;
+      subscription?.unsubscribe();
     };
   }, [setInternalUser]);
 
