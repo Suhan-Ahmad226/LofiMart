@@ -59,6 +59,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!user.email) {
+    return NextResponse.json({ error: 'Account email is required to change the password.' }, { status: 400 });
+  }
+
   const supabase = createSupabaseServerClient(false);
   const { data: passwordCheck, error: passwordCheckError } = await supabase.auth.signInWithPassword({
     email: user.email,
