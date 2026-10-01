@@ -43,12 +43,22 @@ export const prisma = basePrisma.$extends({
           return query(args);
         }
 
-        // Unique selectors (findUnique/update/upsert) cannot safely accept an
-        // extra tenantId unless the schema defines a matching compound unique key.
-        // IDs are globally unique, so keep unique reads/writes valid and enforce
-        // tenant isolation on non-unique operations below. Callers that mutate a
-        // tenant-owned row must still authorize ownership before using its ID.
-        if (['findFirst', 'findMany', 'count', 'aggregate', 'updateMany', 'deleteMany'].includes(operation)) {
+        // Prisma's extended unique selectors allow a unique field plus
+        // non-unique predicates such as tenantId. Keep the tenant predicate on
+        // every tenant-owned read/write operation so an ID alone can never cross
+        // the active tenant boundary.
+        if ([
+          'findUnique',
+          'findFirst',
+          'findMany',
+          'count',
+          'aggregate',
+          'update',
+          'updateMany',
+          'delete',
+          'deleteMany',
+          'upsert',
+        ].includes(operation)) {
           return query(withTenantFilter(args as Record<string, any>, tenantId));
         }
 
