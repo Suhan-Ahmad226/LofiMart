@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/server';
 import { Prisma } from '@prisma/client';
 import { getShippingQuote } from '@/features/courier/services/quoteService';
-import { ensureTelegramInvoice } from '@/features/telegram_bot/lib/invoiceService';
-import { sendLowStockAlert, sendNewOrderNotification } from '@/features/telegram_bot/lib/notificationService';
+import { runOrderPostCreateEffects } from './postCreateEffects';
 import { isKnownCheckoutPaymentMethod } from '@/lib/commerce-channels';
 import { randomBytes } from 'node:crypto';
 
@@ -521,25 +520,14 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     throw new Error('Order could not be created.');
   }
 
-  try {
-    await ensureTelegramInvoice(order.id);
-  } catch (invoiceError) {
-    console.error('Order created but invoice generation failed:', invoiceError);
-  }
-
-  await Promise.all(lowStockAlerts.map((alert) => sendLowStockAlert(alert)));
-
   const sellerIds = [...new Set(pricedItems.map((item) => item.sellerId))];
-  await Promise.all(
-    sellerIds.map((sellerId) =>
-      sendNewOrderNotification({
-        sellerId,
-        orderId: order.id,
-        orderCode,
-        total,
-      }),
-    ),
-  );
+  await runOrderPostCreateEffects({
+    orderId: order.id,
+    orderCode,
+    total,
+    sellerIds,
+    lowStockAlerts,
+  });
 
   return prisma.order.findUnique({
     where: { id: order.id },
