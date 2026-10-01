@@ -639,7 +639,9 @@ export const HomePage = () => {
         setProductGroups(getHomepageProductGroups(payload, nextProducts));
         setCategories(nextCategories.length > 0 ? nextCategories : fallbackCategories);
         setBanners(nextBanners.filter((banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title)));
-        setFlashSaleEndsAt(typeof payload?.flashSaleEndsAt === 'string' ? payload.flashSaleEndsAt : null);
+        const flashSaleValue =
+          payload && typeof payload === 'object' ? (payload as Record<string, unknown>).flashSaleEndsAt : null;
+        setFlashSaleEndsAt(typeof flashSaleValue === 'string' ? flashSaleValue : null);
         setActiveBannerIndex(0);
       })
       .catch((fetchError) => {
