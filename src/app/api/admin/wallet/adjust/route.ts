@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/app/api/products/shared';
 import { requireAdminRole } from '@/app/api/_compat/shared';
-import { prisma } from '@/lib/server';
+import { prismaDirect } from '@/features/shared/services/database/prisma';
 import { walletAdjustmentSchema } from '@/modules/profile/validation';
 import { createNotification } from '@/features/shared/services/notifications/notificationService';
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid wallet adjustment' }, { status: 400 });
   }
 
-  const targetUser = await prisma.user.findUnique({
+  const targetUser = await prismaDirect.user.findUnique({
     where: { id: parsed.data.user_id },
     select: { id: true, tenantId: true },
   });
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Amount must be greater than zero' }, { status: 400 });
   }
 
-  const transaction = await prisma.$transaction(async (tx) => {
+  const transaction = await prismaDirect.$transaction(async (tx) => {
     const updated = parsed.data.type === 'debit'
       ? await tx.user.updateMany({ where: { id: targetUser.id, walletBalance: { gte: amount } }, data: { walletBalance: { decrement: amount } } })
       : await tx.user.updateMany({ where: { id: targetUser.id }, data: { walletBalance: { increment: amount } } });
