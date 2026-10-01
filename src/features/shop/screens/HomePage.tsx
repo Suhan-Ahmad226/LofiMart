@@ -224,12 +224,11 @@ async function fetchJsonWithTimeout(url: string, signal: AbortSignal, timeoutMs 
 }
 
 async function fetchHomepageData(signal: AbortSignal) {
-  try {
-    return await getCachedClientValue('home-page:v4', 5 * 60 * 1000, () => fetchJsonWithTimeout('/api/home', signal));
-  } catch (error) {
-    if ((error as Error).name === 'AbortError') throw error;
-    return fetchJsonWithTimeout('/api/home', signal, 9000);
-  }
+  return getCachedClientValue(
+    'home-page:v4',
+    5 * 60 * 1000,
+    () => fetchJsonWithTimeout('/api/home', signal, 5000),
+  );
 }
 
 const SectionHeader = memo(function SectionHeader({
