@@ -65,16 +65,16 @@ const fallbackBanner: HomeBanner = {
   button_text: 'Shop the marketplace',
 };
 
-const categoryImages = [
-  'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=720&q=80',
-  'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=720&q=80',
-];
+const categoryImagesByName: Record<string, string> = {
+  electronics: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=720&q=80',
+  fashion: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=720&q=80',
+  'home & living': 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=720&q=80',
+  beauty: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=720&q=80',
+  groceries: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=720&q=80',
+  sports: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=720&q=80',
+  kids: 'https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=720&q=80',
+  automotive: 'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=720&q=80',
+};
 
 const serviceHighlights = [
   { title: 'Verified sellers', detail: 'Curated stores with approval checks', icon: ShieldCheck },
@@ -93,19 +93,8 @@ const emptyProductGroups: HomepageProductGroups = {
   trending: [],
 };
 
-function takeItems<T>(items: T[], start: number, count: number): T[] {
-  const result: T[] = [];
-  const end = Math.min(items.length, start + count);
-
-  for (let index = start; index < end; index += 1) {
-    result.push(items[index]);
-  }
-
-  return result;
-}
-
 function takeFirst<T>(items: T[], count: number): T[] {
-  return takeItems(items, 0, count);
+  return items.slice(0, count);
 }
 
 function getProductList(payload: unknown): Product[] {
@@ -147,33 +136,6 @@ function getBannerList(payload: unknown): HomeBanner[] {
   if (Array.isArray(data?.banners)) return data.banners;
 
   return [];
-}
-
-function getHomepageProductGroups(payload: unknown, fallbackProducts: Product[]): HomepageProductGroups {
-  const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
-  const homepage = record.homepage && typeof record.homepage === 'object' ? (record.homepage as Record<string, unknown>) : {};
-  const homepageProducts =
-    homepage.products && typeof homepage.products === 'object' ? (homepage.products as Record<string, unknown>) : null;
-  const groups = record.groups && typeof record.groups === 'object' ? (record.groups as Record<string, unknown>) : null;
-  const source = homepageProducts || groups;
-
-  if (source) {
-    return {
-      flashSale: getProductList(source.flashSale),
-      featured: getProductList(source.featured),
-      bestSelling: getProductList(source.bestSelling),
-      newArrivals: getProductList(source.newArrivals),
-      trending: getProductList(source.trending),
-    };
-  }
-
-  return {
-    flashSale: takeItems(fallbackProducts, 0, 4),
-    featured: takeItems(fallbackProducts, 4, 8),
-    bestSelling: takeItems(fallbackProducts, 12, 6),
-    newArrivals: takeItems(fallbackProducts, 18, 6),
-    trending: takeItems(fallbackProducts, 24, 6),
-  };
 }
 
 function getCountdown(target: number) {
@@ -223,12 +185,116 @@ async function fetchJsonWithTimeout(url: string, signal: AbortSignal, timeoutMs 
   }
 }
 
-async function fetchHomepageData(signal: AbortSignal) {
+const HOME_PRODUCTS_PAGE_SIZE = 12;
+const FLASH_SALE_PAGE_SIZE = 4;
+
+type ProductPagePayload = {
+  products?: Product[];
+  categories?: Category[];
+  pagination?: {
+    hasMore?: boolean;
+  };
+};
+
+type BannerPayload = {
+  data?: HomeBanner[];
+};
+
+type FlashSalePayload = {
+  campaign?: {
+    ends_at?: string | null;
+  } | null;
+  entries?: Array<{
+    sale_price?: number;
+    product?: Product | null;
+  }>;
+};
+
+async function fetchProductPage(signal: AbortSignal, page: number) {
+  const cacheKey = `home-products:v2:page:${page}`;
   return getCachedClientValue(
-    'home-page:v4',
-    5 * 60 * 1000,
-    () => fetchJsonWithTimeout('/api/home', signal, 5000),
+    cacheKey,
+    60 * 1000,
+    () =>
+      fetchJsonWithTimeout(
+        `/api/shop/products?limit=${HOME_PRODUCTS_PAGE_SIZE}&page=${page}`,
+        signal,
+        4000,
+      ) as Promise<ProductPagePayload>,
   );
+}
+
+async function fetchBanners(signal: AbortSignal) {
+  return getCachedClientValue(
+    'home-banners:v2',
+    5 * 60 * 1000,
+    () =>
+      fetchJsonWithTimeout('/api/v2/banners', signal, 2500) as Promise<BannerPayload>,
+  );
+}
+
+async function fetchFlashSale(signal: AbortSignal) {
+  return getCachedClientValue(
+    'home-flash-sale:v2',
+    60 * 1000,
+    () =>
+      fetchJsonWithTimeout(
+        `/api/flash-sale/active?limit=${FLASH_SALE_PAGE_SIZE}&offset=0`,
+        signal,
+        2500,
+      ) as Promise<FlashSalePayload>,
+  );
+}
+
+async function fetchHomepageData(signal: AbortSignal) {
+  const results = await Promise.allSettled([
+    fetchProductPage(signal, 1),
+    fetchBanners(signal),
+    fetchFlashSale(signal),
+  ]);
+
+  const productsResult = results[0];
+  if (productsResult.status === 'rejected') {
+    throw productsResult.reason;
+  }
+
+  const productPayload = productsResult.value;
+  const bannerPayload =
+    results[1].status === 'fulfilled' ? results[1].value : { data: [] };
+  const flashPayload =
+    results[2].status === 'fulfilled' ? results[2].value : { campaign: null, entries: [] };
+
+  const flashSaleProducts = (flashPayload.entries ?? [])
+    .map((entry) => {
+      if (!entry.product) return null;
+      const salePrice = Number(entry.sale_price);
+      const currentPrice = Number(entry.product.price);
+      if (!Number.isFinite(salePrice) || salePrice <= 0) return entry.product;
+
+      return {
+        ...entry.product,
+        old_price: currentPrice,
+        price: salePrice,
+      };
+    })
+    .filter((product): product is Product => Boolean(product));
+
+  return {
+    products: productPayload.products ?? [],
+    categories: productPayload.categories ?? [],
+    hasMoreProducts: Boolean(productPayload.pagination?.hasMore),
+    banners: bannerPayload.data ?? [],
+    flashSaleEndsAt: flashPayload.campaign?.ends_at ?? null,
+    flashSaleProducts,
+  };
+}
+
+async function fetchMoreProducts(signal: AbortSignal, page: number) {
+  const payload = await fetchProductPage(signal, page);
+  return {
+    products: payload.products ?? [],
+    hasMore: Boolean(payload.pagination?.hasMore),
+  };
 }
 
 const SectionHeader = memo(function SectionHeader({
@@ -416,9 +482,15 @@ function DeferredSection({
 const DealsSection = memo(function DealsSection({
   products,
   loading,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: {
   products: Product[];
   loading: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(12);
 
@@ -431,13 +503,7 @@ const DealsSection = memo(function DealsSection({
     [products, visibleCount],
   );
 
-  const hasMoreProducts = visibleCount < products.length;
-
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((current) =>
-      Math.min(current + 12, products.length),
-    );
-  }, [products.length]);
+  const hasMoreProducts = visibleCount < products.length || hasMore;
 
   if (loading) {
     return (
@@ -522,15 +588,16 @@ const DealsSection = memo(function DealsSection({
         <div className="mt-8 flex justify-center">
           <button
             type="button"
-            onClick={handleLoadMore}
-            className="inline-flex items-center justify-center rounded-full border-2 border-primary/20 bg-white px-8 py-3 text-sm font-bold text-primary transition-all duration-200 hover:border-primary hover:bg-primary hover:text-white"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="inline-flex min-w-48 items-center justify-center rounded-full border-2 border-primary/20 bg-white px-8 py-3 text-sm font-bold text-primary transition-all duration-200 hover:border-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Load More Products
+            {loadingMore ? 'Loading...' : 'Load More Products'}
           </button>
         </div>
       )}
 
-      {!hasMoreProducts && products.length > 12 && (
+      {!hasMore && products.length > 12 && (
         <div className="mt-8 text-center">
           <p className="text-sm font-medium text-slate-500">
             You&apos;ve reached the end of the products.
@@ -614,6 +681,9 @@ const NewsletterSection = memo(function NewsletterSection({
 export const HomePage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productGroups, setProductGroups] = useState<HomepageProductGroups>(emptyProductGroups);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
+  const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
+  const [productPage, setProductPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>(fallbackCategories);
   const [banners, setBanners] = useState<HomeBanner[]>([]);
   const [flashSaleEndsAt, setFlashSaleEndsAt] = useState<string | null>(null);
@@ -632,17 +702,25 @@ export const HomePage = () => {
       .then((payload) => {
         if (controller.signal.aborted) return;
 
-        const nextProducts = getProductList(payload);
-        const nextCategories = getCategoryList(payload);
-        const nextBanners = getBannerList(payload);
-        setProducts(nextProducts);
-        setProductGroups(getHomepageProductGroups(payload, nextProducts));
-        setCategories(nextCategories.length > 0 ? nextCategories : fallbackCategories);
-        setBanners(nextBanners.filter((banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title)));
-        const flashSaleValue =
-          payload && typeof payload === 'object' ? (payload as Record<string, unknown>).flashSaleEndsAt : null;
-        setFlashSaleEndsAt(typeof flashSaleValue === 'string' ? flashSaleValue : null);
+        setProducts(payload.products);
+        setHasMoreProducts(payload.hasMoreProducts);
+        setProductPage(1);
+        setCategories(payload.categories.length > 0 ? payload.categories : fallbackCategories);
+        setBanners(
+          payload.banners.filter(
+            (banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title),
+          ),
+        );
+        setProductGroups({
+          flashSale: payload.flashSaleProducts,
+          featured: [],
+          bestSelling: [],
+          newArrivals: [],
+          trending: [],
+        });
+        setFlashSaleEndsAt(payload.flashSaleEndsAt);
         setActiveBannerIndex(0);
+        setError('');
       })
       .catch((fetchError) => {
         if ((fetchError as Error).name === 'AbortError') return;
@@ -651,6 +729,7 @@ export const HomePage = () => {
         setCategories(fallbackCategories);
         setBanners([]);
         setFlashSaleEndsAt(null);
+        setHasMoreProducts(false);
         setError(fetchError instanceof Error ? fetchError.message : 'Unable to load the storefront.');
       })
       .finally(() => {
@@ -661,6 +740,30 @@ export const HomePage = () => {
 
     return () => controller.abort();
   }, []);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (loadingMoreProducts || !hasMoreProducts) return;
+
+    const controller = new AbortController();
+    setLoadingMoreProducts(true);
+
+    try {
+      const nextPage = productPage + 1;
+      const payload = await fetchMoreProducts(controller.signal, nextPage);
+      setProducts((current) => {
+        const existingIds = new Set(current.map((product) => product.id));
+        return [...current, ...payload.products.filter((product) => !existingIds.has(product.id))];
+      });
+      setHasMoreProducts(payload.hasMore);
+      setProductPage(nextPage);
+    } catch (loadMoreError) {
+      if ((loadMoreError as Error).name !== 'AbortError') {
+        setError(loadMoreError instanceof Error ? loadMoreError.message : 'Could not load more products.');
+      }
+    } finally {
+      setLoadingMoreProducts(false);
+    }
+  }, [hasMoreProducts, loadingMoreProducts, productPage]);
 
   useEffect(() => {
     if (isBannerPaused || banners.length < 2) return undefined;
@@ -676,6 +779,10 @@ export const HomePage = () => {
   const activeHeroIndex = activeBannerIndex < heroBanners.length ? activeBannerIndex : 0;
   const activeBanner = heroBanners[activeHeroIndex] ?? fallbackBanner;
   const visibleCategories = takeFirst(categories.length > 0 ? categories : fallbackCategories, 8);
+  const getCategoryImage = useCallback((category: Category, index: number) => {
+    const key = category.name.trim().toLowerCase();
+    return categoryImagesByName[key] ?? Object.values(categoryImagesByName)[index % Object.keys(categoryImagesByName).length];
+  }, []);
 
   const submitNewsletter = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -896,7 +1003,7 @@ export const HomePage = () => {
         <SectionHeader kicker="Shop by categories" title="Explore popular departments" action={{ label: 'All categories', href: '/categories' }} />
         <div className="dashboard-chip-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-8">
           {visibleCategories.map((category, index) => (
-            <CategoryCard key={category.id} category={category} image={categoryImages[index % categoryImages.length]} />
+            <CategoryCard key={category.id} category={category} image={getCategoryImage(category, index)} />
           ))}
         </div>
       </section>
@@ -905,6 +1012,9 @@ export const HomePage = () => {
         <DealsSection
           products={products}
           loading={loading}
+          hasMore={hasMoreProducts}
+          loadingMore={loadingMoreProducts}
+          onLoadMore={loadMoreProducts}
         />
       </DeferredSection>
 
