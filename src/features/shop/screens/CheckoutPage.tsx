@@ -303,6 +303,8 @@ export const CheckoutPage = () => {
           },
           body: JSON.stringify({
             city: formData.district || formData.city,
+            zone: formData.upazila || undefined,
+            codAmount: Math.max(0, totalPrice),
             subtotal,
             itemCount,
             items: items.map((item) => ({
