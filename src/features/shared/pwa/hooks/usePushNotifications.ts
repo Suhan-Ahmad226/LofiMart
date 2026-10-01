@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { createClient } from '@/lib/client';
 
 export interface NotificationOptions {
   title: string;
@@ -163,7 +164,8 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
       });
 
       if (subscription) {
-        const token = localStorage.getItem('token');
+        const { data: sessionData } = await createClient().auth.getSession();
+        const token = sessionData.session?.access_token;
         if (!token) {
           setError('Please log in to enable notifications.');
           await subscription.unsubscribe().catch(() => undefined);
@@ -193,7 +195,6 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
           const message = payload?.error || 'Failed to save push subscription';
 
           if (response.status === 401 || response.status === 403 || /token expired/i.test(message)) {
-            clearExpiredAuth();
             setError('Your session expired. Please log in again to enable notifications.');
             setIsSubscribed(false);
             return false;
@@ -216,7 +217,7 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [clearExpiredAuth, ensureServiceWorker, isSupported, registration, requestPermission, webPushPublicKey]);
+  }, [ensureServiceWorker, isSupported, registration, requestPermission, webPushPublicKey]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported) return;
@@ -233,7 +234,8 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
 
-        const token = localStorage.getItem('token');
+        const { data: sessionData } = await createClient().auth.getSession();
+        const token = sessionData.session?.access_token;
         if (token && endpoint) {
           await fetch('/api/notifications/unsubscribe', {
             method: 'POST',
