@@ -4,7 +4,7 @@ import { prisma } from '@/lib/server';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { normalizeBdPhone, normalizeEmail } from '@/features/auth/services/identity';
-import { createMarketplaceOrder } from '@/features/telegram_bot/lib/orderService';
+import { createMarketplaceOrder } from '@/features/orders/services/orderService';
 import { serializeOrder } from '../../_compat/shared';
 
 export const runtime = 'nodejs';
