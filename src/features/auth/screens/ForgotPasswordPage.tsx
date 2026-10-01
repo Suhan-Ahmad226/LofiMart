@@ -230,7 +230,6 @@ export const ForgotPasswordPage = () => {
 
       setStep('otp');
       setNotice(getDeliveryMessage(detectedChannel));
-      setNotice(getDeliveryMessage(detectedChannel));
     } catch (err: unknown) {
       setError(
         getErrorMessage(
