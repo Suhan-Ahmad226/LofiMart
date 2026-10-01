@@ -64,6 +64,8 @@ export type ShipmentQuote = {
   source: 'provider' | 'fallback';
   /** Why the fallback was used, for admin diagnostics. Never user-facing. */
   reason: string | null;
+  /** Exact product -> warehouse allocation frozen by the quote. */
+  allocations: Array<{ productId: string; quantity: number }>;
 };
 
 export type ShippingQuote = {
@@ -245,6 +247,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     store: CourierStoreRef | null;
     flatFee: number;
     threshold: number;
+    allocations: Array<{ productId: string; quantity: number }>;
   };
 
   const byWarehouse = new Map<string, WarehouseGroup>();
@@ -279,6 +282,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
       existing.itemCount += item.quantity;
       existing.weightKg += lineWeight;
       existing.subtotal += lineSubtotal;
+      existing.allocations.push({ productId: item.productId, quantity: item.quantity });
       continue;
     }
 
@@ -294,6 +298,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
         fallbackFee,
       ),
       threshold: toNumber(source.freeShippingThresholdOverride, freeShippingThreshold),
+      allocations: [{ productId: item.productId, quantity: item.quantity }],
     });
   }
 
@@ -375,6 +380,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
       verified: !usesFallback,
       source: usesFallback ? 'fallback' : 'provider',
       reason,
+      allocations: entry.allocations,
     });
   }
 
