@@ -566,7 +566,7 @@ export const SellerCourierManagement = () => {
   };
 
   const getProviderBookingHint = () =>
-    "Auto-booking needs working API credentials and a linked pickup point. Otherwise create the parcel through the courier's merchant portal and paste the tracking id.";
+    "Pathao booking is automatic when your pickup point is linked and approved. Fix the pickup point below if booking is blocked.";
 
   const renderProviderSyncAction = (shipment: SellerShipment, busy: boolean) => {
     // Offered for any shipment that already has a courier and a tracking id, rather
@@ -633,7 +633,7 @@ export const SellerCourierManagement = () => {
             {getProviderBookingHint()}
           </div>
           <div className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] text-rose-800">
-            Auto-booking needs this shipment's pickup location to have a linked, approved pickup point with its city, zone and area mapped.
+            Pathao needs an approved pickup point with city, zone and area mapped.
           </div>
         </div>
       );
@@ -674,7 +674,7 @@ export const SellerCourierManagement = () => {
 
       {user?.seller_status !== 'approved' ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Courier booking is locked until admin approves your seller account. You can still complete pickup setup and logistics readiness from this page.
+          Pathao booking is available after your seller account is approved. Use this page to finish pickup-point setup while waiting.
         </div>
       ) : null}
 
@@ -687,7 +687,7 @@ export const SellerCourierManagement = () => {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Courier & Shipping</h1>
-          <p className="text-gray-500">Handle shipment pickup from different seller locations and warehouses.</p>
+          <p className="text-gray-500">Book and track every seller shipment through Pathao from one place.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm">
@@ -716,8 +716,8 @@ export const SellerCourierManagement = () => {
               <p className="text-sm font-bold">{provider.name}</p>
               <p className="text-[10px] text-gray-400">
                 {provider.configured
-                  ? 'API config ready'
-                  : 'Config needed for API mode'}
+                  ? 'Pathao ready'
+                  : 'Pathao setup needed'}
               </p>
             </div>
           </div>

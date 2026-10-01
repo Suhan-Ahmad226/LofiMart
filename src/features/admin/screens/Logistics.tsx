@@ -489,7 +489,7 @@ export const AdminLogisticsPage = () => {
           onChange={(event) => setProviderFilter(event.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20 md:w-auto md:py-2"
         >
-          <option value="all">All providers</option>
+          <option value="all">Pathao</option>
           <option value="unassigned">Unassigned</option>
           {providerOptions.map((provider) => (
             <option key={provider} value={provider}>
@@ -768,7 +768,7 @@ export const AdminLogisticsPage = () => {
         <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2">
             <Truck size={18} className="text-primary" />
-            <h2 className="font-bold text-slate-950">Courier provider readiness</h2>
+            <h2 className="font-bold text-slate-950">Pathao courier readiness</h2>
           </div>
           <div className="mt-5 space-y-4">
             {data?.providers.map((provider) => (
@@ -980,7 +980,7 @@ export const AdminLogisticsPage = () => {
                   <div>
                     <p className="font-semibold text-slate-950">Shipment #{shipment.id.slice(0, 8)}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Order {shipment.orderId} â€¢ {shipment.customerName || 'Customer'}
+                      Order {shipment.orderId} • {shipment.customerName || 'Customer'}
                     </p>
                   </div>
                   <span className="rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-800">
@@ -991,7 +991,7 @@ export const AdminLogisticsPage = () => {
                   {shipment.deliveryFailureReason || 'Needs manual courier follow-up.'}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  {shipment.provider || 'Courier pending'} â€¢ {shipment.trackingId || 'Tracking pending'} â€¢ {shipment.updatedAt ? new Date(shipment.updatedAt).toLocaleString() : 'No update time'}
+                  {shipment.provider || 'Courier pending'} • {shipment.trackingId || 'Tracking pending'} • {shipment.updatedAt ? new Date(shipment.updatedAt).toLocaleString() : 'No update time'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a
@@ -1043,7 +1043,7 @@ export const AdminLogisticsPage = () => {
                   <div>
                     <p className="font-semibold text-slate-950">Shipment #{shipment.id.slice(0, 8)}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Order {shipment.orderId} â€¢ {shipment.customerName || 'Customer'}
+                      Order {shipment.orderId} • {shipment.customerName || 'Customer'}
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800 shadow-sm">
@@ -1051,13 +1051,13 @@ export const AdminLogisticsPage = () => {
                   </span>
                 </div>
                 <p className="mt-3 text-sm text-slate-600">
-                  Tracking {shipment.trackingId || 'pending'} â€¢ {shipment.warehouseName || 'Warehouse not linked'}
+                  Tracking {shipment.trackingId || 'pending'} • {shipment.warehouseName || 'Warehouse not linked'}
                 </p>
                 {shipment.providerStatus || shipment.providerStatus ? (
                   <p className="mt-2 text-xs font-medium text-rose-700">
                     Pathao event: {(shipment.providerStatus || 'event pending').replaceAll('_', ' ').replaceAll('.', ' ')}
                     {shipment.providerStatus
-                      ? ` â€¢ ${(shipment.providerStatus || '').replaceAll('_', ' ')}`
+                      ? ` • ${(shipment.providerStatus || '').replaceAll('_', ' ')}`
                       : ''}
                   </p>
                 ) : null}
