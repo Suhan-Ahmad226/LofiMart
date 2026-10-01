@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
   if (user instanceof NextResponse) return user;
 
   const body = await request.json().catch(() => ({}));
-  const idempotencyKey = String(request.headers.get('x-idempotency-key') || body.idempotencyKey || '').trim();
+  const suppliedIdempotencyKey = String(request.headers.get('x-idempotency-key') || body.idempotencyKey || '').trim();
+  const idempotencyKey = suppliedIdempotencyKey || crypto.randomUUID();
   if (idempotencyKey.length < 16 || idempotencyKey.length > 128) return NextResponse.json({ error: 'A valid idempotency key is required.' }, { status: 400 });
   const existingOrder = await prisma.order.findUnique({ where: { idempotencyKey }, include: { items: { include: { product: true } }, shipments: { include: { items: true } }, invoice: true } });
   if (existingOrder) {
