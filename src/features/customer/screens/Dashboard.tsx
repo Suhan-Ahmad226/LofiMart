@@ -48,6 +48,7 @@ export const CustomerDashboard = () => {
   const { token, user } = useUser();
   const { items: wishlistItems } = useWishlist();
   const [orders, setOrders] = useState<any[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0);
   const [savedAddresses, setSavedAddresses] = useState(0);
   const [profileSummary, setProfileSummary] = useState<any>(null);
   const [defaultAddress, setDefaultAddress] = useState<AddressSummary | null>(null);
@@ -60,26 +61,28 @@ export const CustomerDashboard = () => {
     const fetchDashboard = async () => {
       try {
         setError('');
-        const [ordersResponse, profileResponse, pointsResponse, notificationsResponse] = await Promise.all([
-          fetch('/api/orders/my-orders', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('/api/users/profile', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('/api/user/points', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('/api/notifications', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
+        const [ordersResponse, profileResponse, pointsResponse, notificationsResponse] = await Promise.allSettled([
+          fetch('/api/orders/my-orders?limit=5', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/users/profile?minimal=1', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/user/points', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/notifications?unread=1', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
-        const ordersData = await ordersResponse.json().catch(() => null);
-        if (!ordersResponse.ok) throw new Error(ordersData?.error || 'Failed to fetch orders');
-        setOrders(Array.isArray(ordersData) ? ordersData : []);
 
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json().catch(() => null);
+        let dashboardError = '';
+        if (ordersResponse.status === 'fulfilled') {
+          const ordersData = await ordersResponse.value.json().catch(() => null);
+          if (ordersResponse.value.ok) {
+            setOrders(Array.isArray(ordersData?.orders) ? ordersData.orders : Array.isArray(ordersData) ? ordersData : []);
+            setTotalOrders(Number(ordersData?.totalCount ?? (Array.isArray(ordersData) ? ordersData.length : 0)));
+          } else {
+            dashboardError = ordersData?.error || 'Orders could not be loaded.';
+          }
+        } else {
+          dashboardError = 'Orders could not be loaded.';
+        }
+
+        if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
+          const profileData = await profileResponse.value.json().catch(() => null);
           const addresses = Array.isArray(profileData?.addresses) ? profileData.addresses : [];
           setSavedAddresses(addresses.length);
           setProfileSummary(profileData?.user || null);
@@ -88,17 +91,18 @@ export const CustomerDashboard = () => {
           setSavedAddresses(0);
           setProfileSummary(null);
           setDefaultAddress(null);
+          dashboardError ||= 'Profile details are temporarily unavailable.';
         }
 
-        if (pointsResponse.ok) {
-          const pointsData = await pointsResponse.json().catch(() => null);
+        if (pointsResponse.status === 'fulfilled' && pointsResponse.value.ok) {
+          const pointsData = await pointsResponse.value.json().catch(() => null);
           setRewardPoints(Number(pointsData?.points || 0));
         } else {
           setRewardPoints(0);
         }
 
-        if (notificationsResponse.ok) {
-          const notificationsData = await notificationsResponse.json().catch(() => []);
+        if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
+          const notificationsData = await notificationsResponse.value.json().catch(() => []);
           const unreadCount = Array.isArray(notificationsData)
             ? notificationsData.filter((item: NotificationItem) => !item?.read_at).length
             : 0;
@@ -106,6 +110,7 @@ export const CustomerDashboard = () => {
         } else {
           setUnreadNotifications(0);
         }
+        setError(dashboardError);
       } catch (err: any) {
         setError(err.message);
         setOrders([]);
@@ -132,7 +137,7 @@ export const CustomerDashboard = () => {
   }, [token]);
 
   const stats = [
-    { label: 'Total Orders', value: orders.length.toString(), icon: <ShoppingBag className="text-blue-500" /> },
+    { label: 'Total Orders', value: String(totalOrders), icon: <ShoppingBag className="text-blue-500" /> },
     { label: 'Wishlist Items', value: wishlistItems.length.toString(), icon: <Heart className="text-accent" /> },
     { label: 'Saved Addresses', value: String(savedAddresses), icon: <MapPin className="text-primary" /> },
     { label: 'Reward Points', value: rewardPoints.toString(), icon: <Coins className="text-amber-500" /> },
@@ -156,8 +161,9 @@ export const CustomerDashboard = () => {
     { id: 'first_order', title: 'Place first order', completed: orders.length > 0, actionPath: '/shop' },
   ];
 
-  const completedCustomerSteps = customerSteps.filter((step) => step.completed).length;
-  const customerProgress = Math.round((completedCustomerSteps / customerSteps.length) * 100);
+  const customerSetupSteps = customerSteps.slice(0, 3);
+  const completedCustomerSteps = customerSetupSteps.filter((step) => step.completed).length;
+  const customerProgress = Math.round((completedCustomerSteps / customerSetupSteps.length) * 100);
   const nextCustomerStep = customerSteps.find((step) => !step.completed) || null;
 
   if (loading) {
@@ -204,7 +210,7 @@ export const CustomerDashboard = () => {
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {customerSteps.map((step) => (
+            {customerSetupSteps.map((step) => (
               <div key={step.id} className="rounded-2xl border border-border bg-secondary/20 px-4 py-3 text-sm">
                 <p className="font-semibold text-foreground">{step.title}</p>
                 <p className={`mt-1 text-xs font-medium ${step.completed ? 'text-emerald-700' : 'text-amber-700'}`}>
