@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
+
 import { createClient } from '@/lib/client';
 
 export interface User {
@@ -154,7 +156,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const supabase = supabaseRef.current ?? createClient();
         supabaseRef.current = supabase;
 
-        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session) => {
+        const { data } = supabase.auth.onAuthStateChange(async (_event: string, session: Session | null) => {
           if (!active) return;
 
           if (!session?.user) {
