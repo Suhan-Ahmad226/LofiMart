@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     sellerWarehouses.set(key, current);
   }
 
-  const resellerReferralMap = new Map(referrals.map((row) => [String(row.resellerId), row]));
+  const resellersWithClicks = Number(referrals || 0);
   const resellerMarkupMap = new Map(resellerMarkups.map((row) => [String(row.resellerId), Number(row._count?._all || 0)]));
 
   return NextResponse.json({
