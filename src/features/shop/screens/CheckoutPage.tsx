@@ -158,6 +158,7 @@ export const CheckoutPage = () => {
   const [saveAddressToAccount, setSaveAddressToAccount] = useState(false);
   const [enabledPaymentMethods, setEnabledPaymentMethods] = useState<string[]>([...DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS]);
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const idempotencyKeyFingerprintRef = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: user?.name || '',
@@ -486,6 +487,19 @@ export const CheckoutPage = () => {
         if (saveAddressPayload?.id) {
           setSelectedAddressId(String(saveAddressPayload.id));
         }
+      }
+
+      const orderFingerprint = JSON.stringify({
+        items: items.map((item) => [String(item.id), Number(item.quantity)]),
+        coupon: appliedCoupon?.code || null,
+        paymentMethod: formData.paymentMethod,
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        shippingAddress: addressSummary,
+      });
+      if (idempotencyKeyFingerprintRef.current !== orderFingerprint) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+        idempotencyKeyFingerprintRef.current = orderFingerprint;
       }
 
       const endpoint = isAuthenticated ? '/api/orders' : '/api/orders/guest';
