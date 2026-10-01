@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { getProfilePayload, requireApiUser } from '../../_compat/shared';
+import { getProfilePayload, requireApiUser, serializeUser } from '../../_compat/shared';
 import { deleteMedia, enqueueMediaDelete, parseCloudinaryAssetUrl } from '@/lib/media';
 
 export const runtime = 'nodejs';
@@ -10,9 +10,15 @@ export async function GET(request: NextRequest) {
   const user = await requireApiUser(request);
   if (user instanceof NextResponse) return user;
 
+  const minimal = request.nextUrl.searchParams.get('minimal') === '1';
+  if (minimal) {
+    const profile = await prisma.user.findUnique({ where: { id: String(user.id) } });
+    if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ user: serializeUser(profile) });
+  }
+
   const payload = await getProfilePayload(String(user.id));
   if (!payload) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
   return NextResponse.json(payload);
 }
 
