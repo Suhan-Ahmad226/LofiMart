@@ -103,6 +103,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const response = await fetch('/api/users/profile', {
               credentials: 'include',
+              headers: session?.access_token
+                ? { Authorization: `Bearer ${session.access_token}` }
+                : undefined,
             });
 
             if (response.ok) {
@@ -170,6 +173,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const response = await fetch('/api/users/profile', {
               credentials: 'include',
+              headers: session?.access_token
+                ? { Authorization: `Bearer ${session.access_token}` }
+                : undefined,
             });
 
             if (response.ok) {
