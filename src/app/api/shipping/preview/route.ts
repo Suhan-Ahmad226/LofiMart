@@ -12,6 +12,11 @@ type PreviewBody = {
   zone?: unknown;
   area?: unknown;
   items?: unknown;
+  /**
+   * Merchandise amount the customer will pay by COD after checkout discounts.
+   * The final order always recalculates this value from database prices.
+   */
+  codAmount?: unknown;
   deliverySpeed?: unknown;
   applyFreeShipping?: unknown;
 };
@@ -80,6 +85,7 @@ export async function POST(request: NextRequest) {
         area: body.area ? String(body.area) : null,
       },
       deliverySpeed: body.deliverySpeed === 'express' ? 'express' : 'standard',
+      codAmount: Number.isFinite(Number(body.codAmount)) ? Math.max(0, Number(body.codAmount)) : 0,
       applyFreeShipping: body.applyFreeShipping !== false,
     });
 
