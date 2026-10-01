@@ -248,6 +248,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
   };
 
   const byWarehouse = new Map<string, WarehouseGroup>();
+  const unavailableItems: string[] = [];
 
   const insideDhaka = /dhaka|ঢাকা/i.test(request.destination.city);
 
@@ -270,9 +271,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
         .sort((a, b) => b.quantity - a.quantity)[0]?.warehouse ?? null;
 
     if (!source) {
-      warnings.push(
-        'A cart item does not have enough stock in any single warehouse, so a fresh delivery quote is required after stock is replenished.',
-      );
+      unavailableItems.push(item.productId);
       continue;
     }
     const existing = byWarehouse.get(source.id);
@@ -296,6 +295,12 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
       ),
       threshold: toNumber(source.freeShippingThresholdOverride, freeShippingThreshold),
     });
+  }
+
+  if (unavailableItems.length > 0) {
+    throw new Error(
+      'One or more cart items do not have enough stock in a single warehouse to fulfill the requested quantity.',
+    );
   }
 
   if (assumedWeight) {
