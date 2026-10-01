@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "prisma:clean": "node scripts/prisma-clean.cjs",
     "dev": "cross-env NODE_ENV=development APP_ENV=development next dev",
-    "build": "npm run clean && npm run prisma:clean && npx prisma migrate deploy && npx prisma generate && npx next build",
+    "build": "npm run clean && npm run prisma:clean && npx prisma generate && npx next build",
     "build:clean": "npm run clean && npm run build",
     "start": "cross-env NODE_ENV=production next start",
     "worker": "cross-env NODE_ENV=development APP_ENV=development tsx src/workers/index.ts",
