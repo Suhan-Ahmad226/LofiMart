@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/server';
 import { Prisma } from '@prisma/client';
 import { getShippingQuote } from '@/features/courier/services/quoteService';
-import { restoreStockForOrder } from '@/features/telegram_bot/lib/inventoryService';
 import { ensureTelegramInvoice } from '@/features/telegram_bot/lib/invoiceService';
 import { sendLowStockAlert, sendNewOrderNotification } from '@/features/telegram_bot/lib/notificationService';
 import { isKnownCheckoutPaymentMethod } from '@/lib/commerce-channels';
