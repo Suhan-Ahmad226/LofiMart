@@ -260,18 +260,21 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     const lineWeight = productWeight * item.quantity;
     const lineSubtotal = toNumber(product.price) * item.quantity;
 
-    // Prefer the warehouse holding the most units, which is where the parcel
-    // will realistically ship from.
+    // Choose a single warehouse that can actually fulfill the requested quantity.
+    // Checkout currently creates one shipment allocation per product/warehouse,
+    // so picking a warehouse with only a partial quantity would make the preview
+    // look valid and then fail during order placement.
     const source =
-      [...product.inventoryItems].sort((a, b) => b.quantity - a.quantity)[0]?.warehouse ?? null;
+      [...product.inventoryItems]
+        .filter((item) => Number(item.quantity) >= item.quantity)
+        .sort((a, b) => b.quantity - a.quantity)[0]?.warehouse ?? null;
 
     if (!source) {
       warnings.push(
-        'A cart item has no warehouse stock, so part of the delivery fee is a flat fallback.',
+        'A cart item does not have enough stock in any single warehouse, so a fresh delivery quote is required after stock is replenished.',
       );
       continue;
     }
-
     const existing = byWarehouse.get(source.id);
     if (existing) {
       existing.itemCount += item.quantity;
