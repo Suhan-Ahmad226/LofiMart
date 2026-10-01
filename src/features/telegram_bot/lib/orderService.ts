@@ -338,7 +338,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
           warehouseId: quotedWarehouseId,
           quantity: { gte: item.quantity },
         },
-        orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
+        orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }, { warehouseId: 'asc' }],
       });
 
       if (!inventoryItem) {
