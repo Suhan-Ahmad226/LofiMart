@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, managerId: true, address: true, city: true, phone: true, contactName: true, pathaoStoreId: true },
         }),
       ),
-      safe('referrals', [], prisma.resellerReferral.findMany({ select: { resellerId: true, clicks: true } })),
+      safe('referrals', 0, prisma.resellerReferral.count({ where: { clicks: { gt: 0 } } })),
       safe('resellerMarkups', [], prisma.resellerMarkup.groupBy({ by: ['resellerId'], _count: { _all: true } })),
     ]);
 
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         verification_incomplete: resellers.filter((reseller) => !reseller.emailVerified || !reseller.phoneVerified).length,
         catalog_empty: resellers.filter((reseller) => Number(resellerMarkupMap.get(String(reseller.id)) || 0) === 0).length,
         payout_missing: resellers.filter((reseller) => !payoutReadyUserIds.has(String(reseller.id))).length,
-        no_clicks_yet: resellers.filter((reseller) => Number(resellerReferralMap.get(String(reseller.id))?.clicks || 0) === 0).length,
+        no_clicks_yet: Math.max(0, resellers.length - Number(referrals || 0)),
       },
     },
   });
