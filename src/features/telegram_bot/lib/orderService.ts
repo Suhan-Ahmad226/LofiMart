@@ -5,7 +5,7 @@ export async function assertSellerTelegramAccess(chatId: string | number, seller
     where: {
       id: sellerId,
       telegramChatId: String(chatId),
-      role: { in: ['seller', 'admin', 'reseller'] },
+      role: { in: ['seller', 'admin'] },
     },
     select: { id: true },
   });
