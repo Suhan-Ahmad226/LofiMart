@@ -101,7 +101,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (userData) {
           try {
-            const response = await fetch('/api/users/profile', {
+            const response = await fetch('/api/users/profile?minimal=1', {
               credentials: 'include',
               headers: session?.access_token
                 ? { Authorization: `Bearer ${session.access_token}` }
@@ -171,7 +171,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(session.access_token ?? null);
 
           try {
-            const response = await fetch('/api/users/profile', {
+            const response = await fetch('/api/users/profile?minimal=1', {
               credentials: 'include',
               headers: session?.access_token
                 ? { Authorization: `Bearer ${session.access_token}` }
