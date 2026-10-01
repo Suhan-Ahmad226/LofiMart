@@ -492,9 +492,33 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, type
   // auth effect has redirected the user to the correct dashboard.
   if (!isReady || !isAuthenticated || !token || !user || !roleMatches) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-        <div className="surface-card flex min-h-[220px] items-center justify-center text-sm font-semibold text-slate-500">
-          Securing your workspace...
+      <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6" aria-busy="true" aria-label="Loading dashboard">
+        <div className="space-y-5">
+          <div className="surface-card animate-pulse p-5">
+            <div className="h-6 w-48 rounded-md bg-slate-200" />
+            <div className="mt-3 h-4 w-72 max-w-full rounded-md bg-slate-100" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="surface-card animate-pulse p-5">
+                <div className="h-3 w-24 rounded bg-slate-200" />
+                <div className="mt-4 h-8 w-32 rounded bg-slate-100" />
+                <div className="mt-6 h-2 w-full rounded bg-slate-100" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {Array.from({ length: 2 }, (_, index) => (
+              <div key={index} className="surface-card animate-pulse p-5">
+                <div className="h-5 w-40 rounded bg-slate-200" />
+                <div className="mt-5 space-y-3">
+                  <div className="h-12 w-full rounded bg-slate-100" />
+                  <div className="h-12 w-full rounded bg-slate-100" />
+                  <div className="h-12 w-5/6 rounded bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
