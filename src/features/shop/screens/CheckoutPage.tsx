@@ -334,7 +334,7 @@ export const CheckoutPage = () => {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [formData.city, formData.district, hasShippingPreviewInputs, itemCount, items, subtotal]);
+  }, [formData.city, formData.district, formData.upazila, hasShippingPreviewInputs, itemCount, items, subtotal, totalPrice]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
