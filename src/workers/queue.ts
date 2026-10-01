@@ -823,6 +823,24 @@ export async function startWorkers() {
     });
   }
 
+  const courierReconciliationQueue = await getQueue(QUEUE_NAMES.courierReconciliation);
+  try {
+    await courierReconciliationQueue.add(
+      'reconcile-shipments',
+      { ts: Date.now() },
+      {
+        repeat: { every: 15 * 60 * 1000 },
+        jobId: sanitizeJobId('courier-reconciliation-sweep'),
+        removeOnComplete: 100,
+        removeOnFail: 100,
+      },
+    );
+  } catch (error) {
+    logger.error('worker.courier_reconciliation.schedule_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   const cartRecoveryWorker = new Worker(
     QUEUE_NAMES.cartRecovery,
     async (job) => {
