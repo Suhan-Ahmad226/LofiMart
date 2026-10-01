@@ -311,11 +311,17 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         throw new Error(`Insufficient stock for ${product?.name || item.productId}`);
       }
 
+      const quotedWarehouseId = (quote.shipments || [])
+        .flatMap((parcel) => parcel.allocations || [])
+        .find((allocation) => allocation.productId === item.productId)?.warehouseId;
+      if (!quotedWarehouseId) {
+        throw new Error('Shipping quote is missing the exact warehouse allocation for this item. Please refresh checkout.');
+      }
       const inventoryItem = await tx.inventoryItem.findFirst({
         where: {
           productId: item.productId,
+          warehouseId: quotedWarehouseId,
           quantity: { gte: item.quantity },
-          ...(quoteWarehouseIds.size > 0 ? { warehouseId: { in: [...quoteWarehouseIds] } } : {}),
         },
         orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
       });
@@ -373,8 +379,17 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     // If stock changed between quote and order placement and a different
     // warehouse would now be selected, abort the transaction instead of silently
     // charging the customer for one pickup point and booking another.
+    const quoteAllocationByProductId = new Map(
+      (quote.shipments || []).flatMap((parcel) =>
+        (parcel.allocations || []).map((allocation) => [allocation.productId, parcel.warehouseId] as const),
+      ),
+    );
+    const exactAllocationMatches = pricedItems.every(
+      (item) => quoteAllocationByProductId.get(item.productId) === warehouseIdByProductId.get(item.productId),
+    );
     const allocatedWarehouseIds = new Set([...warehouseIdByProductId.values()]);
     if (
+      !exactAllocationMatches ||
       quoteWarehouseIds.size !== allocatedWarehouseIds.size ||
       [...quoteWarehouseIds].some((warehouseId) => !allocatedWarehouseIds.has(warehouseId))
     ) {
