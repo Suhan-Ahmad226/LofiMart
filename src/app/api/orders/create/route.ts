@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMarketplaceOrder } from '../../../../features/telegram_bot';
+import { createMarketplaceOrder } from '../../../../features/orders/services/orderService';
 import { requireApiUser, serializeOrder } from '../../_compat/shared';
 
 export const runtime = 'nodejs';
