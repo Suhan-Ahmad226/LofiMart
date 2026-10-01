@@ -1,3 +1,7 @@
+import { prisma } from '@/lib/server';
+import { restoreStockForOrder } from './inventoryService';
+import { sendInvoiceToTelegram } from './invoiceService';
+import { sendOrderStatusNotification } from './notificationService';
 export { createMarketplaceOrder } from '@/features/orders/services/orderService';
 
 export async function assertSellerTelegramAccess(chatId: string | number, sellerId: string) {
