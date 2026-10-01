@@ -202,14 +202,12 @@ describe('warehouse quantity selection', () => {
       ],
     });
 
-    const quote = await getShippingQuote({
-      items: [{ productId: 'prod-1', quantity: 5 }],
-      destination: { city: 'Chattogram' },
-    });
-
-    expect(quote.verified).toBe(false);
-    expect(quote.shipments).toHaveLength(0);
-    expect(quote.warnings.join(' ')).toMatch(/enough stock/i);
+    await expect(
+      getShippingQuote({
+        items: [{ productId: 'prod-1', quantity: 5 }],
+        destination: { city: 'Chattogram' },
+      }),
+    ).rejects.toThrow(/enough stock in a single warehouse/i);
   });
 });
 
