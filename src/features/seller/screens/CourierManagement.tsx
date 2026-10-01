@@ -19,6 +19,10 @@ interface SellerShipment {
   status: string;
   courier_provider?: string | null;
   tracking_id?: string | null;
+  booking_state?: string | null;
+  booking_error?: string | null;
+  booking_attempt_count?: number;
+  next_reconcile_at?: string | null;
   /** The courier's own status string, as last reconciled. */
   provider_status?: string | null;
   provider_reference?: string | null;
@@ -268,12 +272,7 @@ export const SellerCourierManagement = () => {
     // a courier the shipment was never assigned to would create a parcel the
     // customer cannot track and the reconciliation job would never find.
     const shipment = shipments.find((entry) => entry.id === shipmentId);
-    const providerCode = resolveCourier(shipment?.courier_provider)?.code;
-    if (!providerCode) {
-      info('Assign a courier to this shipment before requesting pickup.', 3600);
-      setUpdatingShipmentId('');
-      return;
-    }
+    const providerCode = resolveCourier(shipment?.courier_provider)?.code || 'pathao';
 
     try {
       const response = await fetch('/api/seller/courier/bookings', {
@@ -298,17 +297,33 @@ export const SellerCourierManagement = () => {
           shipment.id === shipmentId
             ? {
                 ...shipment,
-                status: payload?.shipment?.status || 'pickup_requested',
-                courier_provider: payload?.shipment?.courier_provider || payload?.booking?.providerName || providerCode,
+                status: payload?.shipment?.status || shipment.status,
+                booking_state: payload?.booking_state || 'queued',
+                courier_provider: payload?.shipment?.courier_provider || providerCode,
                 tracking_id: payload?.shipment?.tracking_id || payload?.booking?.trackingId || null,
+                booking_error: null,
               }
             : shipment,
         ),
       );
       success(
-        `${payload?.booking?.providerName || providerCode} pickup requested for shipment ${shipmentId.slice(0, 8)}. Tracking ID: ${payload?.booking?.trackingId || 'pending'}`,
+        `Pathao pickup request accepted for shipment ${shipmentId.slice(0, 8)}. We are waiting for the tracking ID.`,
         3600,
       );
+
+      const pollDelays = [1500, 3000, 5000, 8000];
+      for (const delay of pollDelays) {
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+        const refreshResponse = await fetch('/api/seller/shipments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const refreshPayload = await refreshResponse.json().catch(() => null);
+        if (!refreshResponse.ok || !Array.isArray(refreshPayload)) continue;
+        const refreshed = (refreshPayload as SellerShipment[]).find((entry) => entry.id === shipmentId);
+        if (!refreshed) continue;
+        setShipments((current) => current.map((entry) => (entry.id === shipmentId ? refreshed : entry)));
+        if (refreshed.tracking_id || ['failed', 'uncertain'].includes(String(refreshed.booking_state || ''))) break;
+      }
     } catch (requestError) {
       info(requestError instanceof Error ? requestError.message : 'Pickup request failed right now.', 3600);
     } finally {
@@ -624,63 +639,19 @@ export const SellerCourierManagement = () => {
       );
     }
 
-    if (shipment.status === 'pickup_requested') {
-      return (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => void handleStatusUpdate(shipment.id, 'picked_up')}
-              disabled={busy}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-            >
-              {busy ? 'Saving...' : 'Mark Picked Up'}
-            </button>
-            {renderProviderSyncAction(shipment, busy)}
-          </div>
-        </div>
-      );
-    }
-
-    if (shipment.status === 'picked_up') {
+    if (['pickup_requested', 'picked_up', 'in_transit', 'out_for_delivery'].includes(shipment.status)) {
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => void handleStatusUpdate(shipment.id, 'in_transit')}
-            disabled={busy}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            {busy ? 'Saving...' : 'Start Transit'}
-          </button>
-          {renderProviderSyncAction(shipment, busy)}
-        </div>
-      );
-    }
-
-    if (shipment.status === 'in_transit') {
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => void handleStatusUpdate(shipment.id, 'out_for_delivery')}
-            disabled={busy}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[10px] font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            {busy ? 'Saving...' : 'Out for Delivery'}
-          </button>
-          {renderProviderSyncAction(shipment, busy)}
-        </div>
-      );
-    }
-
-    if (shipment.status === 'out_for_delivery') {
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => void handleStatusUpdate(shipment.id, 'delivered')}
-            disabled={busy}
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {busy ? 'Saving...' : 'Mark Delivered'}
-          </button>
+          {shipment.booking_state === 'uncertain' ? (
+            <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold text-amber-800">
+              Booking confirmation pending
+            </span>
+          ) : null}
+          {shipment.booking_state === 'failed' ? (
+            <span className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-700">
+              Booking failed
+            </span>
+          ) : null}
           {renderProviderSyncAction(shipment, busy)}
         </div>
       );

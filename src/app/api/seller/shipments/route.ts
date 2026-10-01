@@ -49,6 +49,12 @@ export async function GET(request: NextRequest) {
       status: shipment.status,
       courier_provider: shipment.courierProvider ?? null,
       tracking_id: shipment.trackingId ?? null,
+      booking_state: shipment.bookingState,
+      booking_error: shipment.lastBookingError ?? null,
+      booking_attempt_count: shipment.bookingAttemptCount ?? 0,
+      next_reconcile_at: shipment.nextReconcileAt
+        ? new Date(shipment.nextReconcileAt).toISOString()
+        : null,
       // The courier's own status string, plus when we last asked it. Exposed so
       // the seller can see why a parcel looks stale without opening the admin
       // tools. This is the field the UI reads; the old `pathaoLastEvent` metadata

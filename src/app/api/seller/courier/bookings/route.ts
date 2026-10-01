@@ -96,14 +96,15 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const shipmentId = typeof body?.shipmentId === 'string' ? body.shipmentId.trim() : '';
   const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : '';
-  const provider = typeof (body?.provider ?? body?.providerCode) === 'string'
+  const requestedProvider = typeof (body?.provider ?? body?.providerCode) === 'string'
     ? String(body.provider ?? body.providerCode).trim().toLowerCase()
     : '';
   const trackingId = typeof body?.trackingId === 'string' ? body.trackingId.trim() : '';
   const warehouseId = typeof body?.warehouseId === 'string' ? body.warehouseId.trim() : '';
 
-  // A seller-entered tracking id contacts no courier, so it needs no registered
-  // provider; only the API booking path does.
+  // Pathao is the only active provider, so older shipments without an assigned
+  // provider can still use the one-click seller booking flow.
+  const provider = trackingId ? requestedProvider : (requestedProvider || 'pathao');
   const courierProvider = trackingId ? null : getCourierProvider(provider);
 
   if (!shipmentId && !orderId) {

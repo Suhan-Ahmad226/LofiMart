@@ -53,6 +53,12 @@ interface OrderShipmentInput {
   deliveredAt?: Date | string | null;
   deliveryFailureReason?: string | null;
   shipmentMetadata?: unknown;
+  providerStatus?: string | null;
+  providerReference?: string | null;
+  lastReconciledAt?: Date | string | null;
+  nextReconcileAt?: Date | string | null;
+  bookingState?: string | null;
+  lastBookingError?: string | null;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
   warehouse?: WarehouseInput | null;
@@ -135,6 +141,12 @@ export function serializeOrderShipment(shipment: OrderShipmentInput) {
     item_count: shipment.itemCount,
     courier_provider: shipment.courierProvider ?? null,
     tracking_id: shipment.trackingId ?? null,
+    provider_status: shipment.providerStatus ?? null,
+    provider_reference: shipment.providerReference ?? null,
+    last_reconciled_at: shipment.lastReconciledAt ? new Date(shipment.lastReconciledAt).toISOString() : null,
+    next_reconcile_at: shipment.nextReconcileAt ? new Date(shipment.nextReconcileAt).toISOString() : null,
+    booking_state: shipment.bookingState ?? null,
+    booking_error: shipment.lastBookingError ?? null,
     pickup_requested_at: shipment.pickupRequestedAt ? new Date(shipment.pickupRequestedAt).toISOString() : null,
     picked_up_at: shipment.pickedUpAt ? new Date(shipment.pickedUpAt).toISOString() : null,
     out_for_delivery_at: shipment.outForDeliveryAt ? new Date(shipment.outForDeliveryAt).toISOString() : null,
