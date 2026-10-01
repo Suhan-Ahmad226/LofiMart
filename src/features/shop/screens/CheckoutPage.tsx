@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@/lib/navigation';
 import {
   ArrowRight,
@@ -156,6 +156,7 @@ export const CheckoutPage = () => {
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [saveAddressToAccount, setSaveAddressToAccount] = useState(false);
   const [enabledPaymentMethods, setEnabledPaymentMethods] = useState<string[]>([...DEFAULT_ENABLED_CHECKOUT_PAYMENT_METHODS]);
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const [formData, setFormData] = useState({
     fullName: user?.name || '',
@@ -487,6 +488,7 @@ export const CheckoutPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-idempotency-key': idempotencyKeyRef.current,
           ...(isAuthenticated ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
@@ -515,6 +517,7 @@ export const CheckoutPage = () => {
             price: item.price,
           })),
           refCode: localStorage.getItem('ref_code') || undefined,
+          idempotencyKey: idempotencyKeyRef.current,
         }),
       });
 
