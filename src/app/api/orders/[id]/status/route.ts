@@ -70,6 +70,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const body = await request.json().catch(() => ({}));
   const { status, courierProvider, trackingId, deliveryFailureReason } = body as Record<string, any>;
+  const allowedStatuses = new Set([
+    'processing',
+    'confirmed',
+    'pickup_requested',
+    'picked_up',
+    'out_for_delivery',
+    'delivered',
+    'cancelled',
+    'returned',
+    'return_requested',
+    'delivery_failed',
+  ]);
+  if (typeof status !== 'string' || !allowedStatuses.has(status)) {
+    return NextResponse.json({ error: 'Invalid order status.' }, { status: 400 });
+  }
   const { id: orderId } = await params;
 
   try {
