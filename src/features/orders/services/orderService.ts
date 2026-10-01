@@ -255,6 +255,12 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     return collectibleAmount * (parcelTotal / subtotal);
   };
 
+  const loadExistingOrder = async (orderId: string) =>
+    prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: true } }, shipments: { include: { items: true } }, invoice: true },
+    });
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
@@ -499,7 +505,22 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     }
 
     return created;
+  }).catch(async (error) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const replay = await prisma.order.findUnique({
+        where: { idempotencyKey },
+        select: { id: true, userId: true },
+      });
+      if (replay && (!replay.userId || replay.userId === input.userId)) {
+        return loadExistingOrder(replay.id);
+      }
+    }
+    throw error;
   });
+
+  if (!order) {
+    throw new Error('Order could not be created.');
+  }
 
   try {
     await ensureTelegramInvoice(order.id);
