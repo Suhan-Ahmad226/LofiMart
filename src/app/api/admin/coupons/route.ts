@@ -68,6 +68,15 @@ export async function POST(request: NextRequest) {
   if (Number.isNaN(expiry.getTime())) {
     return NextResponse.json({ error: 'Invalid expiry date' }, { status: 400 });
   }
+  if (expiry <= new Date()) {
+    return NextResponse.json({ error: 'Expiry date must be in the future' }, { status: 400 });
+  }
+  if (minOrderValue < 0) {
+    return NextResponse.json({ error: 'Minimum order value cannot be negative' }, { status: 400 });
+  }
+  if (discountType === 'percentage' && discountValue > 100) {
+    return NextResponse.json({ error: 'Percentage discount cannot exceed 100%' }, { status: 400 });
+  }
 
   const coupon = await prisma.coupon.create({
     data: {
