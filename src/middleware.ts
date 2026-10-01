@@ -113,11 +113,6 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
   }
 
-  if (pathname.startsWith('/_next/') || pathname.includes('.')) {
-    if (isProd) {
-      response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-  }
 
   return response;
 }
