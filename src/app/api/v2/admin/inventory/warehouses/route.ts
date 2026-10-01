@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   const user = result.user;
   const warehouses = await withTenantContext(
     { tenantId: typeof user.tenantId === 'string' ? user.tenantId : undefined, bypass: user.role === 'admin' },
-    () => getOrSetCache('inventory:warehouses', () => inventoryModule.listWarehouses(), 300),
+    () => getOrSetCache(`inventory:warehouses:${user.role === 'admin' ? 'global' : String(user.tenantId || 'none')}`, () => inventoryModule.listWarehouses(), 300),
   );
 
   return apiSuccess(warehouses, {
@@ -75,7 +75,8 @@ export async function POST(req: Request) {
     { tenantId: typeof user.tenantId === 'string' ? user.tenantId : undefined, bypass: user.role === 'admin' },
     () => inventoryModule.createWarehouse(parsed.data),
   );
-  await deleteCache('inventory:warehouses');
+  await deleteCache('inventory:warehouses:global');
+  if (user.role !== 'admin') await deleteCache(`inventory:warehouses:${String(user.tenantId || 'none')}`);
   await invalidateInventoryCache();
 
   return apiSuccess(warehouse, {
