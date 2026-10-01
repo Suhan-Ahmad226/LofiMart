@@ -1,1 +1,0 @@
-ALTER TABLE "Invoice" ALTER COLUMN "userId" DROP NOT NULL;
