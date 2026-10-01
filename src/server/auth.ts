@@ -124,6 +124,14 @@ export async function requireDashboardAccess(
   return { authorized, user, redirectTo };
 }
 
+export function requireAdminRole(user: AuthenticatedUser): NextResponse | null {
+  return requireRole(user, ['admin']);
+}
+
+export function requireSellerRole(user: AuthenticatedUser): NextResponse | null {
+  return requireRole(user, ['seller']);
+}
+
 export function requireRole(user: AuthenticatedUser, roles: Role[]): NextResponse | null {
   if (user.role !== 'admin' && !roles.includes(user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
