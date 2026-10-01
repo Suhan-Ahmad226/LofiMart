@@ -75,7 +75,7 @@ export type ShippingQuote = {
   verified: boolean;
   freeShippingApplied: boolean;
   freeShippingThreshold: number;
-  /** What the rider collects: goods, plus platform fee, minus discounts. */
+  /** What the rider collects: the final customer payable amount. */
   amountToCollect: number;
   totalCustomerDeliveryFee: number;
   totalCourierCharge: number;
