@@ -28,6 +28,7 @@ const GuestOrderSchema = z.object({
   fullAddressSummary: z.unknown().optional(),
   couponCode: z.string().optional(),
   refCode: z.string().optional(),
+  idempotencyKey: z.string().min(16).max(128).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
       shippingAddress: body.shippingAddress || body.fullAddressSummary || null,
       couponCode: body.couponCode ? String(body.couponCode) : undefined,
       items,
+      idempotencyKey: body.idempotencyKey || crypto.randomUUID(),
     });
 
     return NextResponse.json(
