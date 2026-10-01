@@ -192,20 +192,35 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   // Production checkout requires a real destination and a verified live courier
   // quote. A fallback fee must never silently become a customer order total.
   const destination = readDestination(input.shippingAddress);
-  const collectibleAmount = Math.max(0, subtotal - discountAmount);
 
   if (!destination) {
     throw new Error('A delivery city is required before the order can be placed.');
   }
 
-  const quote = await getShippingQuote({
+  // Financial rule: the customer pays merchandise after discount + platform fee
+  // + delivery fee. COD is the full customer payable amount, because the rider
+  // collects the amount shown at checkout. Pathao's COD fee depends on the COD
+  // amount, while the delivery fee includes that COD fee, so resolve the small
+  // circular dependency with a bounded fixed-point pass.
+  const merchandisePayable = Math.max(0, subtotal - discountAmount);
+  let codAmount = merchandisePayable + platformFee;
+  let quote = await getShippingQuote({
     items: normalizedItems,
     destination,
-    // Quote COD fees against the server-calculated merchandise amount. Pathao
-    // charges COD against the amount collected, so this must never be the same
-    // full order amount once multiple warehouse parcels exist.
-    codAmount: collectibleAmount,
+    codAmount,
   });
+
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (!quote.verified) break;
+    const nextCodAmount = merchandisePayable + platformFee + quote.totalCustomerDeliveryFee;
+    if (Math.abs(nextCodAmount - codAmount) < 0.01) break;
+    codAmount = nextCodAmount;
+    quote = await getShippingQuote({
+      items: normalizedItems,
+      destination,
+      codAmount,
+    });
+  }
 
   if (!quote.verified) {
     throw new Error(
@@ -217,8 +232,8 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   const deliveryFee = quote.totalCustomerDeliveryFee;
   const deliveryFeeVerified = true;
   const deliveryQuoteWarnings = quote.warnings;
-
-  const total = Math.max(0, subtotal - discountAmount) + platformFee + deliveryFee;
+  const total = merchandisePayable + platformFee + deliveryFee;
+  const collectibleAmount = total;
   const orderCode = buildOrderCode();
   const lowStockAlerts: Array<{ sellerId: string; productName: string; stock: number; threshold: number }> = [];
 
