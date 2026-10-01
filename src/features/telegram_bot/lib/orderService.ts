@@ -298,6 +298,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
      * flow.
      */
     const warehouseIdByProductId = new Map<string, string>();
+    const quoteWarehouseIds = new Set((quote.shipments || []).map((parcel) => parcel.warehouseId));
 
     for (const item of pricedItems) {
       const updated = await tx.product.updateMany({
@@ -314,6 +315,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         where: {
           productId: item.productId,
           quantity: { gte: item.quantity },
+          ...(quoteWarehouseIds.size > 0 ? { warehouseId: { in: [...quoteWarehouseIds] } } : {}),
         },
         orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }],
       });
@@ -371,7 +373,6 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     // If stock changed between quote and order placement and a different
     // warehouse would now be selected, abort the transaction instead of silently
     // charging the customer for one pickup point and booking another.
-    const quoteWarehouseIds = new Set((quote.shipments || []).map((parcel) => parcel.warehouseId));
     const allocatedWarehouseIds = new Set([...warehouseIdByProductId.values()]);
     if (
       quoteWarehouseIds.size !== allocatedWarehouseIds.size ||
@@ -542,6 +543,7 @@ export async function updateSellerOrderStatus(input: {
     select: {
       id: true,
       status: true,
+      warehouseId: true,
       items: {
         select: {
           productId: true,
@@ -587,6 +589,7 @@ export async function updateSellerOrderStatus(input: {
         productId: item.productId,
         quantity: item.qty,
         reference: input.orderId,
+        warehouseId: existingShipment.warehouseId ?? undefined,
       })),
     );
   }
