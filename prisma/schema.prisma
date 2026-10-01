@@ -35,9 +35,9 @@ enum OrderStatus {
   delivery_failed
   returned
   cancelled
+  shipped
 
   @@schema("public")
-  shipped
 }
 
 enum PaymentStatus {
@@ -65,9 +65,9 @@ enum ShipmentStatus {
   delivery_failed
   returned
   cancelled
+  shipped
 
   @@schema("public")
-  shipped
 }
 
 enum SocialPlatform {
