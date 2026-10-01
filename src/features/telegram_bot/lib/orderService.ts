@@ -411,7 +411,9 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
              * know" is distinguishable from "delivery was free".
              */
             courierProvider: quote?.provider ?? null,
-            customerDeliveryFee: parcel ? new Prisma.Decimal(parcel.customerDeliveryFee) : null,
+            customerDeliveryFee: parcel
+              ? new Prisma.Decimal(quote.freeShippingApplied ? 0 : parcel.customerDeliveryFee)
+              : null,
             courierCharge: parcel?.courierCharge != null ? new Prisma.Decimal(parcel.courierCharge) : null,
             codFee: new Prisma.Decimal(parcel?.codFee ?? 0),
             codAmount: new Prisma.Decimal(Math.max(0, collectibleAmountFor(warehouseItems))),
