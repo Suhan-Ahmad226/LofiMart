@@ -24,6 +24,7 @@ export const CustomerOrdersPage = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        setLoading(true);
         setError('');
         const response = await fetch('/api/orders/my-orders', {
           headers: {
