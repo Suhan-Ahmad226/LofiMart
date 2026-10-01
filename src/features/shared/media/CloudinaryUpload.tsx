@@ -1,4 +1,5 @@
 import React, { useId, useRef, useState } from 'react';
+import { createClient } from '@/lib/client';
 import { Check, Image as ImageIcon, Loader2, UploadCloud } from 'lucide-react';
 
 interface Props {
@@ -145,7 +146,8 @@ export const CloudinaryUpload: React.FC<Props> = ({ onUploaded, label = 'Upload 
   const [optimizedFileSize, setOptimizedFileSize] = useState('');
 
   const uploadViaServer = async (file: File) => {
-    const token = window.localStorage.getItem('token');
+    const { data: sessionData } = await createClient().auth.getSession();
+    const token = sessionData.session?.access_token;
     if (!token) {
       throw new Error('Please log in as an admin or seller before uploading media');
     }
