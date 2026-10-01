@@ -19,7 +19,8 @@ function takeProducts<T>(products: T[], start: number, count: number) {
 
 export async function GET() {
   try {
-    const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: banners }] =
+    const now = new Date();
+    const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: banners }, { value: flashSaleCampaign }] =
       await Promise.all([
         raceWithTimeout(
           prisma.product.findMany({
@@ -70,6 +71,19 @@ export async function GET() {
           [],
         ),
         raceWithTimeout(
+          prisma.flashSaleCampaign.findFirst({
+            where: {
+              status: 'active',
+              startsAt: { lte: now },
+              endsAt: { gt: now },
+            },
+            orderBy: { endsAt: 'asc' },
+            select: { endsAt: true },
+          }),
+          1000,
+          null,
+        ),
+        raceWithTimeout(
           prisma.banner.findMany({
             where: { isActive: true },
             orderBy: { createdAt: 'desc' },
@@ -105,6 +119,7 @@ export async function GET() {
 
     return NextResponse.json({
       products: productPayload,
+      flashSaleEndsAt: flashSaleCampaign?.endsAt?.toISOString() ?? null,
       categories: categoryPayload,
       banners: banners.map((banner) => ({
         id: banner.id,
