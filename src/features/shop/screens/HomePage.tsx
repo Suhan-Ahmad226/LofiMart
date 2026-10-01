@@ -269,6 +269,8 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
           widthHint={360}
           heightHint={280}
           fit="fill"
+          sizes="148px"
+          sizes="148px"
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       </div>
