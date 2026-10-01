@@ -5,6 +5,7 @@ import { restoreStockForOrder } from './inventoryService';
 import { ensureTelegramInvoice, sendInvoiceToTelegram } from './invoiceService';
 import { sendLowStockAlert, sendNewOrderNotification, sendOrderStatusNotification } from './notificationService';
 import { isKnownCheckoutPaymentMethod } from '@/lib/commerce-channels';
+import { randomBytes } from 'node:crypto';
 
 type CreateOrderLine = {
   productId: string;
@@ -23,6 +24,7 @@ type CreateMarketplaceOrderInput = {
   refCode?: string;
   couponCode?: string;
   platformFee?: number;
+  idempotencyKey?: string;
 };
 
 const DEFAULT_PLATFORM_FEE = 5;
@@ -55,7 +57,7 @@ function readDestination(shippingAddress: unknown): { city: string; zone: string
 }
 
 function buildOrderCode() {
-  return `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  return `ORD-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 function normalizeStatusForOrder(status: 'accepted' | 'shipped' | 'delivered' | 'cancelled') {
@@ -72,6 +74,14 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
 
   if (!input.userId && (!input.guestEmail || !input.guestPhone)) {
     throw new Error('Guest orders require both a guest email and phone number');
+  }
+
+  const idempotencyKey = String(input.idempotencyKey || '').trim();
+  if (idempotencyKey.length < 16 || idempotencyKey.length > 128) throw new Error('A valid idempotency key is required');
+  const existingByKey = await prisma.order.findUnique({ where: { idempotencyKey } });
+  if (existingByKey) {
+    if (existingByKey.userId && existingByKey.userId !== input.userId) throw new Error('Invalid idempotency key');
+    return prisma.order.findUnique({ where: { id: existingByKey.id }, include: { items: { include: { product: true } }, shipments: { include: { items: true } }, invoice: true } });
   }
 
   const normalizedItems = Array.from(
@@ -237,6 +247,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         guestEmail: input.guestEmail || null,
         guestPhone: input.guestPhone || null,
         tenantId: input.tenantId,
+        idempotencyKey,
         total,
         status: 'processing',
         orderCode,
