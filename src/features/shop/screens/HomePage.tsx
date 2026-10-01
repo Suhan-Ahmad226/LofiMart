@@ -270,7 +270,6 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
           heightHint={280}
           fit="fill"
           sizes="148px"
-          sizes="148px"
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
       </div>
@@ -282,26 +281,22 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
   );
 });
 
-const CountdownTimer = memo(function CountdownTimer() {
+const CountdownTimer = memo(function CountdownTimer({ endsAt }: { endsAt?: string | null }) {
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
-    let target = Date.now() + 7 * 60 * 60 * 1000 + 45 * 60 * 1000;
-    setCountdown(getCountdown(target));
+    const target = endsAt ? Date.parse(endsAt) : 0;
+    if (!target || target <= Date.now()) {
+      setCountdown({ hours: 0, minutes: 0, seconds: 0 });
+      return undefined;
+    }
 
-    const intervalId = window.setInterval(() => {
-      const remaining = target - Date.now();
-
-      if (remaining <= 0) {
-        target = Date.now() + 8 * 60 * 60 * 1000;
-      }
-
-      setCountdown(getCountdown(target));
-    }, 1000);
-
+    const update = () => setCountdown(getCountdown(target));
+    update();
+    const intervalId = window.setInterval(update, 1000);
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [endsAt]);
 
   const totalMinutes = countdown.hours * 60 + countdown.minutes;
 
@@ -317,6 +312,8 @@ const CountdownTimer = memo(function CountdownTimer() {
   }, [totalMinutes, countdown.seconds]);
 
   const pad = (value: number) => String(value).padStart(2, '0');
+
+  if (!endsAt) return null;
 
   return (
     <div role="timer" aria-label="Time remaining in the flash sale" className="flex items-center gap-1.5">
@@ -619,6 +616,7 @@ export const HomePage = () => {
   const [productGroups, setProductGroups] = useState<HomepageProductGroups>(emptyProductGroups);
   const [categories, setCategories] = useState<Category[]>(fallbackCategories);
   const [banners, setBanners] = useState<HomeBanner[]>([]);
+  const [flashSaleEndsAt, setFlashSaleEndsAt] = useState<string | null>(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -641,6 +639,7 @@ export const HomePage = () => {
         setProductGroups(getHomepageProductGroups(payload, nextProducts));
         setCategories(nextCategories.length > 0 ? nextCategories : fallbackCategories);
         setBanners(nextBanners.filter((banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title)));
+        setFlashSaleEndsAt(typeof payload?.flashSaleEndsAt === 'string' ? payload.flashSaleEndsAt : null);
         setActiveBannerIndex(0);
       })
       .catch((fetchError) => {
@@ -649,6 +648,7 @@ export const HomePage = () => {
         setProductGroups(emptyProductGroups);
         setCategories(fallbackCategories);
         setBanners([]);
+        setFlashSaleEndsAt(null);
         setError(fetchError instanceof Error ? fetchError.message : 'Unable to load the storefront.');
       })
       .finally(() => {
@@ -777,9 +777,6 @@ export const HomePage = () => {
 
           {heroBanners.length > 1 ? (
             <>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-2 md:hidden">
-                <span className="sr-only">Swipe or use the promotion dots to change slides</span>
-              </div>
               <button
                 type="button"
                 aria-label="Previous promotion"
@@ -854,7 +851,7 @@ export const HomePage = () => {
               <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">Limited-time marketplace deals</h2>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <CountdownTimer />
+              <CountdownTimer endsAt={flashSaleEndsAt} />
               <Link
                 to="/flash-sale"
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-rose-600"
