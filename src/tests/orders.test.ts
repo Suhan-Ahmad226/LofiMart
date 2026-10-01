@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Decimal } from 'decimal.js';
-import { createMarketplaceOrder } from '@/features/telegram_bot/lib/orderService';
+import { createMarketplaceOrder } from '@/features/orders/services/orderService';
 import { prisma } from '@/lib/server';
 
 vi.mock('@/lib/server', () => ({
