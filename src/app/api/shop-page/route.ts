@@ -17,16 +17,6 @@ function takeProducts<T>(products: T[], start: number, count: number) {
   return result;
 }
 
-function groupHomepageProducts<T>(products: T[]) {
-  return {
-    flashSale: takeProducts(products, 0, 4),
-    featured: takeProducts(products, 4, 8),
-    bestSelling: takeProducts(products, 12, 6),
-    newArrivals: takeProducts(products, 18, 6),
-    trending: takeProducts(products, 24, 6),
-  };
-}
-
 export async function GET() {
   try {
     const [{ value: products, timedOut: productTimedOut }, { value: categories }, { value: banners }] =
@@ -101,7 +91,9 @@ export async function GET() {
       console.warn('GET /api/shop-page products timed out; returning partial storefront payload');
     }
 
-    const productPayload = products.map(serializeProduct);
+    const productPayload = products
+      .filter((product) => !product.image || !product.image.startsWith('data:'))
+      .map(serializeProduct);
     const categoryPayload =
       categories.length > 0
         ? categories
