@@ -266,7 +266,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     // look valid and then fail during order placement.
     const source =
       [...product.inventoryItems]
-        .filter((item) => Number(item.quantity) >= item.quantity)
+        .filter((inventory) => Number(inventory.quantity) >= item.quantity)
         .sort((a, b) => b.quantity - a.quantity)[0]?.warehouse ?? null;
 
     if (!source) {
