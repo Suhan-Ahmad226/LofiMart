@@ -78,8 +78,28 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   if (idempotencyKey.length < 16 || idempotencyKey.length > 128) throw new Error('A valid idempotency key is required');
   const existingByKey = await prisma.order.findUnique({ where: { idempotencyKey } });
   if (existingByKey) {
-    if (existingByKey.userId && existingByKey.userId !== input.userId) throw new Error('Invalid idempotency key');
-    return prisma.order.findUnique({ where: { id: existingByKey.id }, include: { items: { include: { product: true } }, shipments: { include: { items: true } }, invoice: true } });
+    const sameUser = !existingByKey.userId || existingByKey.userId === input.userId;
+    const sameGuestEmail =
+      !existingByKey.guestEmail ||
+      !input.guestEmail ||
+      existingByKey.guestEmail.trim().toLowerCase() === input.guestEmail.trim().toLowerCase();
+    const sameGuestPhone =
+      !existingByKey.guestPhone ||
+      !input.guestPhone ||
+      existingByKey.guestPhone === input.guestPhone;
+
+    if (!sameUser || !sameGuestEmail || !sameGuestPhone) {
+      throw new Error('Invalid idempotency key');
+    }
+
+    return prisma.order.findUnique({
+      where: { id: existingByKey.id },
+      include: {
+        items: { include: { product: true } },
+        shipments: { include: { items: true } },
+        invoice: true,
+      },
+    });
   }
 
   const normalizedItems = Array.from(
