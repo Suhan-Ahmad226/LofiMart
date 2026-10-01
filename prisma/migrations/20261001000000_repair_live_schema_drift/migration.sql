@@ -91,3 +91,7 @@ SELECT
 FROM "Warehouse" w
 WHERE w."pathaoStoreId" IS NOT NULL
 ON CONFLICT ("provider","warehouseId") DO NOTHING;
+
+-- Backward-compatible status values used by existing production rows.
+ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'shipped';
+ALTER TYPE "ShipmentStatus" ADD VALUE IF NOT EXISTS 'shipped';
