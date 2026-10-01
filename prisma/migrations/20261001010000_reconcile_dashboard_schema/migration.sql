@@ -1,4 +1,6 @@
--- Additive production schema reconciliation for dashboard/runtime compatibility.
+-- FINAL additive production schema reconciliation for dashboard/runtime compatibility.
+-- This migration is intentionally idempotent: no DROP/TRUNCATE/DELETE/RESET operations.
+-- It repairs live dashboard schema drift before Next.js runtime queries execute.
 ALTER TYPE "PaymentStatus" ADD VALUE IF NOT EXISTS 'unpaid';
 ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'shipped';
 ALTER TYPE "ShipmentStatus" ADD VALUE IF NOT EXISTS 'shipped';
