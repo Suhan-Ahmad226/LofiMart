@@ -775,6 +775,9 @@ export const HomePage = () => {
 
           {heroBanners.length > 1 ? (
             <>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-2 md:hidden">
+                <span className="sr-only">Swipe or use the promotion dots to change slides</span>
+              </div>
               <button
                 type="button"
                 aria-label="Previous promotion"
@@ -897,7 +900,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      <DeferredSection fallback={<SectionSkeleton />}>
+      <DeferredSection fallback={<SectionSkeleton heightClass="h-[38rem] md:h-80" />}>
         <DealsSection
           products={products}
           loading={loading}
