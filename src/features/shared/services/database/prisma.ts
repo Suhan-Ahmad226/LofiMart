@@ -43,11 +43,16 @@ export const prisma = basePrisma.$extends({
           return query(args);
         }
 
-        if (['findUnique', 'findFirst', 'findMany', 'count', 'aggregate', 'updateMany', 'deleteMany'].includes(operation)) {
+        // Unique selectors (findUnique/update/upsert) cannot safely accept an
+        // extra tenantId unless the schema defines a matching compound unique key.
+        // IDs are globally unique, so keep unique reads/writes valid and enforce
+        // tenant isolation on non-unique operations below. Callers that mutate a
+        // tenant-owned row must still authorize ownership before using its ID.
+        if (['findFirst', 'findMany', 'count', 'aggregate', 'updateMany', 'deleteMany'].includes(operation)) {
           return query(withTenantFilter(args as Record<string, any>, tenantId));
         }
 
-        if (['create', 'createMany', 'upsert', 'update'].includes(operation)) {
+        if (['create', 'createMany'].includes(operation)) {
           const nextArgs = { ...(args as Record<string, any>) };
 
           if (nextArgs.data) {
