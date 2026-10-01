@@ -271,7 +271,7 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
     const source =
       [...product.inventoryItems]
         .filter((inventory) => Number(inventory.quantity) >= item.quantity)
-        .sort((a, b) => b.quantity - a.quantity)[0]?.warehouse ?? null;
+        .sort((a, b) => b.quantity - a.quantity || a.warehouse.id.localeCompare(b.warehouse.id))[0]?.warehouse ?? null;
 
     if (!source) {
       unavailableItems.push(item.productId);
