@@ -27,8 +27,11 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
 
 function normalizePaginationRequest(request: PaginationRequest | NextRequestLike): PaginationRequest {
   if ('query' in request && request.query && typeof request.query === 'object') return request;
-  const searchParams = request.nextUrl?.searchParams;
-  return { query: searchParams ? Object.fromEntries(searchParams.entries()) : {} };
+  if ('nextUrl' in request) {
+    const searchParams = request.nextUrl?.searchParams;
+    return { query: searchParams ? Object.fromEntries(searchParams.entries()) : {} };
+  }
+  return { query: {} };
 }
 
 export function parsePagination(
