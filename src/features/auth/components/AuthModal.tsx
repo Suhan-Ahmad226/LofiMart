@@ -468,7 +468,7 @@ export default function AuthModal() {
       if (!hasSupabaseBrowserEnv()) throw new Error('Supabase auth is not configured.');
 
       const supabase = await getSupabaseBrowserClient();
-      rememberPendingOAuthRedirect({ redirectTarget: destination, mode: 'login' });
+      rememberPendingOAuthRedirect({ redirectTarget: destination, mode: 'register' });
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
