@@ -90,12 +90,12 @@ export default function AuthModal() {
 
   useEffect(() => {
     if (searchParams.get('auth_success') !== '1') return;
-    const cleanUrl = window.location.pathname + Array.from(searchParams.entries()).filter(([key]) => key !== 'auth_success').length
-      ? '' : window.location.pathname;
     const current = new URL(window.location.href);
     current.searchParams.delete('auth_success');
-    window.history.replaceState({}, '', current.pathname + (current.search ? current.search : ''));
-  }, [searchParams]);
+    const cleanPath = current.pathname + (current.search ? current.search : '');
+    openAuth({ view: 'success', returnTo: cleanPath });
+    window.history.replaceState({}, '', cleanPath);
+  }, [searchParams, openAuth]);
 
   useEffect(() => {
     if (!isOpen) return;
