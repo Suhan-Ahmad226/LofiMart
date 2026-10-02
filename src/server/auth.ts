@@ -119,7 +119,7 @@ export async function requireDashboardAccess(
   const user = await getCurrentUser();
 
   const authorized = Boolean(user && allowedRoles.includes(user.role));
-  const redirectTo = !user ? '/login' : authorized ? fallbackRedirect : '/';
+  const redirectTo = !user ? fallbackRedirect || '/' : authorized ? fallbackRedirect : '/';
 
   return { authorized, user, redirectTo };
 }
