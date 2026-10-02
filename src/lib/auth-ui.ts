@@ -303,14 +303,13 @@ export function buildAuthCallbackUrl(options?: {
   }
 
   const query = params.toString();
-  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  // Preserve the exact origin where OAuth was initiated. Do not use
+  // NEXT_PUBLIC_SITE_URL here because production and development aliases
+  // must each return to their own auth callback.
   const origin =
-    configuredSiteUrl && !['localhost', '127.0.0.1'].includes(hostname)
-      ? configuredSiteUrl.replace(/\/+$/, '')
-      : typeof window !== 'undefined'
-        ? window.location.origin
-        : '';
+    typeof window !== 'undefined'
+      ? window.location.origin.replace(/\/+$/, '')
+      : '';
 
   return `${origin}/auth/callback${query ? `?${query}` : ''}`;
 }
