@@ -1,6 +1,4 @@
 import type { NextConfig } from "next";
-import path from "node:path";
-
 const isProd = process.env.NODE_ENV === "production";
 
 const securityHeaders = [
@@ -54,7 +52,7 @@ if (isProd) {
 }
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: path.join(__dirname),
+  outputFileTracingRoot: process.cwd(),
   typescript: {
     ignoreBuildErrors: false,
   },
