@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { useLocation, useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { DashboardShell } from '@/features/shared/dashboard/DashboardShell';
