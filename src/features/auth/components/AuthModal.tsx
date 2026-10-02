@@ -259,7 +259,7 @@ export default function AuthModal() {
       if (!hasSupabaseBrowserEnv()) throw new Error('Supabase auth is not configured.');
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: buildAuthCallbackUrl({ redirectTarget: destination, mode: 'login' }) },
+        options: { redirectTo: buildAuthCallbackUrl({ redirectTarget: destination, mode: 'register' }) },
       });
       if (oauthError) throw oauthError;
     } catch (e) { setError(mapAuthMessage(e)); setLoading(false); }
