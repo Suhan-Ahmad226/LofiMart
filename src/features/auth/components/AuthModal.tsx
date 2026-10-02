@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, Eye, EyeOff, Facebook, Loader2, Mail, Lock, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, Check, Eye, EyeOff, Facebook, Loader2, ShieldCheck, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthModal, type AuthView } from '@/features/auth/context/AuthModalContext';
 import OtpInput from '@/features/auth/components/OtpInput';
@@ -68,7 +68,7 @@ function PasswordField({ label, value, onChange, autoComplete }: { label: string
 
 export default function AuthModal() {
   const { isOpen, view, returnTo, closeAuth, setView, openAuth } = useAuthModal();
-  const { login, user, isAuthenticated } = useUser();
+  const { login } = useUser();
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
