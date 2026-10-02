@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { normalizeRedirectTarget } from '../../../lib/auth-ui';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 
 /**
  * Client-side redirect used by protected layouts after server-side auth is
@@ -17,28 +18,18 @@ import { normalizeRedirectTarget } from '../../../lib/auth-ui';
  */
 export function ClientRedirect({ to }: { to: string }) {
   const router = useRouter();
+  const { openAuth } = useAuthModal();
 
   useEffect(() => {
     if (to.startsWith('/login')) {
-      if (typeof window === 'undefined') {
-        return;
-      }
-
-      const currentUrl = window.location.pathname + window.location.search;
-      const redirectTarget = normalizeRedirectTarget(currentUrl);
-
-      const params = new URLSearchParams(to.split('?')[1] || '');
-      if (redirectTarget && redirectTarget !== '/login') {
-        params.set('redirect', redirectTarget);
-      }
-
-      const query = params.toString();
-      router.replace(query ? `/login?${query}` : '/login');
+      const currentUrl = typeof window !== 'undefined'
+        ? normalizeRedirectTarget(window.location.pathname + window.location.search)
+        : '/';
+      openAuth({ returnTo: currentUrl || '/' });
       return;
     }
-
     router.replace(to);
-  }, [to, router]);
+  }, [to, router, openAuth]);
 
   return null;
 }
