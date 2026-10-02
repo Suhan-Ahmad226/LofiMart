@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { useRouter } from 'next/navigation';
 import { normalizeRedirectTarget } from '../../../lib/auth-ui';
 
