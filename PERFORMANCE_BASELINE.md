@@ -1,5 +1,35 @@
 # Performance Baseline Report
 
+> **Superseded snapshot:** The sections below were generated on 2026-09-08. Several findings no longer match the current `development` branch. Use the verified status here before taking action; do not apply the old schema findings as migrations without checking the target database.
+
+## Verified Status (2026-10-02)
+
+### Confirmed and addressed
+
+- The root layout no longer exports `dynamic = 'force-dynamic'`; route-level request data can determine whether an individual route is dynamic.
+- `/api/products` already applies a default limit of 48, caps requests at 100, and emits public cache headers.
+- `productSellerInclude` selects seller profile fields and verification status only; it does not load every seller product.
+- Dashboard login/session synchronization, skeletons, staged core/optional data loading, and redundant middleware bearer-claim verification have been improved.
+- The linked Supabase database matches the local `.env` database host. Read-only checks confirmed the audit-named tables (`Product`, `Category`, `Banner`, `FlashSaleCampaign`, `CourierStoreMapping`), columns (`Product.weightKg`, `TenantSetting.defaultProductWeightKg`, `OrderShipment.merchantReference`), and enum values (`shipped`, `unpaid`) are present there.
+- The checked-in Supabase baseline is recorded as applied to that linked database. Do not replay it or run a destructive reset against this database.
+- The resolved local Next.js version is 15.5.27; `next.config.ts` has `ignoreBuildErrors: false` and `ignoreDuringBuilds: false`.
+
+### Still open or not independently verified
+
+1. **Verify Vercel production database target.** This workspace has no linked Vercel project configuration, so the supplied Vercel runtime errors were not independently checked. Confirm Vercel's `DATABASE_URL` and `DIRECT_URL` point to the intended Supabase project before creating any migration. The linked database checked above is healthy for the named schema items; this does not prove Vercel uses it.
+2. **Move public landing data server-side.** `src/app/page.tsx` still re-exports the client-side `HomePage`; public catalog data therefore still begins in client effects. Convert incrementally, preserving existing interactive cart/wishlist components.
+3. **Measure before more query tuning.** Capture request duration and database query plans for homepage, search, product detail, checkout, and dashboard endpoints. The older claims about unbounded products and `productSellerInclude` are superseded; avoid optimizing those based on the stale report.
+4. **Reduce root provider scope.** Cart, wishlist, compare, inventory, commerce config, and auth providers are still nested globally. Split providers only after measuring client bundle and re-render impact.
+5. **Track remaining lint debt.** Current role dashboard files still have pre-existing unused-code and explicit-`any` warnings; resolve these incrementally without suppressing lint globally.
+
+### Validation
+
+- Latest verified checks: TypeScript passes and 397 Vitest tests pass.
+- The complete production build has not been rerun after the newest dashboard changes because a Next.js development server was active and shares the `.next` output directory.
+- No Vercel production environment values or runtime logs were read during this review.
+
+The earlier 2026-09-08 report below is retained as historical context only; its priority labels and unverified findings must not be treated as current facts.
+
 Generated: 2026-09-08
 Project: LofiMart Next.js Commerce Platform
 
@@ -186,6 +216,5 @@ export const productSellerInclude = {
 
 ## Build Status
 
-Current build: PASSES (with `ignoreBuildErrors: true` in next.config.ts)
-TypeScript strict mode: ENABLED
-Lint: Enabled with warnings allowed
+Historical note from 2026-09-08: this section reported a passing build with `ignoreBuildErrors: true`.
+Current configuration has `ignoreBuildErrors: false` and `ignoreDuringBuilds: false`; check the latest CI/deployment result rather than relying on this historical status.
