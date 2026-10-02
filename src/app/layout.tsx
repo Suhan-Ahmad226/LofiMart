@@ -43,6 +43,11 @@ export const viewport: Viewport = {
   themeColor: '#2563EB',
 };
 
+// The app shell depends on request-scoped auth/session state.
+// Keep the root layout dynamic so production builds do not try to
+// statically prerender the authenticated application tree.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lofimart.vercel.app'),
   title: {
@@ -90,7 +95,7 @@ function getPreconnectOrigins() {
   const origins = new Set<string>();
 
   if (process.env.CLOUDINARY_CLOUD_NAME) {
-    origins.add(`https://res.cloudinary.com`);
+    origins.add('https://res.cloudinary.com');
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
