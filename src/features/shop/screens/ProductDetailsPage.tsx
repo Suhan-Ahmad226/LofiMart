@@ -25,7 +25,6 @@ const FrequentlyBoughtTogether = dynamic(
 );
 
 function getVariantValueLabel(value: ProductVariantValue | string) {
-  const { openAuth } = useAuthModal();
   return typeof value === 'string' ? value : value.label;
 }
 
@@ -313,7 +312,7 @@ export const ProductDetailsPage = () => {
               className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Continue shopping
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -485,9 +484,9 @@ export const ProductDetailsPage = () => {
 
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1.5 text-sm text-slate-400 overflow-x-auto whitespace-nowrap">
-        <Link to="/" className="font-medium transition hover:text-slate-900">Home</button>
+        <Link to="/" className="font-medium transition hover:text-slate-900">Home</Link>
         <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        <Link to="/shop" className="font-medium transition hover:text-slate-900">Shop</button>
+        <Link to="/shop" className="font-medium transition hover:text-slate-900">Shop</Link>
         {product.category ? (
           <>
             <ChevronRight className="h-3.5 w-3.5 shrink-0" />
@@ -656,7 +655,7 @@ export const ProductDetailsPage = () => {
                     className="text-xs font-bold uppercase tracking-wider text-primary hover:underline"
                   >
                     {sellerStoreLabel}
-                  </button>
+                  </Link>
                 ) : (
                   <span className="text-xs font-bold uppercase tracking-wider text-primary">{sellerStoreLabel}</span>
                 )}
@@ -688,7 +687,7 @@ export const ProductDetailsPage = () => {
               </div>
               <span className="text-slate-200 text-xs">|</span>
               <span className="text-xs text-slate-500">
-                <Link to="#customer-reviews" className="hover:underline">{product.reviews_count} Reviews</button>
+                <Link to="#customer-reviews" className="hover:underline">{product.reviews_count} Reviews</Link>
               </span>
               <span className="text-slate-200 text-xs">|</span>
               <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -957,7 +956,7 @@ export const ProductDetailsPage = () => {
               >
                 Visit Store
                 <ArrowRight size={15} />
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => setSellerChatOpen(true)}
@@ -1257,9 +1256,9 @@ export const ProductDetailsPage = () => {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-xs text-slate-400 mb-2">Please login to write a review.</p>
-                    <button type="button" className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dark transition" onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
+                    <Link to="#" onClick={(e) => { e.preventDefault(); openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname : "/" }); }} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dark transition">
                       Login
-                    </button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -1362,7 +1361,7 @@ export const ProductDetailsPage = () => {
             </div>
             <Link to="/shop" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
               Browse All <ChevronRight size={13} />
-            </button>
+            </Link>
           </div>
           {relatedProductsLoading ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
@@ -1399,7 +1398,7 @@ export const ProductDetailsPage = () => {
                   className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                 >
                   Visit Store <ChevronRight size={13} />
-                </button>
+                </Link>
               )}
             </div>
             {sellerProductsLoading ? (
