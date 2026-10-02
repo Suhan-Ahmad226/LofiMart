@@ -105,7 +105,7 @@ type OtpFlow = 'register' | 'login-verify' | 'reset';
 
 export default function AuthModal() {
   const { isOpen, view, returnTo, closeAuth, setView, openAuth } = useAuthModal();
-  const { login } = useUser();
+  const { login, user, setUser, token } = useUser();
   const router = useRouter();
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
@@ -460,6 +460,42 @@ export default function AuthModal() {
     }
   };
 
+  const startOnboarding = async (kind: 'seller' | 'reseller') => {
+    if (!token || !user) {
+      setError('Please sign in again before starting onboarding.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(kind === 'seller' ? '/api/account/become-seller' : '/api/account/become-reseller', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to start onboarding.');
+      }
+
+      setUser({
+        ...user,
+        role: data.user?.role || kind,
+        seller_status: data.user?.sellerStatus || (kind === 'seller' ? 'draft' : 'approved'),
+      });
+
+      closeAuth();
+      router.push(kind === 'seller' ? '/seller/onboarding' : '/reseller-dashboard/onboarding');
+    } catch (requestError) {
+      setError(mapAuthMessage(requestError));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const social = async (provider: 'google' | 'facebook') => {
     setLoading(true);
     setError('');
@@ -708,10 +744,10 @@ export default function AuthModal() {
 
           <div className="my-5 border-t border-slate-100 pt-5 text-center text-sm font-semibold text-slate-600">Want to sell or resell?</div>
 
-          <button type="button" onClick={() => { closeAuth(); router.push('/seller/onboarding'); }} className="auth-secondary">
+          <button type="button" onClick={() => void startOnboarding('seller')} className="auth-secondary">
             Become a Seller
           </button>
-          <button type="button" onClick={() => { closeAuth(); router.push('/reseller/onboarding'); }} className="auth-secondary mt-2">
+          <button type="button" onClick={() => void startOnboarding('reseller') className="auth-secondary mt-2">
             Become a Reseller
           </button>
         </>
