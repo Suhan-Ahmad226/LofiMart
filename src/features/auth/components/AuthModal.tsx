@@ -747,7 +747,7 @@ export default function AuthModal() {
           <button type="button" onClick={() => void startOnboarding('seller')} className="auth-secondary">
             Become a Seller
           </button>
-          <button type="button" onClick={() => void startOnboarding('reseller') className="auth-secondary mt-2">
+          <button type="button" onClick={() => void startOnboarding('reseller')} className="auth-secondary mt-2">
             Become a Reseller
           </button>
         </>
