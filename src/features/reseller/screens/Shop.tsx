@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { Copy, ExternalLink, Plus, Search, ShoppingCart } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useNavigate } from '../../../lib/navigation';
@@ -107,7 +108,7 @@ export const ResellerShop = () => {
   const handleAddProduct = async (product: Product) => {
     if (!token) {
       toast.error('Please log in as a reseller first.');
-      navigate('/login?redirect=/reseller-dashboard/shop');
+      openAuth({ returnTo: '/reseller-dashboard/shop' });
       return;
     }
 
