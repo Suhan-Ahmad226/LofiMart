@@ -154,17 +154,6 @@ export default function AuthModal() {
     setView('login-password');
   };
 
-  const startSignupFromIdentifier = async () => {
-    const value = identifier.trim().toLowerCase();
-    if (!EMAIL_RE.test(value)) {
-      setError('New account registration currently uses email. Please enter an email address.');
-      return;
-    }
-
-    setEmail(value);
-    setView('signup-start');
-  };
-
   const sendSignupOtp = async (target = email) => {
     const clean = target.trim().toLowerCase();
     if (!EMAIL_RE.test(clean)) { setError('Enter a valid email address.'); return; }
@@ -173,7 +162,9 @@ export default function AuthModal() {
       const response = await fetch('/api/auth/pre-register-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: clean }) });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error || 'Unable to send verification code.');
-      setEmail(clean); setResendIn(60); setNotice(`Verification code sent to ${maskEmail(clean)}.`);
+      setEmail(clean);
+      setView('signup-otp');
+      setResendIn(60); setNotice(`Verification code sent to ${maskEmail(clean)}.`);
     } catch (e) { setError(mapAuthMessage(e)); }
     finally { setLoading(false); }
   };
