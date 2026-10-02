@@ -14,7 +14,7 @@ export const ResellerPromotions = () => {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
   const shopLink = code ? `${origin}/r/${code}` : '';
-  const inviteLink = code ? `${origin}/register?ref=${code}` : '';
+  const inviteLink = code ? `${origin}/?ref=${code}` : '';
 
   const copyLink = async (link: string) => {
     const copied = await copyText(link);
