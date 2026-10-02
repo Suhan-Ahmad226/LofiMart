@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
 
     const body = Schema.parse(await request.json());
     const email = normalizeEmail(body.email);
+    if (!email) {
+      return NextResponse.json({ error: 'A valid email address is required.', code: 'INVALID_EMAIL' }, { status: 400 });
+    }
+
     const supabase = createSupabaseServerClient(Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY));
     const { data: authData, error: authError } = await supabase.auth.getUser(bearer);
     if (authError || !authData.user || normalizeEmail(authData.user.email || '') !== email) {
