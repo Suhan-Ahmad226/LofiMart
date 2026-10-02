@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, Eye, EyeOff, Facebook, Loader2, Mail, Lock, ShieldCheck, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthModal, type AuthView } from '@/features/auth/context/AuthModalContext';
 import OtpInput from '@/features/auth/components/OtpInput';
 import {
@@ -87,6 +87,15 @@ export default function AuthModal() {
     const id = window.setTimeout(() => setResendIn(v => Math.max(0, v - 1)), 1000);
     return () => window.clearTimeout(id);
   }, [resendIn]);
+
+  useEffect(() => {
+    if (searchParams.get('auth_success') !== '1') return;
+    const cleanUrl = window.location.pathname + Array.from(searchParams.entries()).filter(([key]) => key !== 'auth_success').length
+      ? '' : window.location.pathname;
+    const current = new URL(window.location.href);
+    current.searchParams.delete('auth_success');
+    window.history.replaceState({}, '', current.pathname + (current.search ? current.search : ''));
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isOpen) return;
