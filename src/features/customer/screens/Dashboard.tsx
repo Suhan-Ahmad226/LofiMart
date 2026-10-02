@@ -52,26 +52,82 @@ export const CustomerDashboard = () => {
   const [savedAddresses, setSavedAddresses] = useState(0);
   const [profileSummary, setProfileSummary] = useState<any>(null);
   const [defaultAddress, setDefaultAddress] = useState<AddressSummary | null>(null);
-  const [rewardPoints, setRewardPoints] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [rewardPoints, setRewardPoints] = useState<number | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
     const fetchDashboard = async () => {
+      if (!token) {
+        setOrders([]);
+        setTotalOrders(0);
+        setSavedAddresses(0);
+        setProfileSummary(null);
+        setDefaultAddress(null);
+        setRewardPoints(null);
+        setUnreadNotifications(null);
+        setLoading(false);
+        return;
+      }
+
       try {
+        setLoading(true);
         setError('');
-        const [ordersResponse, profileResponse, pointsResponse, notificationsResponse] = await Promise.allSettled([
-          fetch('/api/orders/my-orders?limit=5', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/users/profile?minimal=1', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/user/points', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/notifications?unread=1', { credentials: 'include', headers: { 'Authorization': `Bearer ${token}` } }),
+        setOrders([]);
+        setTotalOrders(0);
+        setSavedAddresses(0);
+        setProfileSummary(null);
+        setDefaultAddress(null);
+        setRewardPoints(null);
+        setUnreadNotifications(null);
+        const requestOptions = {
+          credentials: 'include' as const,
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        };
+
+        void fetch('/api/user/points', requestOptions)
+          .then(async (response) => {
+            if (!response.ok) throw new Error('Points unavailable');
+            return response.json().catch(() => null);
+          })
+          .then((pointsData) => {
+            if (active) setRewardPoints(Number(pointsData?.points || 0));
+          })
+          .catch(() => {
+            if (active && !controller.signal.aborted) setRewardPoints(0);
+          });
+
+        void fetch('/api/notifications?unread=1', requestOptions)
+          .then(async (response) => {
+            if (!response.ok) throw new Error('Notifications unavailable');
+            return response.json().catch(() => []);
+          })
+          .then((notificationsData) => {
+            if (!active) return;
+            const unreadCount = Array.isArray(notificationsData)
+              ? notificationsData.filter((item: NotificationItem) => !item?.read_at).length
+              : 0;
+            setUnreadNotifications(unreadCount);
+          })
+          .catch(() => {
+            if (active && !controller.signal.aborted) setUnreadNotifications(0);
+          });
+
+        const [ordersResult, profileResult] = await Promise.allSettled([
+          fetch('/api/orders/my-orders?limit=5', requestOptions),
+          fetch('/api/users/profile?minimal=1', requestOptions),
         ]);
+        if (!active) return;
 
         let dashboardError = '';
-        if (ordersResponse.status === 'fulfilled') {
-          const ordersData = await ordersResponse.value.json().catch(() => null);
-          if (ordersResponse.value.ok) {
+        if (ordersResult.status === 'fulfilled') {
+          const ordersData = await ordersResult.value.json().catch(() => null);
+          if (ordersResult.value.ok) {
             setOrders(Array.isArray(ordersData?.orders) ? ordersData.orders : Array.isArray(ordersData) ? ordersData : []);
             setTotalOrders(Number(ordersData?.totalCount ?? (Array.isArray(ordersData) ? ordersData.length : 0)));
           } else {
@@ -81,8 +137,8 @@ export const CustomerDashboard = () => {
           dashboardError = 'Orders could not be loaded.';
         }
 
-        if (profileResponse.status === 'fulfilled' && profileResponse.value.ok) {
-          const profileData = await profileResponse.value.json().catch(() => null);
+        if (profileResult.status === 'fulfilled' && profileResult.value.ok) {
+          const profileData = await profileResult.value.json().catch(() => null);
           const addresses = Array.isArray(profileData?.addresses) ? profileData.addresses : [];
           setSavedAddresses(addresses.length);
           setProfileSummary(profileData?.user || null);
@@ -94,24 +150,10 @@ export const CustomerDashboard = () => {
           dashboardError ||= 'Profile details are temporarily unavailable.';
         }
 
-        if (pointsResponse.status === 'fulfilled' && pointsResponse.value.ok) {
-          const pointsData = await pointsResponse.value.json().catch(() => null);
-          setRewardPoints(Number(pointsData?.points || 0));
-        } else {
-          setRewardPoints(0);
-        }
-
-        if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
-          const notificationsData = await notificationsResponse.value.json().catch(() => []);
-          const unreadCount = Array.isArray(notificationsData)
-            ? notificationsData.filter((item: NotificationItem) => !item?.read_at).length
-            : 0;
-          setUnreadNotifications(unreadCount);
-        } else {
-          setUnreadNotifications(0);
-        }
+        setLoading(false);
         setError(dashboardError);
       } catch (err: any) {
+        if (!active || controller.signal.aborted) return;
         setError(err.message);
         setOrders([]);
         setSavedAddresses(0);
@@ -120,28 +162,23 @@ export const CustomerDashboard = () => {
         setRewardPoints(0);
         setUnreadNotifications(0);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    if (token) void fetchDashboard();
-    else {
-      setOrders([]);
-      setSavedAddresses(0);
-      setProfileSummary(null);
-      setDefaultAddress(null);
-      setRewardPoints(0);
-      setUnreadNotifications(0);
-      setLoading(false);
-    }
+    void fetchDashboard();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [token]);
 
   const stats = [
     { label: 'Total Orders', value: String(totalOrders), icon: <ShoppingBag className="text-blue-500" /> },
     { label: 'Wishlist Items', value: wishlistItems.length.toString(), icon: <Heart className="text-accent" /> },
     { label: 'Saved Addresses', value: String(savedAddresses), icon: <MapPin className="text-primary" /> },
-    { label: 'Reward Points', value: rewardPoints.toString(), icon: <Coins className="text-amber-500" /> },
-    { label: 'Unread Alerts', value: unreadNotifications.toString(), icon: <Bell className="text-violet-500" /> },
+    { label: 'Reward Points', value: rewardPoints === null ? '...' : rewardPoints.toString(), icon: <Coins className="text-amber-500" /> },
+    { label: 'Unread Alerts', value: unreadNotifications === null ? '...' : unreadNotifications.toString(), icon: <Bell className="text-violet-500" /> },
   ];
 
   const orderBreakdown = useMemo(() => {
@@ -168,8 +205,8 @@ export const CustomerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <DashboardStatsSkeleton cards={3} />
+      <div className="space-y-8" aria-busy="true" aria-label="Loading customer dashboard">
+        <DashboardStatsSkeleton cards={5} />
         <ListCardSkeleton rows={4} />
       </div>
     );

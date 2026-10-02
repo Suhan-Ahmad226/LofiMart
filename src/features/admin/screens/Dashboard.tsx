@@ -138,6 +138,9 @@ export const AdminDashboard = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
     const fetchStats = async () => {
       if (!token) {
         setError('Please log in as an admin to view platform analytics.');
@@ -149,63 +152,84 @@ export const AdminDashboard = () => {
         setLoading(true);
         setError('');
         const headers = { Authorization: `Bearer ${token}` };
-        const [statsResponse, performanceResponse, insightsResponse] = await Promise.all([
+        void fetch('/api/admin/performance/web-vitals', {
+          cache: 'no-store',
+          headers,
+          signal: controller.signal,
+        })
+          .then(async (response) => (response.ok ? response.json().catch(() => null) : null))
+          .then((payload) => {
+            if (active && payload) setPerformanceSummary(payload as PerformanceSummaryResponse);
+          })
+          .catch(() => {});
+
+        void fetch('/api/admin/dashboard-insights', {
+          cache: 'no-store',
+          headers,
+          signal: controller.signal,
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error('Marketplace insights could not be loaded.');
+            const payload = await response.json().catch(() => null);
+            if (!payload) throw new Error('Marketplace insights returned an invalid response.');
+            return payload as AdminDashboardInsights;
+          })
+          .then((insightsPayload) => {
+            if (!active) return;
+            setInsights({
+              salesSeries: Array.isArray(insightsPayload.salesSeries) ? insightsPayload.salesSeries : [],
+              activityHeatmap: Array.isArray(insightsPayload.activityHeatmap) ? insightsPayload.activityHeatmap : [],
+              lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
+              activeShipments: Number(insightsPayload.activeShipments || 0),
+              activeRiskFlags: Number(insightsPayload.activeRiskFlags || 0),
+              readinessSummary: insightsPayload.readinessSummary || emptyReadinessSummary,
+            });
+          })
+          .catch((insightsError) => {
+            if (!active || controller.signal.aborted) return;
+            setInsights(emptyInsights);
+            setError((current) =>
+              [current, insightsError instanceof Error ? insightsError.message : 'Marketplace insights could not be loaded.']
+                .filter(Boolean)
+                .join(' '),
+            );
+          });
+
+        const [statsResult] = await Promise.allSettled([
           fetch('/api/admin/stats', {
             cache: 'no-store',
             headers,
-          }),
-          fetch('/api/admin/performance/web-vitals', {
-            cache: 'no-store',
-            headers,
-          }),
-          fetch('/api/admin/dashboard-insights', {
-            cache: 'no-store',
-            headers,
+            signal: controller.signal,
           }),
         ]);
+        if (!active) return;
 
         const endpointWarnings: string[] = [];
+        const statsResponse = statsResult.status === 'fulfilled' ? statsResult.value : null;
 
-        if (statsResponse.ok) {
-          const payload = (await statsResponse.json()) as AdminStats;
-          setStats({
-            totalUsers: Number(payload.totalUsers || 0),
-            totalSellers: Number(payload.totalSellers || 0),
-            totalOrders: Number(payload.totalOrders || 0),
-            totalRevenue: Number(payload.totalRevenue || 0),
-            recentOrders: Array.isArray(payload.recentOrders) ? payload.recentOrders : [],
-          });
+        if (statsResponse?.ok) {
+          const payload = (await statsResponse.json().catch(() => null)) as AdminStats | null;
+          if (payload) {
+            setStats({
+              totalUsers: Number(payload.totalUsers || 0),
+              totalSellers: Number(payload.totalSellers || 0),
+              totalOrders: Number(payload.totalOrders || 0),
+              totalRevenue: Number(payload.totalRevenue || 0),
+              recentOrders: Array.isArray(payload.recentOrders) ? payload.recentOrders : [],
+            });
+          } else {
+            endpointWarnings.push('Admin statistics returned an invalid response.');
+            setStats(emptyStats);
+          }
         } else {
-          const payload = await statsResponse.json().catch(() => null);
+          const payload = statsResponse ? await statsResponse.json().catch(() => null) : null;
           endpointWarnings.push(payload?.error || 'Admin statistics could not be loaded.');
           setStats(emptyStats);
         }
 
-        if (performanceResponse.ok) {
-          const performancePayload = (await performanceResponse.json()) as PerformanceSummaryResponse;
-          setPerformanceSummary(performancePayload);
-        } else {
-          endpointWarnings.push('Performance telemetry could not be loaded.');
-          setPerformanceSummary(null);
-        }
-
-        if (insightsResponse.ok) {
-          const insightsPayload = (await insightsResponse.json()) as AdminDashboardInsights;
-          setInsights({
-            salesSeries: Array.isArray(insightsPayload.salesSeries) ? insightsPayload.salesSeries : [],
-            activityHeatmap: Array.isArray(insightsPayload.activityHeatmap) ? insightsPayload.activityHeatmap : [],
-            lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
-            activeShipments: Number(insightsPayload.activeShipments || 0),
-            activeRiskFlags: Number(insightsPayload.activeRiskFlags || 0),
-            readinessSummary: insightsPayload.readinessSummary || emptyReadinessSummary,
-          });
-        } else {
-          endpointWarnings.push('Marketplace insights could not be loaded.');
-          setInsights(emptyInsights);
-        }
-
-        setError(endpointWarnings.join(' '));
+        if (endpointWarnings.length > 0) setError(endpointWarnings.join(' '));
       } catch (fetchError) {
+        if (!active || controller.signal.aborted) return;
         setError(
           fetchError instanceof Error
             ? fetchError.message
@@ -214,11 +238,15 @@ export const AdminDashboard = () => {
         setStats(emptyStats);
         setInsights(emptyInsights);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     void fetchStats();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [token]);
 
   if (loading) {

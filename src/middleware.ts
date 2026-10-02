@@ -82,8 +82,11 @@ export async function middleware(request: NextRequest) {
 
   const supabaseUrl = getSupabaseUrl();
   const supabaseKey = getSupabaseKey();
+  const hasBearerToken = /^Bearer\s+\S+/i.test(request.headers.get('authorization') || '');
 
-  if (supabaseUrl && supabaseKey) {
+  // Bearer-authenticated API routes verify the token themselves. Avoid doing
+  // the same Supabase claims lookup in middleware for every dashboard request.
+  if (supabaseUrl && supabaseKey && !hasBearerToken) {
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {

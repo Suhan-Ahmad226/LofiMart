@@ -22,7 +22,11 @@ export async function POST(request: NextRequest, context: { params: Params }) {
   const body = await request.json().catch(() => ({}));
   const role = String(body.role || '').trim();
 
-  const allowedRoles = new Set(['customer', 'seller', 'reseller', 'admin']);
+  if (role === 'admin') {
+    return NextResponse.json({ error: 'Admin role assignment is disabled' }, { status: 403 });
+  }
+
+  const allowedRoles = new Set(['customer', 'seller', 'reseller']);
   if (!allowedRoles.has(role)) {
     return NextResponse.json({ error: 'Invalid role provided' }, { status: 400 });
   }

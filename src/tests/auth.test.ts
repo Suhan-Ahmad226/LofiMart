@@ -61,7 +61,13 @@ vi.mock('@/lib/server', () => ({
   },
   createClient: vi.fn(() => ({
     auth: {
-      getUser: mockGetUser,
+      getClaims: vi.fn(async () => {
+        const result = await mockGetUser();
+        return {
+          data: { claims: result.data.user?.id ? { sub: result.data.user.id } : null },
+          error: result.error ?? null,
+        };
+      }),
       signOut: vi.fn(),
     },
   })),

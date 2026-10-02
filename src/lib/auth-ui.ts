@@ -96,7 +96,7 @@ export async function loginWithPassword(params: {
   identifier: string;
   password: string;
   redirectTarget?: string;
-}): Promise<{ user: User }> {
+}): Promise<{ user: User; accessToken: string }> {
   const response = await fetch('/api/auth/supabase/login', {
     method: 'POST',
     credentials: 'include',
@@ -116,7 +116,22 @@ export async function loginWithPassword(params: {
     throw error;
   }
 
-  return data;
+  const accessToken = data?.session?.access_token;
+  const refreshToken = data?.session?.refresh_token;
+  if (typeof accessToken !== 'string' || typeof refreshToken !== 'string') {
+    throw new Error('The sign-in response did not include a valid Supabase session.');
+  }
+
+  const supabase = await getSupabaseBrowserClient();
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  if (sessionError) {
+    throw new Error(sessionError.message || 'Unable to sync the Supabase browser session.');
+  }
+
+  return { user: data.user, accessToken };
 }
 
 export function normalizeRedirectTarget(value: string | null | undefined) {

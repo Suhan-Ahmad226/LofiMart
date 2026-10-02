@@ -30,6 +30,20 @@ vi.mock('../../shared/services/database/prisma', () => ({
         if (due && (shipmentRow.nextReconcileAt as Date) > due.lte) return [];
         return [{ ...shipmentRow }];
       },
+      updateMany: async ({ where, data }: { where: Row; data: Row }) => {
+        const bookingStates = (where.bookingState as { in?: string[] } | undefined)?.in;
+        const reconcileBefore = (where.nextReconcileAt as { lte?: Date } | undefined)?.lte;
+        if (shipmentRow.id !== where.id) return { count: 0 };
+        if (bookingStates && !bookingStates.includes(shipmentRow.bookingState as string)) return { count: 0 };
+        if (
+          reconcileBefore &&
+          (!(shipmentRow.nextReconcileAt instanceof Date) || shipmentRow.nextReconcileAt > reconcileBefore)
+        ) {
+          return { count: 0 };
+        }
+        Object.assign(shipmentRow, data);
+        return { count: 1 };
+      },
       update: async ({ data }: { data: Row }) => {
         Object.assign(shipmentRow, data);
         return { ...shipmentRow };

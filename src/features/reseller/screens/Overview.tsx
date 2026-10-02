@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { DollarSign, Loader2, Share2, ShoppingBag, TrendingUp, Users, Zap } from 'lucide-react';
+import { DollarSign, Share2, ShoppingBag, TrendingUp, Users, Zap } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { formatPrice } from '../../../lib/utils';
 import { Link } from '../../../lib/navigation';
 import { DashboardHeader, DashboardKpiCard, DashboardSection, DashboardStatsGrid, DashboardAlert } from '@/features/shared/ui/dashboard';
+import { DashboardStatsSkeleton, ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
 
 type ResellerStatCard = {
   label: string;
@@ -24,6 +25,9 @@ export const ResellerOverview = () => {
   const [onboarding, setOnboarding] = useState<any>(null);
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
     const fetchStats = async () => {
       try {
         if (!token) {
@@ -34,8 +38,10 @@ export const ResellerOverview = () => {
 
         const response = await fetch('/api/reseller/stats', {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
         const data = await response.json().catch(() => null);
+        if (!active) return;
 
         if (!response.ok) {
           throw new Error(data?.error || 'Unable to load reseller stats.');
@@ -52,33 +58,46 @@ export const ResellerOverview = () => {
         ]);
         setError('');
 
-        const onboardingResponse = await fetch('/api/reseller/onboarding-status', {
+        setLoading(false);
+        void fetch('/api/reseller/onboarding-status', {
           headers: { Authorization: `Bearer ${token}` },
-        });
-        if (onboardingResponse.ok) {
-          const onboardingPayload = await onboardingResponse.json().catch(() => null);
-          setOnboarding(onboardingPayload);
-        } else {
-          setOnboarding(null);
-        }
+          signal: controller.signal,
+        })
+          .then(async (onboardingResponse) =>
+            onboardingResponse.ok ? onboardingResponse.json().catch(() => null) : null,
+          )
+          .then((onboardingPayload) => {
+            if (active) setOnboarding(onboardingPayload);
+          })
+          .catch((onboardingError) => {
+            if (active && !controller.signal.aborted) {
+              console.warn('Reseller onboarding status could not be loaded.', onboardingError);
+            }
+          });
       } catch (fetchError) {
+        if (!active || controller.signal.aborted) return;
         setError(fetchError instanceof Error ? fetchError.message : 'Unable to load live stats.');
         setStats([]);
         setReferralCode('');
         setReferralClicks(0);
         setOnboarding(null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     void fetchStats();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [token]);
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading reseller dashboard">
+        <DashboardStatsSkeleton cards={5} />
+        <ListCardSkeleton rows={4} />
       </div>
     );
   }

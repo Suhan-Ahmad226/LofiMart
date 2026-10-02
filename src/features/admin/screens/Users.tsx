@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Ban, Search, Shield, ShieldCheck, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Ban, ChevronLeft, ChevronRight, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
 import { CenteredLoader, EmptyState } from '@/features/shared/ui/FeedbackState';
@@ -23,12 +23,19 @@ export const AdminUsersPage = () => {
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [focusedUserId, setFocusedUserId] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState('');
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (query = search, requestedPage = page) => {
+    if (!token) return;
+
     try {
-      const response = await fetch('/api/admin/users', {
+      setLoading(true);
+      const params = new URLSearchParams({ page: String(requestedPage), pageSize: '25' });
+      if (query.trim()) params.set('search', query.trim());
+      const response = await fetch(`/api/admin/users?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json().catch(() => null);
@@ -37,20 +44,21 @@ export const AdminUsersPage = () => {
         throw new Error(data?.error || 'Failed to load users');
       }
 
-      setUsers(Array.isArray(data) ? data : []);
+      setUsers(Array.isArray(data?.users) ? data.users : []);
+      setPagination(data?.pagination ?? { page: requestedPage, limit: 25, total: 0, totalPages: 1 });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to load users');
       setUsers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, token]);
 
   useEffect(() => {
-    if (token) {
-      void fetchUsers();
-    }
-  }, [token]);
+    if (!token) return;
+    const timeout = window.setTimeout(() => void fetchUsers(search, page), 250);
+    return () => window.clearTimeout(timeout);
+  }, [fetchUsers, page, search, token]);
 
   useEffect(() => {
     if (urlSearch) {
@@ -58,6 +66,8 @@ export const AdminUsersPage = () => {
     }
     if (urlUser) {
       setFocusedUserId(urlUser);
+      setSearch(urlUser);
+      setPage(1);
     }
   }, [urlSearch, urlUser]);
 
@@ -128,20 +138,7 @@ export const AdminUsersPage = () => {
     }
   };
 
-  const filteredUsers = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    if (!normalizedSearch) return users;
-
-    return users.filter((entry) => {
-      const name = entry.name?.toLowerCase() || '';
-      const email = entry.email?.toLowerCase() || '';
-      return (
-        name.includes(normalizedSearch) ||
-        email.includes(normalizedSearch) ||
-        entry.id.toLowerCase().includes(normalizedSearch)
-      );
-    });
-  }, [search, users]);
+  const filteredUsers = users;
 
   useEffect(() => {
     if (!focusedUserId || typeof window === 'undefined') return;
@@ -168,7 +165,10 @@ export const AdminUsersPage = () => {
             type="text"
             placeholder="Search users..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 md:py-2"
           />
         </div>
@@ -253,9 +253,9 @@ export const AdminUsersPage = () => {
                     <option value="customer">Customer</option>
                     <option value="seller">Seller</option>
                     <option value="reseller">Reseller</option>
-                    <option value="admin">Admin</option>
+                    {entry.role === 'admin' && <option value="admin" disabled>Admin</option>}
                   </select>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleBlockToggle(entry.id, !entry.is_blocked)}
                       disabled={isSelf}
@@ -264,13 +264,6 @@ export const AdminUsersPage = () => {
                       }`}
                     >
                       {entry.is_blocked ? <ShieldCheck size={16} className="mx-auto" /> : <Ban size={16} className="mx-auto" />}
-                    </button>
-                    <button
-                      onClick={() => handleRoleChange(entry.id, 'admin')}
-                      disabled={entry.role === 'admin' || isSelf}
-                      className="rounded-xl border p-3 text-purple-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Shield size={16} className="mx-auto" />
                     </button>
                     <button
                       onClick={() => setDeleteConfirmId((current) => (current === entry.id ? '' : entry.id))}
@@ -393,15 +386,6 @@ export const AdminUsersPage = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end space-x-2">
-                      {entry.role !== 'admin' && !isSelf && (
-                        <button
-                          onClick={() => handleRoleChange(entry.id, 'admin')}
-                          className="p-2 text-gray-400 transition-colors hover:text-purple-600"
-                          title="Make Admin"
-                        >
-                          <Shield size={18} />
-                        </button>
-                      )}
                       <button
                         onClick={() => handleBlockToggle(entry.id, !entry.is_blocked)}
                         disabled={isSelf}
@@ -421,7 +405,7 @@ export const AdminUsersPage = () => {
                         <option value="customer">Customer</option>
                         <option value="seller">Seller</option>
                         <option value="reseller">Reseller</option>
-                        <option value="admin">Admin</option>
+                        {entry.role === 'admin' && <option value="admin" disabled>Admin</option>}
                       </select>
                       <button
                         onClick={() => setDeleteConfirmId((current) => (current === entry.id ? '' : entry.id))}
@@ -455,6 +439,31 @@ export const AdminUsersPage = () => {
             })}
           </tbody>
         </table>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+        <span>
+          {pagination.total} users · Page {pagination.page} of {pagination.totalPages}
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={loading || page <= 1}
+            aria-label="Previous users page"
+            className="rounded-lg border border-slate-200 p-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+            disabled={loading || page >= pagination.totalPages}
+            aria-label="Next users page"
+            className="rounded-lg border border-slate-200 p-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
     </div>

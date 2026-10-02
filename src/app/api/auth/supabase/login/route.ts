@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseUser = data.user;
-    if (!supabaseUser?.email) {
+    if (!supabaseUser?.email || !data.session?.access_token || !data.session.refresh_token) {
       return NextResponse.json({ error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।', code: 'LOGIN_FAILED' }, { status: 400 });
     }
 
@@ -136,6 +136,10 @@ export async function POST(request: NextRequest) {
         emailVerified: user.emailVerified,
         emailVerifiedAt: user.emailVerifiedAt,
       }),
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

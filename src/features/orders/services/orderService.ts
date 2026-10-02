@@ -350,9 +350,9 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         throw new Error(`Insufficient stock for ${product?.name || item.productId}`);
       }
 
-      const quotedWarehouseId = (quote.shipments || [])
-        .flatMap((parcel) => parcel.allocations || [])
-        .find((allocation) => allocation.productId === item.productId)?.warehouseId;
+      const quotedWarehouseId = (quote.shipments || []).find((parcel) =>
+        (parcel.allocations || []).some((allocation) => allocation.productId === item.productId),
+      )?.warehouseId;
       if (!quotedWarehouseId) {
         throw new Error('Shipping quote is missing the exact warehouse allocation for this item. Please refresh checkout.');
       }

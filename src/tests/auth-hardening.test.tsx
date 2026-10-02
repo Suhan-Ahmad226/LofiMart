@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { prismaMock, supabaseMock } = vi.hoisted(() => ({
@@ -24,6 +24,7 @@ const { prismaMock, supabaseMock } = vi.hoisted(() => ({
       },
       signInWithOtp: vi.fn(),
       verifyOtp: vi.fn(),
+      setSession: vi.fn(),
       getUser: vi.fn(),
       getSession: vi.fn(),
       onAuthStateChange: vi.fn(),
@@ -47,11 +48,12 @@ vi.mock('@/lib/client', () => ({
 }));
 
 import { registerUser, isAuthPurpose, AUTH_PURPOSES } from '@/features/auth/server/auth-service';
+import { loginWithPassword } from '@/lib/auth-ui';
 import { createClient } from '@/lib/client';
 import { UserProvider, useUser } from '@/features/shared/state/UserContext';
 
 function AuthProbe() {
-  const { user, token, refreshToken, isAuthenticated, isReady } = useUser();
+  const { user, token, isAuthenticated, isReady, login } = useUser();
 
   return (
     <div>
@@ -59,7 +61,17 @@ function AuthProbe() {
       <span data-testid="authenticated">{String(isAuthenticated)}</span>
       <span data-testid="user">{user?.name ?? ''}</span>
       <span data-testid="token">{token ?? ''}</span>
-      <span data-testid="refresh">{refreshToken ?? ''}</span>
+      <button
+        type="button"
+        onClick={() =>
+          login(
+            { id: 'login-user', name: 'Just Logged In', email: 'login@example.com', role: 'customer' },
+            'login-access-token',
+          )
+        }
+      >
+        Complete login
+      </button>
     </div>
   );
 }
@@ -82,6 +94,7 @@ describe('auth hardening', () => {
       data: { user: { id: 'supabase-user-1' } },
       error: null,
     });
+    supabaseMock.auth.setSession.mockResolvedValue({ error: null });
     supabaseMock.auth.getSession.mockResolvedValue({
       data: {
         session: {
@@ -168,6 +181,65 @@ describe('auth hardening', () => {
     expect(isAuthPurpose('')).toBe(false);
   });
 
+  it('keeps a completed login when the initial session lookup resolves later', async () => {
+    let releaseInitialSession!: () => void;
+    supabaseMock.auth.getSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseInitialSession = () => resolve({ data: { session: null }, error: null });
+        }),
+    );
+    vi.mocked(createClient).mockReturnValue(supabaseMock as never);
+
+    render(
+      <UserProvider>
+        <AuthProbe />
+      </UserProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete login' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('Just Logged In');
+      expect(screen.getByTestId('token').textContent).toBe('login-access-token');
+      expect(screen.getByTestId('ready').textContent).toBe('true');
+    });
+
+    await act(async () => releaseInitialSession());
+
+    expect(screen.getByTestId('user').textContent).toBe('Just Logged In');
+    expect(screen.getByTestId('token').textContent).toBe('login-access-token');
+  });
+
+  it('syncs the password-login session into the browser Supabase client before returning', async () => {
+    const user = {
+      id: 'local-user-1',
+      name: 'Fresh Server Profile',
+      email: 'fresh@example.com',
+      role: 'customer',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            user,
+            session: { access_token: 'login-access-token', refresh_token: 'login-refresh-token' },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.mocked(createClient).mockReturnValue(supabaseMock as never);
+
+    const result = await loginWithPassword({ identifier: 'fresh@example.com', password: 'Password123' });
+
+    expect(supabaseMock.auth.setSession).toHaveBeenCalledWith({
+      access_token: 'login-access-token',
+      refresh_token: 'login-refresh-token',
+    });
+    expect(result).toEqual({ user, accessToken: 'login-access-token' });
+  });
+
   it('uses the fresh server profile and in-memory Supabase session instead of custom localStorage auth state', async () => {
     const staleUser = {
       id: 'stale-user',
@@ -195,7 +267,6 @@ describe('auth hardening', () => {
       expect(screen.getByTestId('ready').textContent).toBe('true');
       expect(screen.getByTestId('user').textContent).toBe('Fresh Server Profile');
       expect(screen.getByTestId('token').textContent).toBe('access-token-1');
-      expect(screen.getByTestId('refresh').textContent).toBe('refresh-token-1');
     });
 
     expect(screen.getByTestId('authenticated').textContent).toBe('true');

@@ -11,7 +11,6 @@ import {
   Bell,
   Eye,
   LayoutDashboard,
-  Loader2,
   MoreHorizontal,
   Package,
   ShoppingBag,
@@ -32,6 +31,7 @@ import { Link } from '../../../lib/navigation';
 import { Product } from '../../../types';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { ProductCard } from '@/features/shared/ui/product/ProductCard';
+import { DashboardStatsSkeleton, ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
 import { buildSellerDashboardIntelligence } from '../../../features/seller/lib/dashboard-intelligence';
 
 const SalesPerformanceChart = dynamic(() => import('@/features/seller/components/SalesPerformanceChart'), {
@@ -82,12 +82,6 @@ type SellerOnboardingStatus = {
   } | null;
 };
 
-type FlashSaleCampaign = {
-  id: string;
-  title: string;
-  status: string;
-};
-
 type FlashSaleEntry = {
   id: string;
   campaign_id: string;
@@ -96,11 +90,6 @@ type FlashSaleEntry = {
   allocated_stock: number;
   status: string;
   product?: Product | null;
-};
-
-type SellerFlashSaleResponse = {
-  campaigns?: FlashSaleCampaign[];
-  entries?: FlashSaleEntry[];
 };
 
 type SellerCoupon = {
@@ -1459,8 +1448,6 @@ export const SellerDashboard = () => {
     topProducts: [],
   });
   const [products, setProducts] = useState<Product[]>([]);
-  const [flashSaleEntries, setFlashSaleEntries] = useState<FlashSaleEntry[]>([]);
-  const [coupons, setCoupons] = useState<SellerCoupon[]>([]);
   const [insights, setInsights] = useState<SellerDashboardInsights>(emptyInsights);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1486,6 +1473,9 @@ export const SellerDashboard = () => {
   }, [manageMode]);
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
     const fetchDashboard = async () => {
       if (!token) {
         setError('Please log in as a seller to view your store performance.');
@@ -1496,34 +1486,20 @@ export const SellerDashboard = () => {
       try {
         setLoading(true);
         setError('');
-
-        const [statsResult, insightsResult, onboardingResult, productsResult, flashResult, couponsResult] = await Promise.allSettled([
-          fetch('/api/seller/stats', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/seller/dashboard-insights', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/seller/onboarding-status', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/seller/products', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/seller/flash-sale', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/seller/coupons', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+        const requestOptions = {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        };
+        const supplementalData = Promise.allSettled([
+          fetch('/api/seller/dashboard-insights', requestOptions),
+          fetch('/api/seller/onboarding-status', requestOptions),
+          fetch('/api/seller/products', requestOptions),
         ]);
+        const statsResponse = await fetch('/api/seller/stats', requestOptions);
+        if (!active) return;
 
-        if (statsResult.status !== 'fulfilled') {
-          throw new Error('Failed to load seller stats');
-        }
-
-        const statsPayload = await statsResult.value.json().catch(() => null);
-        if (!statsResult.value.ok) {
+        const statsPayload = await statsResponse.json().catch(() => null);
+        if (!statsResponse.ok) {
           throw new Error(statsPayload?.error || 'Failed to load seller stats');
         }
 
@@ -1533,48 +1509,39 @@ export const SellerDashboard = () => {
           totalEarnings: Number(statsPayload.totalEarnings || 0),
           topProducts: Array.isArray(statsPayload.topProducts) ? statsPayload.topProducts : [],
         });
+        setLoading(false);
 
-        if (insightsResult.status === 'fulfilled' && insightsResult.value.ok) {
-          const insightsPayload = (await insightsResult.value.json()) as SellerDashboardInsights;
-          setInsights({
-            salesSeries: Array.isArray(insightsPayload.salesSeries) ? insightsPayload.salesSeries : [],
-            lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
-            recentShipments: Array.isArray(insightsPayload.recentShipments) ? insightsPayload.recentShipments : [],
-            activeShipments: Number(insightsPayload.activeShipments || 0),
-            deliveredShipments: Number(insightsPayload.deliveredShipments || 0),
-          });
-        } else {
-          setInsights(emptyInsights);
-        }
+        void supplementalData.then(async ([insightsResult, onboardingResult, productsResult]) => {
+          if (!active) return;
 
-        if (onboardingResult.status === 'fulfilled' && onboardingResult.value.ok) {
-          const onboardingPayload = (await onboardingResult.value.json()) as SellerOnboardingStatus;
-          setOnboarding(onboardingPayload);
-        } else {
-          setOnboarding(null);
-        }
+          if (insightsResult.status === 'fulfilled' && insightsResult.value.ok) {
+            const insightsPayload = (await insightsResult.value.json().catch(() => null)) as SellerDashboardInsights | null;
+            if (active && insightsPayload) {
+              setInsights({
+                salesSeries: Array.isArray(insightsPayload.salesSeries) ? insightsPayload.salesSeries : [],
+                lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
+                recentShipments: Array.isArray(insightsPayload.recentShipments) ? insightsPayload.recentShipments : [],
+                activeShipments: Number(insightsPayload.activeShipments || 0),
+                deliveredShipments: Number(insightsPayload.deliveredShipments || 0),
+              });
+            }
+          }
 
-        if (productsResult.status === 'fulfilled' && productsResult.value.ok) {
-          const productsPayload = await productsResult.value.json().catch(() => []);
-          setProducts(Array.isArray(productsPayload) ? productsPayload : []);
-        } else {
-          setProducts([]);
-        }
+          if (onboardingResult.status === 'fulfilled' && onboardingResult.value.ok) {
+            const onboardingPayload = (await onboardingResult.value.json().catch(() => null)) as SellerOnboardingStatus | null;
+            if (active) setOnboarding(onboardingPayload);
+          }
 
-        if (flashResult.status === 'fulfilled' && flashResult.value.ok) {
-          const flashPayload = (await flashResult.value.json().catch(() => null)) as SellerFlashSaleResponse | null;
-          setFlashSaleEntries(Array.isArray(flashPayload?.entries) ? flashPayload!.entries! : []);
-        } else {
-          setFlashSaleEntries([]);
-        }
+          if (productsResult.status === 'fulfilled' && productsResult.value.ok) {
+            const productsPayload = await productsResult.value.json().catch(() => []);
+            if (active) setProducts(Array.isArray(productsPayload) ? productsPayload : []);
+          }
 
-        if (couponsResult.status === 'fulfilled' && couponsResult.value.ok) {
-          const couponsPayload = await couponsResult.value.json().catch(() => []);
-          setCoupons(Array.isArray(couponsPayload) ? couponsPayload : []);
-        } else {
-          setCoupons([]);
-        }
+        }).catch((supplementalError) => {
+          if (active) console.warn('Some seller dashboard details could not be loaded.', supplementalError);
+        });
       } catch (fetchError) {
+        if (!active || controller.signal.aborted) return;
         setError(fetchError instanceof Error ? fetchError.message : 'Unable to load seller dashboard.');
         setStats({
           totalProducts: 0,
@@ -1583,16 +1550,18 @@ export const SellerDashboard = () => {
           topProducts: [],
         });
         setProducts([]);
-        setFlashSaleEntries([]);
-        setCoupons([]);
         setInsights(emptyInsights);
         setOnboarding(null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     void fetchDashboard();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [token]);
 
   const bestSellerProducts = useMemo(() => {
@@ -1609,8 +1578,9 @@ export const SellerDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={32} />
+      <div className="space-y-6" aria-busy="true" aria-label="Loading seller dashboard">
+        <DashboardStatsSkeleton cards={4} />
+        <ListCardSkeleton rows={4} />
       </div>
     );
   }

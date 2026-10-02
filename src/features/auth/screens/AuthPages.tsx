@@ -148,18 +148,19 @@ export const LoginPage = () => {
       setRecovering(true);
       try {
         const supabase = await getSupabaseBrowserClient();
-        const { data } = await supabase.auth.getUser();
+        const { data: authData } = await supabase.auth.getUser();
+        const { data: sessionData } = await supabase.auth.getSession();
 
         if (cancelled) {
           return;
         }
 
-        if (data?.user) {
+        if (authData?.user && sessionData.session?.access_token) {
           const response = await fetch('/api/users/profile', { credentials: 'include' });
           const payload = await response.json().catch(() => null);
           if (response.ok && payload?.user) {
             const recoveredUser = payload.user;
-            login({ ...recoveredUser, name: recoveredUser.name || '' });
+            login({ ...recoveredUser, name: recoveredUser.name || '' }, sessionData.session.access_token);
             navigate(resolvePostAuthDestination(recoveredUser.role, redirectTarget), { replace: true });
             return;
           }
@@ -242,7 +243,7 @@ const startEmailVerification = async (identifierOverride?: string) => {
         password,
         redirectTarget: redirectTarget || undefined,
       });
-      login(data.user);
+      login(data.user, data.accessToken);
       toast.success(`Welcome back${data.user?.name ? `, ${data.user.name}` : ''}.`);
       navigate(resolvePostAuthDestination(data.user.role, redirectTarget), { replace: true });
     } catch {
@@ -268,7 +269,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
       try {
         const data = await loginWithPassword({ identifier, password, redirectTarget: redirectTarget || undefined });
-        login(data.user);
+        login(data.user, data.accessToken);
         toast.success(`Welcome back${data.user?.name ? `, ${data.user.name}` : ''}.`);
         navigate(resolvePostAuthDestination(data.user.role, redirectTarget), { replace: true });
       } catch (err: unknown) {

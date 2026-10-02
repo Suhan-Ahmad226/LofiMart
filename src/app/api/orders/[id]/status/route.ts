@@ -79,7 +79,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     'delivered',
     'cancelled',
     'returned',
-    'return_requested',
     'delivery_failed',
   ]);
   if (typeof status !== 'string' || !allowedStatuses.has(status)) {
@@ -142,7 +141,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           ? 'delivered'
           : statuses.length > 0 && statuses.every((value) => value === 'cancelled')
             ? 'cancelled'
-            : statuses.some((value) => value === 'delivery_failed')
+            : statuses.length > 0 && statuses.every((value) => value === 'returned')
+              ? 'returned'
+              : statuses.some((value) => value === 'delivery_failed')
               ? 'delivery_failed'
               : statuses.some((value) => value === 'out_for_delivery')
                 ? 'out_for_delivery'

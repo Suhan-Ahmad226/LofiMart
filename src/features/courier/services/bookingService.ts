@@ -255,7 +255,7 @@ async function buildBookingRequest(
   if (!recipientName || recipientName.trim().length < 3) {
     throw new Error('A valid recipient name is required before courier booking.');
   }
-  if (!recipientPhone || !/^01\\d{9}$/.test(recipientPhone.replace(/\\s|-/g, ''))) {
+  if (!recipientPhone || !/^01\d{9}$/.test(recipientPhone.replace(/\s|-/g, ''))) {
     throw new Error('A valid Bangladesh recipient phone number is required before courier booking.');
   }
   const recipientAddress = readString(address, 'address', 'fullAddress', 'street', 'deliveryAddress');

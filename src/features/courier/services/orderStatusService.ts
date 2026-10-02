@@ -25,11 +25,12 @@ export function deriveOrderStatus(statuses: ShipmentStatus[]): OrderStatus {
   if (statuses.every((status) => TERMINAL_EXCEPTIONS.has(status) || status === 'delivered')) {
     if (statuses.some((status) => status === 'returned')) return 'returned';
     if (statuses.some((status) => status === 'delivery_failed')) return 'delivery_failed';
+    if (statuses.some((status) => status === 'cancelled')) return 'cancelled';
   }
 
   let best: ShipmentStatus = 'processing';
   let bestRank = PROGRESS_RANK.processing;
-  for (const status of statuses) {
+  for (const status of statuses.filter((status) => status !== 'delivered')) {
     const rank = PROGRESS_RANK[status] ?? 0;
     if (rank > bestRank) {
       best = status;

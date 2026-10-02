@@ -24,7 +24,7 @@ export interface User {
 
 interface UserContextType {
   user: User | null;
-  login: (user: User) => void;
+  login: (user: User, accessToken?: string) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
@@ -40,12 +40,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isReady, setIsReady] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const authRevisionRef = useRef(0);
 
   const setInternalUser = useCallback((nextUser: User | null) => {
     setUserState(nextUser);
   }, []);
 
   const logout = useCallback(() => {
+    authRevisionRef.current += 1;
     void fetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
@@ -126,6 +128,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const init = async () => {
+      const revisionAtStart = authRevisionRef.current;
       try {
         const supabase = createClient();
         supabaseRef.current = supabase;
@@ -137,6 +140,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!active) return;
 
         hydrated = true;
+        if (authRevisionRef.current !== revisionAtStart) {
+          setIsReady(true);
+          return;
+        }
         await loadProfile(sessionData.session);
       } catch {
         if (active) {
@@ -172,14 +179,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [setInternalUser]);
 
   const login = useCallback(
-    (nextUser: User) => {
+    (nextUser: User, accessToken?: string) => {
+      authRevisionRef.current += 1;
       setInternalUser(nextUser);
+      if (accessToken) setToken(accessToken);
+      setIsReady(true);
     },
     [setInternalUser],
   );
 
   const setUser = useCallback(
     (nextUser: User | null) => {
+      authRevisionRef.current += 1;
       setInternalUser(nextUser);
     },
     [setInternalUser],

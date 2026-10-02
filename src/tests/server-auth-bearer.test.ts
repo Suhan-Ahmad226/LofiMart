@@ -16,12 +16,12 @@ import { getCurrentUser, requireApiUser } from '@/server/auth';
 const AUTH_UID = 'auth-uid-1';
 
 function mockSupabase(result: { user?: { id: string } | null; error?: unknown }) {
-  const getUser = vi.fn(async () => ({
-    data: { user: result.user ?? null },
+  const getClaims = vi.fn(async () => ({
+    data: { claims: result.user ? { sub: result.user.id } : null },
     error: result.error ?? null,
   }));
-  createClient.mockResolvedValue({ auth: { getUser } });
-  return getUser;
+  createClient.mockResolvedValue({ auth: { getClaims } });
+  return getClaims;
 }
 
 function mockDbUser(overrides: Record<string, unknown> = {}) {
@@ -52,11 +52,11 @@ describe('getCurrentUser bearer token support', () => {
   });
 
   it('validates the Authorization bearer token against Supabase', async () => {
-    const getUser = mockSupabase({ user: { id: AUTH_UID } });
+    const getClaims = mockSupabase({ user: { id: AUTH_UID } });
 
     const user = await getCurrentUser(apiRequest({ bearer: 'jwt-abc' }));
 
-    expect(getUser).toHaveBeenCalledWith('jwt-abc');
+    expect(getClaims).toHaveBeenCalledWith('jwt-abc');
     expect(findUser).toHaveBeenCalledWith(
       expect.objectContaining({ where: { supabaseAuthId: AUTH_UID } }),
     );
@@ -64,31 +64,31 @@ describe('getCurrentUser bearer token support', () => {
   });
 
   it('prefers the bearer header over the access_token cookie', async () => {
-    const getUser = mockSupabase({ user: { id: AUTH_UID } });
+    const getClaims = mockSupabase({ user: { id: AUTH_UID } });
 
     await getCurrentUser(apiRequest({ bearer: 'jwt-header', cookieToken: 'jwt-cookie' }));
 
-    expect(getUser).toHaveBeenCalledWith('jwt-header');
+    expect(getClaims).toHaveBeenCalledWith('jwt-header');
   });
 
   it('ignores the legacy access_token cookie when no bearer header is sent', async () => {
-    const getUser = mockSupabase({ user: { id: AUTH_UID } });
+    const getClaims = mockSupabase({ user: { id: AUTH_UID } });
 
     await getCurrentUser(apiRequest({ cookieToken: 'jwt-cookie' }));
 
-    expect(getUser).toHaveBeenCalledWith();
+    expect(getClaims).toHaveBeenCalledWith();
   });
 
   it('falls back to the cookie session when called with no request', async () => {
-    const getUser = mockSupabase({ user: { id: AUTH_UID } });
+    const getClaims = mockSupabase({ user: { id: AUTH_UID } });
 
     await getCurrentUser();
 
-    expect(getUser).toHaveBeenCalledWith();
+    expect(getClaims).toHaveBeenCalledWith();
   });
 
   it('ignores a non-bearer authorization scheme', async () => {
-    const getUser = mockSupabase({ user: { id: AUTH_UID } });
+    const getClaims = mockSupabase({ user: { id: AUTH_UID } });
 
     await getCurrentUser(apiRequest({ cookieToken: 'jwt-cookie' }));
     const req = new NextRequest('http://localhost/api/seller/stats', {
@@ -97,7 +97,7 @@ describe('getCurrentUser bearer token support', () => {
 
     await getCurrentUser(req);
 
-    expect(getUser).toHaveBeenLastCalledWith();
+    expect(getClaims).toHaveBeenLastCalledWith();
   });
 
   it('returns null when Supabase rejects the token', async () => {

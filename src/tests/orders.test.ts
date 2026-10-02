@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Decimal } from 'decimal.js';
-import { createMarketplaceOrder } from '@/features/orders/services/orderService';
+import { createMarketplaceOrder as createOrder } from '@/features/orders/services/orderService';
 import { prisma } from '@/lib/server';
+
+let idempotencySequence = 0;
 
 vi.mock('@/lib/server', () => ({
   prisma: {
@@ -28,6 +30,34 @@ vi.mock('@/lib/server', () => ({
   },
 }));
 
+vi.mock('@/features/courier/services/quoteService', () => ({
+  getShippingQuote: vi.fn(async ({ items }: { items: Array<{ productId: string; quantity: number }> }) => ({
+    provider: 'pathao',
+    currency: 'BDT',
+    verified: true,
+    freeShippingApplied: false,
+    freeShippingThreshold: 0,
+    amountToCollect: 0,
+    totalCustomerDeliveryFee: 20,
+    warnings: [],
+    shipments: [{
+      warehouseId: 'wh-1',
+      warehouseName: 'Test warehouse',
+      courierStoreId: 'store-1',
+      itemCount: items.reduce((count, item) => count + item.quantity, 0),
+      weightKg: 1,
+      courierCharge: 19,
+      codFee: 1,
+      customerDeliveryFee: 20,
+      estimatedDays: 2,
+      verified: true,
+      source: 'provider',
+      reason: null,
+      allocations: items,
+    }],
+  })),
+}));
+
 vi.mock('@/features/telegram_bot/lib/notificationService', () => ({
   sendLowStockAlert: vi.fn(),
   sendNewOrderNotification: vi.fn(),
@@ -39,8 +69,19 @@ vi.mock('@/features/telegram_bot/lib/invoiceService', () => ({
 }));
 
 describe('orders.test.ts', () => {
+  const createMarketplaceOrder = (input: Parameters<typeof createOrder>[0]) =>
+    createOrder({
+      ...input,
+      idempotencyKey: input.idempotencyKey ?? `orders-test-key-${++idempotencySequence}`,
+      shippingAddress:
+        input.shippingAddress && typeof input.shippingAddress === 'object'
+          ? input.shippingAddress
+          : { city: 'Dhaka', address: input.shippingAddress ?? 'Test address' },
+    });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    idempotencySequence = 0;
   });
 
   const mockProduct = (id: string, stock: number, price: number = 100) => ({
@@ -99,6 +140,7 @@ describe('orders.test.ts', () => {
     },
     inventoryItem: {
       findFirst: vi.fn().mockResolvedValue({ id: 'inv-1', warehouseId: 'wh-1', reorderLevel: 5 }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn().mockResolvedValue({ id: 'inv-1', quantity: 99 }),
     },
     stockReservation: { create: vi.fn() },
@@ -112,15 +154,19 @@ describe('orders.test.ts', () => {
     vi.mocked(prisma.$transaction).mockImplementation((fn: any) => fn(mockTx()));
     vi.mocked(prisma.product.findMany).mockResolvedValue([mockProduct('prod-1', 100)]);
     vi.mocked(prisma.coupon.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.order.findUnique).mockResolvedValue({
-      id: 'order-1',
-      orderCode: 'ORD-123',
-      total: new Decimal(300),
-      status: 'pending',
-      items: { include: { product: true } },
-      shipments: { include: { items: true } },
-      invoice: true,
-    } as never);
+    vi.mocked(prisma.order.findUnique).mockImplementation((args: any) =>
+      (args.where?.idempotencyKey
+        ? null
+        : {
+            id: 'order-1',
+            orderCode: 'ORD-123',
+            total: new Decimal(300),
+            status: 'pending',
+            items: { include: { product: true } },
+            shipments: { include: { items: true } },
+            invoice: true,
+          }) as never,
+    );
   });
 
   describe('valid order creation with sufficient stock', () => {
@@ -244,7 +290,11 @@ describe('orders.test.ts', () => {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           findUnique: vi.fn().mockResolvedValue(product),
         },
-        inventoryItem: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+        inventoryItem: {
+          findFirst: vi.fn().mockResolvedValue({ id: 'inv-1', warehouseId: 'wh-1', reorderLevel: 5 }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          update: vi.fn(),
+        },
         stockReservation: { create: vi.fn() },
         inventoryMovement: { create: vi.fn() },
         orderShipment: { create: vi.fn() },
@@ -315,7 +365,8 @@ describe('orders.test.ts', () => {
           findUnique: vi.fn().mockResolvedValue(mockProduct('prod-1', 1, 100)),
         },
         inventoryItem: {
-          findFirst: vi.fn().mockResolvedValue(null),
+          findFirst: vi.fn().mockResolvedValue({ id: 'inv-1', warehouseId: 'wh-1', reorderLevel: 5 }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           update: vi.fn(),
         },
         stockReservation: { create: vi.fn() },
@@ -328,17 +379,21 @@ describe('orders.test.ts', () => {
       vi.mocked(prisma.$transaction).mockImplementation((fn: any) => fn(tx));
       vi.mocked(prisma.product.findMany).mockResolvedValue([mockProduct('prod-1', 1, 100)]);
       vi.mocked(prisma.coupon.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.order.findUnique).mockResolvedValue({
-        id: 'order-1',
-        orderCode: 'ORD-1',
-        total: new Decimal(105),
-        status: 'pending',
-        paymentMethod: 'cod',
-        paymentStatus: 'pending',
-        items: { include: { product: true } },
-        shipments: { include: { items: true } },
-        invoice: true,
-      } as never);
+      vi.mocked(prisma.order.findUnique).mockImplementation((args: any) =>
+        (args.where?.idempotencyKey
+          ? null
+          : {
+              id: 'order-1',
+              orderCode: 'ORD-1',
+              total: new Decimal(105),
+              status: 'pending',
+              paymentMethod: 'cod',
+              paymentStatus: 'pending',
+              items: { include: { product: true } },
+              shipments: { include: { items: true } },
+              invoice: true,
+            }) as never,
+      );
 
       const results = await Promise.allSettled([
         createMarketplaceOrder({
