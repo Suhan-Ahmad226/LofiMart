@@ -92,7 +92,6 @@ function buildCheckoutAddressSummary(address: {
   division?: string;
   address?: string;
 }) {
-  const { openAuth } = useAuthModal();
   return buildBangladeshAddressLine(address);
 }
 
@@ -594,7 +593,7 @@ export const CheckoutPage = () => {
       <nav className="flex h-[56px] items-center gap-3 border-b border-[#e5e7eb] bg-[#f7f8fa] px-3 text-sm" aria-label="Breadcrumb">
         <Link to="/" aria-label="Home" className="text-[#344054] transition hover:text-[#2563EB]">
           <Home size={18} aria-hidden="true" />
-        </button>
+        </Link>
         <ChevronRight size={17} className="text-[#111827]" aria-hidden="true" />
         <span className="font-medium text-black">Checkout</span>
       </nav>
@@ -609,12 +608,12 @@ export const CheckoutPage = () => {
                   <p className="text-sm font-semibold text-sky-900">Checking out as a guest</p>
                   <p className="mt-1 text-sm leading-6 text-sky-700">
                     Your order is confirmed without an account. After placing it you can{' '}
-                    <button
-                      type="button"
+                    <Link
+                      to="#" onClick={(e) => { e.preventDefault(); openAuth({ returnTo: "/checkout" }); }}
                       className="font-semibold text-sky-800 underline-offset-4 hover:underline"
-                     onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
+                    >
                       login or register
-                    </button>{' '}
+                    </Link>{' '}
                     to claim and track it with the OTP sent to your email or phone.
                   </p>
                 </div>
@@ -636,7 +635,7 @@ export const CheckoutPage = () => {
                       className="inline-flex text-xs font-semibold underline-offset-4 hover:underline"
                     >
                       Contact support about this checkout
-                    </button>
+                    </Link>
                   </div>
                 </FormNotice>
               ) : null}
@@ -917,7 +916,7 @@ export const CheckoutPage = () => {
                   >
                     <span>Edit order</span>
                     <ChevronRight size={16} />
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="mt-5 max-h-72 space-y-4 overflow-y-auto pr-1">
