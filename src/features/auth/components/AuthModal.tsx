@@ -218,7 +218,7 @@ export default function AuthModal() {
     router.replace(resolvePostAuthDestination(result.user.role, destination));
   };
 
-  const continueIdentifier = async () => {
+  const continueIdentifier = () => {
     const value = identifier.trim();
 
     if (!value) {
@@ -226,38 +226,10 @@ export default function AuthModal() {
       return;
     }
 
-    setLoading(true);
     setError('');
-
-    try {
-      const response = await fetch('/api/auth/identifier-flow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: value }),
-      });
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) throw new Error(data?.error || 'Unable to continue.');
-      setIdentifier(value);
-
-      if (data.flow === 'login') {
-        setEmail(data.identifier || value);
-        setView('login-password');
-        return;
-      }
-
-      if (data.flow === 'register') {
-        setEmail(data.email || value);
-        setView('signup-start');
-        return;
-      }
-
-      throw new Error(data.message || 'New accounts use email verification. Please enter an email address.');
-    } catch (requestError) {
-      setError(mapAuthMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
+    setIdentifier(value);
+    setEmail(value.includes('@') ? value.toLowerCase() : '');
+    setView('login-password');
   };
 
   const sendSignupOtp = async (target = email) => {
@@ -579,6 +551,20 @@ export default function AuthModal() {
             className="mt-4 w-full text-center text-sm font-semibold text-slate-700 hover:underline"
           >
             Forgot password?
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!email) {
+                setError('New accounts require an email address.');
+                return;
+              }
+              setError('');
+              setView('signup-start');
+            }}
+            className="mt-3 w-full text-center text-sm font-semibold text-slate-600 hover:text-slate-900 hover:underline"
+          >
+            New to LofiMart? Create an account
           </button>
           <button type="button" onClick={() => setView('entry')} className="mt-3 w-full text-center text-sm font-semibold text-slate-500 hover:text-slate-800 hover:underline">
             ← Use another account
