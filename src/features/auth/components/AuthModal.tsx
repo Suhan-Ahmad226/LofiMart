@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, Eye, EyeOff, Facebook, Loader2, ShieldCheck, X } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthModal, type AuthView } from '@/features/auth/context/AuthModalContext';
 import OtpInput from '@/features/auth/components/OtpInput';
 import {
@@ -11,6 +11,7 @@ import {
   hasSupabaseBrowserEnv,
   loginWithPassword,
   mapAuthMessage,
+  rememberPendingOAuthRedirect,
   requestPasswordReset,
   resetPasswordWithOtp,
   resolvePostAuthDestination,
@@ -89,13 +90,14 @@ export default function AuthModal() {
   }, [resendIn]);
 
   useEffect(() => {
-    if (searchParams.get('auth_success') !== '1') return;
+    if (typeof window === 'undefined') return;
     const current = new URL(window.location.href);
+    if (current.searchParams.get('auth_success') !== '1') return;
     current.searchParams.delete('auth_success');
     const cleanPath = current.pathname + (current.search ? current.search : '');
     openAuth({ view: 'success', returnTo: cleanPath });
     window.history.replaceState({}, '', cleanPath);
-  }, [searchParams, openAuth]);
+  }, [openAuth]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -266,6 +268,7 @@ export default function AuthModal() {
     try {
       const supabase = await getSupabaseBrowserClient();
       if (!hasSupabaseBrowserEnv()) throw new Error('Supabase auth is not configured.');
+      rememberPendingOAuthRedirect({ redirectTarget: destination, mode: 'register' });
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo: buildAuthCallbackUrl({ redirectTarget: destination, mode: 'register' }) },
