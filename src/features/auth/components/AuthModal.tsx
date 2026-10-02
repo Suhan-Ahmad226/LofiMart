@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, Eye, EyeOff, Facebook, Loader2, ShieldCheck, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthModal, type AuthView } from '@/features/auth/context/AuthModalContext';
@@ -117,6 +117,42 @@ export default function AuthModal() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, loading, closeAuth]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+
+    const first = focusable()[0];
+    first?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) return;
+
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem.focus();
+      }
+    };
+
+    dialog.addEventListener('keydown', onKeyDown);
+    return () => dialog.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, view]);
 
   const destination = useMemo(() => {
     if (returnTo && !returnTo.startsWith('/login') && !returnTo.startsWith('/register')) returnTo;
@@ -426,7 +462,7 @@ export default function AuthModal() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-5" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget && !loading) closeAuth(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="lofimart-auth-title" className="w-full max-w-[460px] overflow-hidden rounded-[24px] bg-white shadow-2xl">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="lofimart-auth-title" className="auth-modal-panel w-full max-w-[460px] overflow-hidden rounded-[24px] bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <button type="button" onClick={goBack} aria-label="Back" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">{view === 'entry' ? <X size={20} /> : <ArrowLeft size={20} />}</button>
           <div className="text-sm font-bold text-slate-950">LofiMart</div>
@@ -439,6 +475,8 @@ export default function AuthModal() {
         </div>
       </div>
       <style jsx>{`
+        .auth-modal-panel{animation:auth-modal-in .2s ease-out both}
+        @keyframes auth-modal-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
         .auth-primary{display:flex;min-height:48px;width:100%;align-items:center;justify-content:center;gap:.5rem;border-radius:.75rem;background:#0f172a;padding:.75rem 1rem;color:#fff;font-size:.9375rem;font-weight:700;transition:.18s}
         .auth-primary:hover{background:#1e293b}
         .auth-primary:disabled{cursor:not-allowed;opacity:.55}
