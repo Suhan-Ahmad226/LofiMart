@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { Link, useLocation } from '../../../lib/navigation';
 import {
   Boxes,
@@ -476,7 +477,7 @@ export const MobileBottomNav = () => {
                   >
                     {item.label}
                   </span>
-                </Link>
+                </button>
               );
             })}
           </div>
