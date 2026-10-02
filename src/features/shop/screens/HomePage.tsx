@@ -253,12 +253,10 @@ async function fetchHomepageData(signal: AbortSignal) {
     fetchFlashSale(signal),
   ]);
 
-  const productsResult = results[0];
-  if (productsResult.status === 'rejected') {
-    throw productsResult.reason;
-  }
-
-  const productPayload = productsResult.value;
+  const productPayload =
+    results[0].status === 'fulfilled'
+      ? results[0].value
+      : { products: [], categories: [], pagination: { hasMore: false } };
   const bannerPayload =
     results[1].status === 'fulfilled' ? results[1].value : { data: [] };
   const flashPayload =
