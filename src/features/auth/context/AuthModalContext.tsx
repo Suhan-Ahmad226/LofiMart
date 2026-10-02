@@ -5,12 +5,14 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 export type AuthView =
   | 'entry'
   | 'login-password'
+  | 'signup-start'
   | 'signup-otp'
   | 'signup-password'
   | 'forgot-password'
   | 'reset-otp'
   | 'reset-password'
-  | 'success';
+  | 'success'
+  | 'reset-success';
 
 type AuthModalContextValue = {
   isOpen: boolean;
