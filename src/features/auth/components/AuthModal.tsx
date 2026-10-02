@@ -67,7 +67,7 @@ function PasswordField({ label, value, onChange, autoComplete }: { label: string
 }
 
 export default function AuthModal() {
-  const { isOpen, view, returnTo, closeAuth, setView } = useAuthModal();
+  const { isOpen, view, returnTo, closeAuth, setView, openAuth } = useAuthModal();
   const { login, user, isAuthenticated } = useUser();
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
