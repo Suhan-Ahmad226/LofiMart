@@ -127,10 +127,12 @@ export default function AuthModal() {
     setError('');
     setNotice('');
     if (view === 'entry') closeAuth();
-    else if (view === 'login-password' || view === 'signup-otp' || view === 'forgot-password') setView('entry');
+    else if (view === 'login-password' || view === 'signup-start' || view === 'forgot-password') setView('entry');
+    else if (view === 'signup-otp') setView('signup-start');
     else if (view === 'signup-password') setView('signup-otp');
     else if (view === 'reset-otp') setView('forgot-password');
     else if (view === 'reset-password') setView('reset-otp');
+    else if (view === 'reset-success') setView('login-password');
     else setView('entry');
   };
 
@@ -160,8 +162,7 @@ export default function AuthModal() {
     }
 
     setEmail(value);
-    setView('signup-otp');
-    await sendSignupOtp(value);
+    setView('signup-start');
   };
 
   const sendSignupOtp = async (target = email) => {
@@ -257,8 +258,8 @@ export default function AuthModal() {
     setLoading(true); setError('');
     try {
       await resetPasswordWithOtp({ identifier: resetIdentifier, newPassword: password });
-      setView('success');
-      setNotice('Password updated successfully.');
+      setView('reset-success');
+      setNotice('');
     } catch (e) { setError(mapAuthMessage(e)); }
     finally { setLoading(false); }
   };
@@ -282,12 +283,14 @@ export default function AuthModal() {
   const title: Record<AuthView, string> = {
     entry: 'Welcome to LofiMart 👋',
     'login-password': 'Welcome back 👋',
+    'signup-start': 'Create your account 👋',
     'signup-otp': 'Verify your email ✉️',
     'signup-password': 'Create your password',
     'forgot-password': 'Forgot password?',
     'reset-otp': 'Verify your identity',
     'reset-password': 'Reset password',
     success: 'Welcome to LofiMart 👋',
+    'reset-success': 'Password updated',
   };
 
   const content = (
@@ -304,7 +307,7 @@ export default function AuthModal() {
           <button type="button" onClick={continueIdentifier} disabled={loading} className="auth-primary mt-4">{loading ? <Loader2 className="animate-spin" size={18} /> : 'Continue'}</button>
           <button
             type="button"
-            onClick={() => void startSignupFromIdentifier()}
+            onClick={() => { setError(''); setEmail(identifier.trim().toLowerCase()); setView('signup-start'); }}
             disabled={loading}
             className="mt-3 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -321,6 +324,31 @@ export default function AuthModal() {
           {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
           <button type="button" onClick={() => void doPasswordLogin()} disabled={loading} className="auth-primary mt-5">{loading ? <Loader2 className="animate-spin" size={18} /> : 'Login'}</button>
           <button type="button" onClick={() => { setResetIdentifier(identifier); setView('forgot-password'); }} className="mt-4 w-full text-center text-sm font-semibold text-slate-700 hover:underline">Forgot password?</button>
+          <button type="button" onClick={() => { setIdentifier(''); setPassword(''); setView('entry'); }} className="mt-3 w-full text-center text-sm font-semibold text-slate-500 hover:text-slate-800 hover:underline">← Use another account</button>
+        </>
+      )}
+
+      {view === 'signup-start' && (
+        <>
+          <p className="mb-2 text-center text-sm text-slate-500">
+            We’ll verify your email before creating the account.
+          </p>
+          <p className="mb-5 text-center text-sm font-semibold text-slate-800">{email || identifier}</p>
+          <Field
+            label="Email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+            placeholder="you@example.com"
+          />
+          <button
+            type="button"
+            onClick={() => void sendSignupOtp()}
+            disabled={loading}
+            className="auth-primary mt-5"
+          >
+            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send verification code'}
+          </button>
         </>
       )}
 
@@ -364,8 +392,31 @@ export default function AuthModal() {
         <>
           <div className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600"><Check size={18} /> Identity verified</div>
           <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" />
+          <p className="mt-2 text-xs text-slate-500">Use at least 8 characters and one number.</p>
           <div className="mt-4"><PasswordField label="Confirm password" value={confirm} onChange={setConfirm} autoComplete="new-password" /></div>
           <button type="button" onClick={() => void doReset()} disabled={loading} className="auth-primary mt-5">{loading ? <Loader2 className="animate-spin" size={18} /> : 'Reset password'}</button>
+        </>
+      )}
+
+      {view === 'reset-success' && (
+        <>
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <Check size={30} />
+          </div>
+          <p className="text-center text-sm font-semibold text-slate-900">Password updated successfully.</p>
+          <p className="mt-2 text-center text-sm text-slate-500">Your new password is ready.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setIdentifier(resetIdentifier);
+              setPassword('');
+              setConfirm('');
+              setView('login-password');
+            }}
+            className="auth-primary mt-5"
+          >
+            Log in
+          </button>
         </>
       )}
 
