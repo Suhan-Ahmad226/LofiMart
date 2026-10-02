@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from '../../../lib/navigation';
+import { useNavigate, useSearchParams } from '../../../lib/navigation';
 import { AlertCircle, ArrowLeft, Fingerprint, Loader2 } from 'lucide-react';
 import { useUser } from '../../../features/shared/state/UserContext';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { normalizeRedirectTarget, resolvePostAuthDestination } from '../../../lib/auth-ui';
 import OtpInput from '@/features/auth/components/OtpInput';
 
@@ -33,6 +34,7 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useUser();
+  const { openAuth } = useAuthModal();
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
@@ -148,10 +150,6 @@ export default function AuthCallbackPage() {
         const accessToken = session?.access_token;
         if (!accessToken) {
           throw new Error('Supabase session not found');
-        }
-
-        if (currentMode === 'register' && !role) {
-          throw new Error('Please select whether you are joining as a customer, seller, or reseller before using social sign up.');
         }
 
         try {
@@ -302,13 +300,17 @@ export default function AuthCallbackPage() {
             Resend code
           </button>
 
-          <Link
-            to={currentMode === 'register' ? '/register' : '/login'}
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/', { replace: true });
+              openAuth({ returnTo: pendingExchange?.redirectTarget || '/' });
+            }}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
           >
             <ArrowLeft size={16} />
-            Back to {currentMode === 'register' ? 'register' : 'login'}
-          </Link>
+            Back to LofiMart
+          </button>
         </div>
       </div>
     );
@@ -325,13 +327,17 @@ export default function AuthCallbackPage() {
             <h1 className="text-2xl font-bold">{currentMode === 'register' ? 'Sign-up could not be completed' : 'Sign-in failed'}</h1>
             <p className="text-sm text-gray-500">{error}</p>
             <div className="pt-2">
-              <Link
-                to={currentMode === 'register' ? '/register' : '/login'}
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/', { replace: true });
+                  openAuth({ returnTo: redirectTarget || '/' });
+                }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 <ArrowLeft size={16} />
-                <span>{currentMode === 'register' ? 'Back to register' : 'Back to login'}</span>
-              </Link>
+                <span>Back to LofiMart</span>
+              </button>
             </div>
           </>
         ) : (
