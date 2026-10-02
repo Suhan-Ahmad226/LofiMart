@@ -205,6 +205,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const isNewUser = !user;
+
     if (!user) {
       if (body.mode !== 'register') {
         return NextResponse.json({ error: 'Account not found. Please register first.' }, { status: 404 });
@@ -248,6 +250,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
+      isNewUser,
       user: formatAuthUser({
         id: user.id,
         email: user.email,
