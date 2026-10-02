@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { CheckCircle2, Package, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import { Link, useSearchParams } from '../../../lib/navigation';
 import OtpInput from '@/features/auth/components/OtpInput';
@@ -31,6 +32,7 @@ function readRecentOrder(orderIdParam: string | null): RecentOrder {
 }
 
 export default function OrderSuccessPage() {
+  const { openAuth } = useAuthModal();
   const [params] = useSearchParams();
   const { token, isAuthenticated } = useUser();
   const orderIdParam = useMemo(() => params.get('orderId'), [params]);
@@ -159,19 +161,19 @@ export default function OrderSuccessPage() {
 
             {!isAuthenticated ? (
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link
-                  to={orderClaimRedirect ? `/register?redirect=${encodeURIComponent(orderClaimRedirect)}` : '/register'}
+                <button
+                  type="button"
                   className="btn-primary inline-flex items-center gap-2"
-                >
+                 onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
                   Register to claim
                   <ArrowRight size={16} />
-                </Link>
-                <Link
-                  to={orderClaimRedirect ? `/login?redirect=${encodeURIComponent(orderClaimRedirect)}` : '/login'}
+                </button>
+                <button
+                  type="button"
                   className="inline-flex items-center gap-2 px-6 py-2 rounded-lg font-semibold border border-border bg-card hover:bg-secondary transition-colors"
-                >
+                 onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
                   Login
-                </Link>
+                </button>
               </div>
             ) : claimState === 'claimed' ? (
               <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700">
@@ -245,13 +247,13 @@ export default function OrderSuccessPage() {
           <Link to="/account/orders" className="btn-primary inline-flex items-center gap-2">
             View My Orders
             <ArrowRight size={16} />
-          </Link>
+          </button>
           <Link
             to="/shop"
             className="inline-flex items-center gap-2 px-6 py-2 rounded-lg font-semibold border border-border bg-card hover:bg-secondary transition-colors"
           >
             Continue Shopping
-          </Link>
+          </button>
         </div>
       </div>
     </div>
