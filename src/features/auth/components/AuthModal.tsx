@@ -473,7 +473,7 @@ export default function AuthModal() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: buildAuthCallbackUrl({ redirectTarget: destination, mode: 'login' }),
+          redirectTo: buildAuthCallbackUrl({ redirectTarget: destination, mode: 'register' }),
         },
       });
 
