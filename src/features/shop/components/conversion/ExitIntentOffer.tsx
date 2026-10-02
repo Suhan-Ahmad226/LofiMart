@@ -38,7 +38,7 @@ export default function ExitIntentOffer() {
       return;
     }
 
-    const blockedRoutes = ['/checkout', '/order-success', '/login', '/register'];
+    const blockedRoutes = ['/checkout', '/order-success'];
     if (blockedRoutes.some((route) => location.pathname.startsWith(route))) {
       return;
     }
@@ -101,14 +101,14 @@ export default function ExitIntentOffer() {
               >
                 {config.primary_cta}
                 <ArrowRight size={16} />
-              </button>
+              </Link>
               <Link
                 to="/shop"
                 onClick={close}
                 className="inline-flex items-center justify-center rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-800 transition hover:border-primary hover:text-primary"
               >
                 {config.secondary_cta}
-              </button>
+              </Link>
             </div>
           </motion.div>
         </motion.div>
