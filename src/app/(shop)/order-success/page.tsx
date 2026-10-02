@@ -161,19 +161,19 @@ export default function OrderSuccessPage() {
 
             {!isAuthenticated ? (
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  type="button"
+                <Link
+                  to="#" onClick={(e) => { e.preventDefault(); openAuth({ returnTo: orderClaimRedirect || "/" }); }}
                   className="btn-primary inline-flex items-center gap-2"
-                 onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
+                >
                   Register to claim
                   <ArrowRight size={16} />
-                </button>
-                <button
-                  type="button"
+                </Link>
+                <Link
+                  to="#" onClick={(e) => { e.preventDefault(); openAuth({ returnTo: orderClaimRedirect || "/" }); }}
                   className="inline-flex items-center gap-2 px-6 py-2 rounded-lg font-semibold border border-border bg-card hover:bg-secondary transition-colors"
-                 onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
+                >
                   Login
-                </button>
+                </Link>
               </div>
             ) : claimState === 'claimed' ? (
               <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700">
@@ -247,13 +247,13 @@ export default function OrderSuccessPage() {
           <Link to="/account/orders" className="btn-primary inline-flex items-center gap-2">
             View My Orders
             <ArrowRight size={16} />
-          </button>
+          </Link>
           <Link
             to="/shop"
             className="inline-flex items-center gap-2 px-6 py-2 rounded-lg font-semibold border border-border bg-card hover:bg-secondary transition-colors"
           >
             Continue Shopping
-          </button>
+          </Link>
         </div>
       </div>
     </div>
