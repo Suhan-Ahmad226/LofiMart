@@ -311,7 +311,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, type
     }
 
     if (!token || !user) {
-      const destination = `/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
+      const destination = `${location.pathname}${location.search}`;
       navigate(destination, { replace: true });
       return;
     }
