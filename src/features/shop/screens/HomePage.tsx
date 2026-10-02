@@ -326,7 +326,7 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
   return (
     <Link
       to={`/shop?category=${encodeURIComponent(category.name)}`}
-      className="group min-w-[9.25rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg md:min-w-0"
+      className="group min-w-[9.25rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_-28px_rgba(15,23,42,0.45)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg md:min-w-0"
     >
       <div className="aspect-[1.3] bg-slate-100">
         <OptimizedImage
@@ -840,7 +840,7 @@ export const HomePage = () => {
           role="region"
           aria-roledescription="carousel"
           aria-label="Promotions"
-          className="responsive-hero relative overflow-hidden rounded-2xl bg-slate-950 shadow-sm"
+          className="responsive-hero relative overflow-hidden rounded-[1.5rem] bg-slate-950 shadow-lg shadow-slate-900/10 md:rounded-[1.75rem]"
           onMouseEnter={pauseBanner}
           onMouseLeave={resumeBanner}
           onFocusCapture={pauseBanner}
@@ -931,7 +931,7 @@ export const HomePage = () => {
             return (
               <div
                 key={item.title}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="flex min-h-[92px] items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_30px_-22px_rgba(15,23,42,0.35)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/15 md:p-5"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon size={20} />
@@ -953,7 +953,7 @@ export const HomePage = () => {
       </section>
 
       <section className="page-shell pb-9" data-reveal>
-        <div className="overflow-hidden rounded-2xl border border-rose-100 bg-[linear-gradient(135deg,#fff7f7,#ffffff_42%,#f7fbf8)] p-4 shadow-sm md:p-6">
+        <div className="overflow-hidden rounded-[1.5rem] border border-rose-100/80 bg-[linear-gradient(135deg,#fff7f7,#ffffff_42%,#f7fbf8)] p-4 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.4)] md:p-6">
           <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="section-kicker text-accent">Flash sale</p>
