@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import dynamic from 'next/dynamic';
 import {
   ArrowRight,
@@ -154,6 +155,7 @@ const trustSignals = [
 ];
 
 function formatCompactNumber(value: number) {
+  const { openAuth } = useAuthModal();
   return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 }
 
@@ -724,14 +726,14 @@ export const CommunityFeedPage = () => {
                   >
                     Explore products
                     <ArrowRight size={16} />
-                  </Link>
-                  <Link
-                    to="/register"
+                  </button>
+                  <button
+                    type="button"
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-primary/30 hover:text-primary"
-                  >
+                   onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
                     Become a seller
                     <Store size={16} />
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -986,7 +988,7 @@ export const CommunityFeedPage = () => {
                                 {sellerProfilePath ? (
                                   <Link to={sellerProfilePath} className="truncate font-bold text-slate-950 transition hover:text-primary">
                                     {item.user.name}
-                                  </Link>
+                                  </button>
                                 ) : (
                                   <h3 className="truncate font-bold text-slate-950">{item.user.name}</h3>
                                 )}
@@ -1041,7 +1043,7 @@ export const CommunityFeedPage = () => {
                                 >
                                   <UserPlus className="h-3.5 w-3.5" />
                                   View profile
-                                </Link>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => setReportDraft({ postId: item.id, reason: 'Misleading content', details: '' })}
@@ -1189,7 +1191,7 @@ export const CommunityFeedPage = () => {
                               >
                                 {item.product.slug ? 'View product' : 'Browse shop'}
                                 <ArrowRight size={15} />
-                              </Link>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1250,12 +1252,12 @@ export const CommunityFeedPage = () => {
                                 ? (
                                     <Link to={`/r/${user.reseller_code}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
                                       View
-                                    </Link>
+                                    </button>
                                   )
                                 : user.storefront_slug ? (
                                     <Link to={`/store/${user.storefront_slug}`} className="mt-1 inline-block text-xs font-semibold text-primary hover:underline">
                                       View
-                                    </Link>
+                                    </button>
                                   ) : (
                                     <button type="button" className="mt-1 text-xs font-semibold text-primary hover:underline">
                                       View
@@ -1279,19 +1281,19 @@ export const CommunityFeedPage = () => {
                       Publish real product moments, highlight verified reviews, and give shoppers the confidence they need before checkout.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-3">
-                      <Link
-                        to="/register"
+                      <button
+                        type="button"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-                      >
+                       onClick={() => openAuth({ returnTo: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/" })}>
                         Start selling
                         <ArrowRight size={15} />
-                      </Link>
+                      </button>
                       <Link
                         to="/help"
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/8"
                       >
                         Learn more
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </>
