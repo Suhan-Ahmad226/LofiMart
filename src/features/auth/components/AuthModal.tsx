@@ -140,28 +140,28 @@ export default function AuthModal() {
     router.replace(resolvePostAuthDestination(result.user.role, destination));
   };
 
-  const continueIdentifier = async () => {
+  const continueIdentifier = () => {
     const value = identifier.trim();
-    if (!value) return setError('Enter your email or phone number.');
-    setLoading(true); setError('');
-    try {
-      const result = await fetch('/api/auth/identifier-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: value }) });
-      const data = await result.json().catch(() => null);
-      if (result.ok && data?.exists) {
-        setIdentifier(value);
-        setView('login-password');
-      } else {
-        if (!EMAIL_RE.test(value)) {
-          setError('New account registration currently uses email. Please enter an email address.');
-          return;
-        }
-        setEmail(value.toLowerCase());
-        setView('signup-otp');
-        await sendSignupOtp(value.toLowerCase());
-      }
-    } catch (e) {
-      setError(mapAuthMessage(e));
-    } finally { setLoading(false); }
+    if (!value) {
+      setError('Enter your email or phone number.');
+      return;
+    }
+
+    setError('');
+    setIdentifier(value);
+    setView('login-password');
+  };
+
+  const startSignupFromIdentifier = async () => {
+    const value = identifier.trim().toLowerCase();
+    if (!EMAIL_RE.test(value)) {
+      setError('New account registration currently uses email. Please enter an email address.');
+      return;
+    }
+
+    setEmail(value);
+    setView('signup-otp');
+    await sendSignupOtp(value);
   };
 
   const sendSignupOtp = async (target = email) => {
@@ -301,7 +301,15 @@ export default function AuthModal() {
           </div>
           <div className="my-5 flex items-center gap-3 text-xs font-semibold text-slate-400"><span className="h-px flex-1 bg-slate-200" />OR<span className="h-px flex-1 bg-slate-200" /></div>
           <Field label="Email or phone" value={identifier} onChange={setIdentifier} autoComplete="username" placeholder="Email or phone" />
-          <button type="button" onClick={() => void continueIdentifier()} disabled={loading} className="auth-primary mt-4">{loading ? <Loader2 className="animate-spin" size={18} /> : 'Continue'}</button>
+          <button type="button" onClick={continueIdentifier} disabled={loading} className="auth-primary mt-4">{loading ? <Loader2 className="animate-spin" size={18} /> : 'Continue'}</button>
+          <button
+            type="button"
+            onClick={() => void startSignupFromIdentifier()}
+            disabled={loading}
+            className="mt-3 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            New to LofiMart? Create an account
+          </button>
           <div className="mt-5 flex items-center justify-center gap-2 text-xs text-slate-500"><ShieldCheck size={15} /> Secure authentication</div>
         </>
       )}
