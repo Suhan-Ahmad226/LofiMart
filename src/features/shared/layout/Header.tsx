@@ -954,13 +954,11 @@ export const Header = () => {
     if (isAuthenticated) {
       navigate('/account/notifications');
     } else {
-      navigate(
-        '/login?redirect=/account/notifications',
-      );
+      openAuth({ returnTo: '/account/notifications' });
     }
 
     setMobileOpen(false);
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, openAuth]);
 
   /* ------------------------------------------------------------------------ */
   /* Account links                                                            */
