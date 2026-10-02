@@ -68,7 +68,8 @@ export default function AuthCallbackPage() {
           ? `Welcome${payload.user?.name ? `, ${payload.user.name}` : ''}. Your account is ready.`
           : `Welcome back${payload.user?.name ? `, ${payload.user.name}` : ''}.`,
       );
-      navigate(resolvePostAuthDestination(payload.user.role, redirectTarget), { replace: true });
+      const destination = resolvePostAuthDestination(payload.user.role, redirectTarget);
+      navigate(currentMode === 'register' ? `${destination}${destination.includes('?') ? '&' : '?'}auth_success=1` : destination, { replace: true });
     },
     [login, navigate],
   );
