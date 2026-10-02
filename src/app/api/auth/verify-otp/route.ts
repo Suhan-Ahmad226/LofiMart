@@ -5,6 +5,7 @@ import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
 import { isAuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail, OTP_MAX_ATTEMPTS } from '@/features/auth/server/auth-service';
 import { attachPasswordResetSessionCookie, createPasswordResetSession } from '@/features/auth/server/reset-session';
+import { createSupabaseServerClient } from '@/app/api/auth/supabase/shared';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,39 @@ export async function POST(request: NextRequest) {
         { error: VERIFY_MESSAGES.MAX_ATTEMPTS, code: 'MAX_ATTEMPTS' },
         { status: 429, headers: { 'Retry-After': '300' } },
       );
+    }
+
+    // Registration OTPs are issued by Supabase Auth. Verification still goes
+    // through this server endpoint so attempts are rate-limited server-side and
+    // the browser never becomes the security boundary.
+    if (purpose === 'register') {
+      if (classified.type !== 'email') {
+        return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+      }
+
+      const supabase = createSupabaseServerClient(false);
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: classified.value,
+        token: body.pin,
+        type: 'email',
+      });
+
+      if (error || !data.session) {
+        const message = String(error?.message || '').toLowerCase();
+        const code = message.includes('expired') ? 'EXPIRED' : 'INVALID';
+        return NextResponse.json({ error: VERIFY_MESSAGES[code], code }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        verified: 'register',
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_in: data.session.expires_in,
+          expires_at: data.session.expires_at,
+        },
+      });
     }
 
     if (purpose === 'reset_password') {
@@ -108,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (verifiedEmail) {
-      if (purpose === 'register' || purpose === 'verify_email') {
+      if (purpose === 'verify_email') {
         const userId = await findUserIdByEmail(verifiedEmail);
         if (userId) {
           await markEmailVerified(userId, supabaseUserId);
