@@ -52,7 +52,7 @@ export async function exchangeSupabaseSession(params: {
   name?: string;
   referralCode?: string;
   mode?: 'login' | 'register';
-}): Promise<{ user: User }> {
+}): Promise<{ user: User; isNewUser?: boolean }> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), AUTH_EXCHANGE_TIMEOUT_MS);
 
