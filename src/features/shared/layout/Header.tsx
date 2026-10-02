@@ -47,6 +47,7 @@ import {
 } from '../../../lib/role-navigation';
 
 import { getCachedClientValue } from '../../../lib/client-cache';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -300,6 +301,7 @@ export const Header = () => {
   const { totalItems } = useCart();
   const { user, isAuthenticated, logout } = useUser();
   const { items: wishlistItems } = useWishlist();
+  const { openAuth } = useAuthModal();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -925,7 +927,7 @@ export const Header = () => {
     if (isAuthenticated) {
       navigate(getDashboardPath());
     } else {
-      navigate('/login');
+      openAuth({ returnTo: location.pathname + location.search });
     }
 
     setMobileOpen(false);
@@ -933,6 +935,9 @@ export const Header = () => {
     getDashboardPath,
     isAuthenticated,
     navigate,
+    openAuth,
+    location.pathname,
+    location.search,
   ]);
 
   const handleLogout = useCallback(() => {
