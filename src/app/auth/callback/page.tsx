@@ -71,7 +71,7 @@ export default function AuthCallbackPage() {
           : `Welcome back${payload.user?.name ? `, ${payload.user.name}` : ''}.`,
       );
       const destination = resolvePostAuthDestination(payload.user.role, redirectTarget);
-      const shouldShowSuccess = currentMode === 'register' && payload.isNewUser !== false;
+      const shouldShowSuccess = payload.isNewUser === true;
       navigate(
         shouldShowSuccess
           ? `${destination}${destination.includes('?') ? '&' : '?'}auth_success=1`
