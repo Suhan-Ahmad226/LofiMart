@@ -14,6 +14,7 @@ import PageSkeleton from '@/features/shared/ui/PageSkeleton';
 import { initOfflineStorage, offlineStorage } from '../../../utils/offlineStorage';
 import { useUser } from '../../../features/shared/state/UserContext';
 import SiteMotionEnhancer from '@/features/shared/animations/SiteMotionEnhancer';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 const CartRecoveryTracker = dynamic(() => import('@/features/shop/components/conversion/CartRecoveryTracker'), { ssr: false });
 const ExitIntentOffer = dynamic(() => import('@/features/shop/components/conversion/ExitIntentOffer'), { ssr: false });
 const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/PerformanceMonitor'), { ssr: false });
@@ -21,6 +22,7 @@ const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/Per
 
 
 function HomeAnnouncementBar() {
+  const { openAuth } = useAuthModal();
   return (
     <div className="relative z-50 border-b border-emerald-900/10 bg-slate-950 text-white">
       <div className="page-shell flex min-h-10 items-center justify-between gap-3 py-2 text-xs font-semibold">
@@ -38,9 +40,9 @@ function HomeAnnouncementBar() {
             Verified marketplace sellers
           </span>
         </div>
-        <Link to="/register?role=seller" className="hidden shrink-0 text-emerald-300 hover:text-white sm:inline-flex">
+        <button type="button" onClick={() => openAuth({ returnTo: '/seller/onboarding' })} className="hidden shrink-0 text-emerald-300 hover:text-white sm:inline-flex">
           Sell on LofiMart
-        </Link>
+        </button>
       </div>
     </div>
   );
