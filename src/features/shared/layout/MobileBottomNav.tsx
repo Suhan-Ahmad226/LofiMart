@@ -44,7 +44,7 @@ const getAccountPath = (
   role?: string | null,
 ): string => {
   if (!isAuthenticated) {
-    return '/login';
+    openAuth({ returnTo: '/account/dashboard' }); return '#';
   }
 
   switch (role) {
@@ -477,7 +477,7 @@ export const MobileBottomNav = () => {
                   >
                     {item.label}
                   </span>
-                </button>
+                </Link>
               );
             })}
           </div>
