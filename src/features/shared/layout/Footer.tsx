@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuthModal } from '@/features/auth/context/AuthModalContext';
 import { Link } from '../../../lib/navigation';
 import {
   ArrowRight,
@@ -105,16 +106,16 @@ export const Footer = () => {
               <nav className="flex flex-col gap-2">
                 <Link to="/about" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   About
-                </Link>
+                </button>
                 <Link to="/blog" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Blog
-                </Link>
+                </button>
                 <Link to="/community" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Community
-                </Link>
+                </button>
                 <Link to="/contact" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Contact Us
-                </Link>
+                </button>
               </nav>
             </div>
 
@@ -124,16 +125,16 @@ export const Footer = () => {
               <nav className="flex flex-col gap-2">
                 <Link to="/shop" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   All Products
-                </Link>
+                </button>
                 <Link to="/categories" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Categories
-                </Link>
+                </button>
                 <Link to="/shop?sort=newest" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   New Arrivals
-                </Link>
+                </button>
                 <Link to="/flash-sale" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Flash Sale
-                </Link>
+                </button>
               </nav>
             </div>
 
@@ -143,16 +144,16 @@ export const Footer = () => {
               <nav className="flex flex-col gap-2">
                 <Link to="/help" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Help Center
-                </Link>
+                </button>
                 <Link to="/track" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Track Order
-                </Link>
+                </button>
                 <Link to="/returns" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Returns &amp; Refunds
-                </Link>
+                </button>
                 <Link to="/contact" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Contact Us
-                </Link>
+                </button>
               </nav>
             </div>
 
@@ -160,18 +161,18 @@ export const Footer = () => {
             <div className="flex flex-col gap-2">
               <h3 className="text-xs font-bold text-primary mb-2 uppercase tracking-wider">Sell With Us</h3>
               <nav className="flex flex-col gap-2">
-                <Link
-                  to="/register?role=seller"
+                <button
+                  type="button"
                   className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm"
-                >
+                 onClick={() => openAuth({ returnTo: "/seller/onboarding" })}>
                   Become a Seller
-                </Link>
+                </button>
                 <Link to="/seller" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Seller Center
-                </Link>
+                </button>
                 <Link to="/reseller" className="text-[#43474d] hover:text-primary hover:translate-x-1 transition-all duration-300 footer-link-hover w-max text-sm">
                   Become a Reseller
-                </Link>
+                </button>
               </nav>
             </div>
           </div>
@@ -190,10 +191,10 @@ export const Footer = () => {
             <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-[#43474d]">
               <Link to="/privacy" className="hover:text-primary transition-colors">
                 Privacy Policy
-              </Link>
+              </button>
               <Link to="/terms" className="hover:text-primary transition-colors">
                 Terms of Service
-              </Link>
+              </button>
             </div>
           </div>
         </div>
