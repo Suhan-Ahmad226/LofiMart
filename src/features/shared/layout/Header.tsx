@@ -1767,21 +1767,30 @@ export const Header = () => {
                   </div>
 
                   <div className="p-2">
-                    {accountLinks.map(
-                      (item) => (
+                    {accountLinks.map((item) =>
+                      isAuthenticated ? (
                         <Link
                           key={item.href}
                           to={item.href}
-                          onClick={() =>
-                            setAccountOpen(
-                              false,
-                            )
-                          }
+                          onClick={() => setAccountOpen(false)}
                           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-primary"
                         >
                           {item.icon}
                           {item.label}
                         </Link>
+                      ) : (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            setAccountOpen(false);
+                            openAuth({ returnTo: location.pathname + location.search });
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-primary"
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
                       ),
                     )}
 
