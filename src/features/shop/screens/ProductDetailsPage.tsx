@@ -66,6 +66,7 @@ export const ProductDetailsPage = () => {
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(2500);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const { user, token, isAuthenticated } = useUser();
+  const { openAuth } = useAuthModal();
   const commerceConfig = useCommerceConfig();
   const referralCode = searchParams.get('ref');
   const deferredSectionsRef = useRef<HTMLDivElement | null>(null);

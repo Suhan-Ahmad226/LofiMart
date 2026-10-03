@@ -92,6 +92,33 @@ export async function exchangeSupabaseSession(params: {
   }
 }
 
+/**
+ * Adopt a session that was minted on the server.
+ *
+ * Supabase OTP verification runs on the server so attempts stay rate limited
+ * there. The server hands back the resulting session tokens, and the browser
+ * only needs to store them so later requests carry a valid bearer token.
+ */
+export async function adoptAuthSession(
+  session: { access_token?: string | null; refresh_token?: string | null } | null | undefined,
+) {
+  if (!session?.access_token || !session.refresh_token) {
+    throw new Error('The verification response did not include a valid session.');
+  }
+
+  const supabase = await getSupabaseBrowserClient();
+  const { error } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Unable to sync the Supabase browser session.');
+  }
+
+  return { accessToken: session.access_token };
+}
+
 export async function loginWithPassword(params: {
   identifier: string;
   password: string;
@@ -178,8 +205,11 @@ export async function resendOtpCode(params: { identifier: string; purpose: strin
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const error: Error & { code?: string } = new Error(extractAuthMessage(data) || 'Unable to resend the code right now.');
+    const error: Error & { code?: string; retryAfterSeconds?: number } = new Error(
+      extractAuthMessage(data) || 'Unable to resend the code right now.',
+    );
     error.code = typeof data?.code === 'string' ? data.code : undefined;
+    error.retryAfterSeconds = Number(response.headers.get('Retry-After')) || undefined;
     throw error;
   }
 
@@ -271,8 +301,12 @@ export function getRoleHome(role: string): string {
 }
 
 export function resolvePostAuthDestination(userRole: string, redirectTarget: string | null) {
-  if (redirectTarget && isRouteAllowedForRole(userRole, redirectTarget)) {
-    return redirectTarget;
+  // Defensive by design: only a same-origin relative path may ever be used as
+  // a post-auth destination, no matter what a caller passes in.
+  const safeTarget = normalizeRedirectTarget(redirectTarget);
+
+  if (safeTarget && isRouteAllowedForRole(userRole, safeTarget)) {
+    return safeTarget;
   }
 
   return getRoleHome(userRole);
@@ -337,6 +371,24 @@ export function rememberPendingOAuthRedirect(options?: {
   }
 }
 
+/**
+ * The single source of truth for the password policy enforced by the auth
+ * API routes. The registration and reset screens render this list as a live
+ * checklist so the user always sees exactly what the server will accept.
+ */
+export const PASSWORD_RULES = [
+  { id: 'length', label: '8+ characters', test: (value: string) => value.length >= 8 },
+  { id: 'number', label: 'At least 1 number', test: (value: string) => /[0-9]/.test(value) },
+] as const;
+
+export function getPasswordRuleState(password: string) {
+  return PASSWORD_RULES.map((rule) => ({ id: rule.id, label: rule.label, met: rule.test(password) }));
+}
+
+export function isPasswordValid(password: string) {
+  return getPasswordRuleState(password).every((rule) => rule.met);
+}
+
 export function getPasswordStrength(password: string) {
   if (!password) {
     return { label: 'Add a password', tone: 'bg-slate-200', width: 'w-0' };
@@ -360,7 +412,7 @@ export function getPasswordStrength(password: string) {
     return { label: 'Strong password', tone: 'bg-sky-500', width: 'w-3/4' };
   }
 
-  return { label: 'Very strong password', tone: 'bg-emerald-500', width: 'w-full' };
+  return { label: 'Very strong password', tone: 'bg-[#006c49]', width: 'w-full' };
 }
 
 export function mapAuthMessage(message: unknown) {
@@ -445,6 +497,32 @@ export function mapAuthMessage(message: unknown) {
 
   if (normalized.includes('we could not create your account right now')) {
     return 'We could not create your authentication account right now. Please try again in a moment.';
+  }
+
+  if (normalized.includes('incorrect verification code')) {
+    return 'Incorrect verification code.';
+  }
+
+  if (normalized.includes('verification code has expired') || normalized.includes('otp expired')) {
+    return 'Your verification code has expired. Please request a new one.';
+  }
+
+  if (normalized.includes('too many attempts') || normalized.includes('too many codes requested')) {
+    return 'Too many attempts. Please request a new code.';
+  }
+
+  if (normalized.includes('incorrect email or password') || normalized.includes('invalid email, phone, or password')) {
+    return 'Incorrect password. Please try again.';
+  }
+
+  if (normalized.includes('please enter a valid email address') || normalized.includes('enter a valid email address')) {
+    return 'Please enter a valid email address.';
+  }
+
+  // §30: anything that still smells like an internal failure is replaced with
+  // a generic message rather than forwarded to the user.
+  if (/prisma|econnrefused|stack|at\s+\w+\s+\(|\/src\/|select \{|invalid prisma|foreign key/i.test(normalized)) {
+    return 'Something went wrong. Please try again.';
   }
 
   return safeMessage;

@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/server';
 import { createSupabaseServerClient } from '@/app/api/auth/supabase/shared';
 import { normalizeEmail, normalizeBdPhone, classifyLoginIdentifier } from '@/features/auth/services/identity';
+import {
+  OTP_RESEND_COOLDOWN_SECONDS,
+  OTP_TTL_MS,
+  recordOtpIssued,
+} from '@/features/auth/server/otp-policy';
+import { createOrAdoptProfile } from '@/features/auth/server/identity-resolution';
 import { syncSupabasePassword } from '@/features/auth/services/password-sync';
 import { classifyExistingAccountRegistration } from '@/features/auth/services/registration-flow';
 import { consumePasswordResetSession } from '@/features/auth/server/reset-session';
@@ -28,9 +34,7 @@ export interface OtpChallengeResult {
   resendInSeconds: number;
 }
 
-export const OTP_TTL_MS = 5 * 60 * 1000;
-export const OTP_RESEND_COOLDOWN_SECONDS = 60;
-export const OTP_MAX_ATTEMPTS = 5;
+export { OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_SECONDS, OTP_TTL_MS } from '@/features/auth/server/otp-policy';
 
 const GENERIC_SUCCESS: { success: true } = { success: true };
 
@@ -206,18 +210,37 @@ export async function registerUser(params: {
   }
 
   try {
-    await prisma.user.create({
-      data: {
-        email,
-        name: params.name,
-        role,
-        phone,
-        supabaseAuthId,
-        sellerStatus: role === 'seller' || role === 'reseller' ? 'draft' : 'approved',
-        emailVerified: false,
-        emailVerifiedAt: null,
-      },
+    // One creation path for every flow: the shared layer turns a unique-index
+    // collision into "this account already exists" instead of a 500.
+    const created = await createOrAdoptProfile({
+      supabaseUserId: supabaseAuthId || `pending:${email}`,
+      email,
+      requestedRole: role,
+      emailVerified: false,
+      emailVerifiedAt: null,
+      displayName: params.name,
+      phone,
     });
+
+    if ('conflict' in created) {
+      if (supabaseAuthId) {
+        const supabase = getServiceRoleClient();
+        const { error: cleanupError } = await supabase.auth.admin.deleteUser(supabaseAuthId);
+        if (cleanupError) {
+          console.error('[auth:register] failed to clean up orphaned Supabase user', {
+            supabaseAuthId,
+            message: cleanupError.message,
+          });
+        }
+      }
+
+      return {
+        success: false,
+        error: 'This email or phone number is already registered. Please login.',
+        code: 'ACCOUNT_EXISTS',
+        status: 409,
+      };
+    }
   } catch (insertError) {
     // The Supabase identity is created before the local profile. If the
     // profile write fails, remove that identity so registration is atomic
@@ -234,7 +257,7 @@ export async function registerUser(params: {
     }
 
     if ((insertError as { code?: string })?.code === 'P2002') {
-      return { success: false, error: 'এই ইমেইল বা ফোন নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে। Login করুন।', code: 'ACCOUNT_EXISTS' };
+      return { success: false, error: 'This email or phone number is already registered. Please login.', code: 'ACCOUNT_EXISTS', status: 409 };
     }
     throw insertError;
   }
@@ -271,6 +294,9 @@ export async function sendEmailOtp(params: {
     return mapOtpSendError(error);
   }
 
+  // Starts the five minute window in which this code may be verified.
+  await recordOtpIssued(params.purpose, params.email);
+
   return {
     success: true,
     expiresAt: new Date(Date.now() + OTP_TTL_MS).toISOString(),
@@ -302,6 +328,8 @@ export async function sendPhoneOtp(params: {
   if (error) {
     return mapOtpSendError(error);
   }
+
+  await recordOtpIssued(params.purpose, normalizedPhone);
 
   return {
     success: true,

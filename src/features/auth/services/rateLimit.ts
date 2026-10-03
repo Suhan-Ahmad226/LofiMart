@@ -100,3 +100,55 @@ export async function takeRateLimit(
     return inMemoryDecision(redisKey, limit, windowMs);
   }
 }
+
+/**
+ * Starts (or refreshes) a window for a key without consuming a counter.
+ *
+ * Used for "something happened at T" markers such as an OTP send, where the
+ * only thing that matters is how long ago it happened.
+ */
+export async function markRateLimit(key: string, options: { windowMs?: number } = {}): Promise<void> {
+  const windowMs = options.windowMs ?? 60_000;
+  const redisKey = buildKey(key);
+
+  try {
+    const { ensureRedis } = await import('@/features/shared/services/messaging/redis');
+    const client = await ensureRedis();
+    await client.set(redisKey, '1', 'PX', windowMs).catch(() => undefined);
+    return;
+  } catch (error) {
+    if (!warnedRedisFallback) {
+      warnedRedisFallback = true;
+      console.warn('[auth:rate-limit] Redis unavailable; using in-memory markers.', error);
+    }
+  }
+
+  const now = Date.now();
+  inMemoryStore.set(redisKey, { count: 1, resetAt: now + windowMs });
+}
+
+/**
+ * Reads a marker's remaining lifetime without consuming it.
+ *
+ * `present` is false when the key is unknown or already expired, which is how
+ * callers detect that a time-boxed event (such as an OTP send) has lapsed.
+ */
+export async function peekRateLimit(key: string): Promise<{ present: boolean; resetAfterMs: number }> {
+  const redisKey = buildKey(key);
+
+  try {
+    const { ensureRedis } = await import('@/features/shared/services/messaging/redis');
+    const client = await ensureRedis();
+    const pttl = await client.pttl(redisKey);
+    if (typeof pttl !== 'number' || pttl < 0) {
+      return { present: false, resetAfterMs: 0 };
+    }
+    return { present: true, resetAfterMs: pttl };
+  } catch {
+    const entry = inMemoryStore.get(redisKey);
+    if (!entry || entry.resetAt <= Date.now()) {
+      return { present: false, resetAfterMs: 0 };
+    }
+    return { present: true, resetAfterMs: entry.resetAt - Date.now() };
+  }
+}

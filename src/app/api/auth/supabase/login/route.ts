@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/server';
-import { createClient as createSupabaseBrowserClient } from '@/lib/client';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import {
-  createLocalUserFromSupabase,
-  formatAuthUser,
-} from '../shared';
-import { ensureRedis } from '@/features/shared/services/messaging/redis';
-import { getServerEnv } from '@/lib/env';
+import { resolveSupabaseIdentity } from '@/features/auth/server/identity-resolution';
+import { formatAuthUser } from '../shared';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +16,11 @@ const LoginSchema = z.object({
   redirectTarget: z.string().optional(),
 });
 
-const GENERIC_CREDENTIALS_ERROR = 'ইমেইল অথবা ফোন নম্বর অথবা পাসওয়ার্ড সঠিক নয়।';
+/**
+ * One message for every credential failure. Telling "no such account" apart
+ * from "wrong password" would let anyone enumerate registered addresses.
+ */
+const GENERIC_CREDENTIALS_ERROR = 'Incorrect email or password. Please try again.';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     if (!allowed) {
       return NextResponse.json(
-        { error: 'অনেকবার চেষ্টা করা হয়েছে। কিছুক্ষণ অপেক্ষা করুন।', code: 'RATE_LIMITED' },
+        { error: 'Too many attempts. Please try again in a few minutes.', code: 'RATE_LIMITED' },
         { status: 429, headers: { 'Retry-After': '300' } },
       );
     }
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest) {
       if (message.includes('email not confirmed')) {
         return NextResponse.json(
           {
-            error: 'আপনার ইমেইল এখনো যাচাই করা হয়নি। আগে ইমেইল যাচাই করে আবার লগইন করুন।',
+            error: 'Please verify your email first, then sign in again.',
             code: 'EMAIL_NOT_VERIFIED',
             identifier: email,
           },
@@ -80,41 +79,48 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: GENERIC_CREDENTIALS_ERROR, code: 'INVALID_CREDENTIALS' }, { status: 401 });
       }
 
-      return NextResponse.json({ error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।', code: 'LOGIN_FAILED' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Couldn't complete authentication. Please try again.", code: 'LOGIN_FAILED' },
+        { status: 400 },
+      );
     }
 
     const supabaseUser = data.user;
     if (!supabaseUser?.email || !data.session?.access_token || !data.session.refresh_token) {
-      return NextResponse.json({ error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।', code: 'LOGIN_FAILED' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Couldn't complete authentication. Please try again.", code: 'LOGIN_FAILED' },
+        { status: 400 },
+      );
     }
 
     const verifiedAt = supabaseUser.email_confirmed_at ? new Date(supabaseUser.email_confirmed_at) : null;
 
-    let user = await prisma.user.findUnique({
-      where: { email },
+    // Supabase Auth is the identity authority. The application profile is
+    // resolved - and created when it is genuinely missing - by the shared
+    // identity layer, so password login and social login cannot diverge.
+    const resolution = await resolveSupabaseIdentity({
+      supabaseUserId: supabaseUser.id,
+      email: supabaseUser.email,
+      emailVerified: Boolean(verifiedAt),
+      emailVerifiedAt: verifiedAt,
+      allowCreate: true,
     });
 
-    if (!user) {
-      user = await createLocalUserFromSupabase({
-        email,
-        role: 'customer',
-        emailVerified: Boolean(verifiedAt),
-        emailVerifiedAt: verifiedAt,
-        supabaseAuthId: supabaseUser.id,
-      });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          emailVerified: user.emailVerified || Boolean(verifiedAt),
-          emailVerifiedAt: user.emailVerifiedAt || verifiedAt,
-          supabaseAuthId: user.supabaseAuthId || supabaseUser.id,
-        },
-      });
+    if (resolution.status !== 'resolved') {
+      if (resolution.status === 'link_conflict') {
+        return NextResponse.json(
+          { error: 'Please sign in with the method you used before.', code: 'LINK_CONFLICT' },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({ error: GENERIC_CREDENTIALS_ERROR, code: 'INVALID_CREDENTIALS' }, { status: 401 });
     }
 
+    const user = resolution.user;
+
     if (user.isBlocked || user.deactivatedAt) {
-      return NextResponse.json({ error: 'এই অ্যাকাউন্টটি সক্রিয় নয়।' }, { status: 403 });
+      return NextResponse.json({ error: 'This account is not active.' }, { status: 403 });
     }
 
     return NextResponse.json({
@@ -144,13 +150,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'লগইন অনুরোধটি সঠিক নয়।', code: 'VALIDATION_ERROR', details: error.issues },
+        { error: 'Please check the details and try again.', code: 'VALIDATION_ERROR' },
         { status: 400 },
       );
     }
 
+    console.error('[auth:login] unexpected failure', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'লগইন ব্যর্থ হয়েছে।', code: 'UNKNOWN_ERROR' },
+      { error: "Couldn't complete authentication. Please try again.", code: 'UNKNOWN_ERROR' },
       { status: 500 },
     );
   }

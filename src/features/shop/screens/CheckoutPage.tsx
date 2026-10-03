@@ -141,6 +141,7 @@ export const CheckoutPage = () => {
     isReady: isCartReady,
   } = useCart();
   const { user, token, isAuthenticated, isReady } = useUser();
+  const { openAuth } = useAuthModal();
   const commerceConfig = useCommerceConfig();
   const navigate = useNavigate();
 

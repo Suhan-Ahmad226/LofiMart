@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef } from 'react';
+import { Check, Loader2, X } from 'lucide-react';
+
+export type OtpStatus = 'idle' | 'verifying' | 'success' | 'error';
 
 type OtpInputProps = {
   value: string;
@@ -10,6 +13,8 @@ type OtpInputProps = {
   disabled?: boolean;
   onComplete?: (value: string) => void;
   ariaLabel?: string;
+  /** Drives the typing -> verifying -> success feedback states. */
+  status?: OtpStatus;
   /** Extra classes for the wrapper row. */
   className?: string;
   /** Extra classes per input box. */
@@ -30,6 +35,7 @@ type OtpInputProps = {
  * - Delete support.
  * - Controlled value.
  * - onComplete fires only when the completed value changes.
+ * - typing -> verifying -> success status states.
  *
  * The component always exposes a digits-only value capped at `length`.
  */
@@ -41,6 +47,7 @@ export function OtpInput({
   disabled = false,
   onComplete,
   ariaLabel = 'One-time verification code',
+  status = 'idle',
   className = '',
   inputClassName = '',
 }: OtpInputProps) {
@@ -90,6 +97,26 @@ export function OtpInput({
       window.clearTimeout(timerId);
     };
   }, [autoFocus, disabled]);
+
+  /**
+   * After a rejected code the parent clears the value while this component
+   * stays mounted, so the first cell is refocused and the user can simply type
+   * the next attempt.
+   */
+  const previousValueRef = useRef(value);
+
+  useEffect(() => {
+    const wasFilled = previousValueRef.current.length > 0;
+    previousValueRef.current = value;
+
+    if (wasFilled && value.length === 0 && !disabled) {
+      const timerId = window.setTimeout(() => {
+        refs.current[0]?.focus({ preventScroll: true });
+      }, 0);
+
+      return () => window.clearTimeout(timerId);
+    }
+  }, [value, disabled]);
 
   const focusIndex = useCallback(
     (index: number, select = true) => {
@@ -360,15 +387,32 @@ export function OtpInput({
   return (
     <div
       className={[
-        'flex items-center justify-center gap-2 sm:gap-3',
+        // Fluid so all boxes always fit, down to 320px-wide screens.
+        'flex w-full items-center justify-center gap-1.5 sm:gap-2.5',
         className,
       ].join(' ')}
       role="group"
       aria-label={ariaLabel}
+      aria-busy={status === 'verifying'}
     >
       {Array.from({ length }, (_, index) => {
         const filled = Boolean(digitValue[index]);
         const digit = digitValue[index] ?? '';
+
+        /**
+         * Status tones take priority over the "filled" hint so a wrong code
+         * reads as a mistake rather than as normal progress.
+         */
+        const toneClass =
+          status === 'success'
+            ? 'bg-[#d7f8e6]'
+            : status === 'error'
+              ? 'bg-[#ffdad6]'
+              : status === 'verifying'
+                ? 'bg-[#e3ebe7]'
+                : filled
+                  ? 'bg-[#e3ebe7]'
+                  : 'bg-[#f2f6f4]';
 
         return (
           <input
@@ -410,24 +454,57 @@ export function OtpInput({
             onPaste={handlePaste}
             onFocus={handleFocus}
             className={[
-              'h-12 w-10 rounded-xl border',
-              'bg-white text-center text-lg font-bold',
-              'tracking-widest text-slate-900 outline-none',
-              'transition',
-              'focus:border-sky-400',
-              'focus:ring-4 focus:ring-sky-100',
+              // flex-1 + max-width keeps 6 boxes inside the narrowest phones
+              // while still landing on the 44-48px target from the spec.
+              'h-[3.25rem] w-full min-w-0 max-w-[44px] flex-1 rounded-xl',
+              'text-center text-2xl font-bold',
+              'text-[#131b2e] outline-none',
+              'shadow-sm transition-colors',
+              'focus:bg-white',
               'disabled:cursor-not-allowed',
               'disabled:opacity-60',
-              'sm:w-12 sm:text-xl',
-              filled
-                ? 'border-sky-400 bg-sky-50/60'
-                : 'border-slate-200',
+              'sm:h-14 sm:max-w-[48px]',
+              toneClass,
               inputClassName,
             ].join(' ')}
           />
         );
       })}
+
+      <span aria-live="polite" className="sr-only">
+        {status === 'verifying'
+          ? 'Verifying code'
+          : status === 'success'
+            ? 'Code verified'
+            : status === 'error'
+              ? 'Code rejected'
+              : ''}
+      </span>
     </div>
+  );
+}
+
+/**
+ * Small status line rendered under the boxes while the code is being checked.
+ */
+export function OtpStatusLine({ status, className = '' }: { status: OtpStatus; className?: string }) {
+  if (status === 'idle') return null;
+
+  const config = {
+    verifying: { icon: Loader2, text: 'Verifying code...', tone: 'text-slate-500' },
+    success: { icon: Check, text: 'Code verified', tone: 'text-emerald-600' },
+    error: { icon: X, text: 'Incorrect verification code. Please try again.', tone: 'text-rose-600' },
+  }[status];
+
+  if (!config) return null;
+
+  const Icon = config.icon;
+
+  return (
+    <p className={['mt-4 flex items-center justify-center gap-1.5 text-center text-xs font-semibold', config.tone, className].join(' ')}>
+      <Icon size={14} className={status === 'verifying' ? 'animate-spin' : undefined} />
+      {config.text}
+    </p>
   );
 }
 

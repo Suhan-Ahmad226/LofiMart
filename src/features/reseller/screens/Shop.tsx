@@ -21,6 +21,7 @@ interface ResellerProductLink {
 
 export const ResellerShop = () => {
   const { token } = useUser();
+  const { openAuth } = useAuthModal();
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);

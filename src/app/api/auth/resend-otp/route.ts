@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!cooldown.allowed) {
       const retryAfter = Math.max(1, Math.ceil(cooldown.resetAfterMs / 1000));
       return NextResponse.json(
-        { error: `আবার OTP পাঠাতে ${retryAfter} সেকেন্ড অপেক্ষা করুন।`, code: 'RESEND_COOLDOWN' },
+        { error: `Please wait ${retryAfter}s before requesting another code.`, code: 'RESEND_COOLDOWN' },
         { status: 429, headers: { 'Retry-After': String(retryAfter) } },
       );
     }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     if (!allowed) {
       return NextResponse.json(
-        { error: 'অনেকবার OTP পাঠানো হয়েছে। কিছুক্ষণ অপেক্ষা করুন।', code: 'RATE_LIMITED' },
+        { error: 'Too many codes requested. Please try again in a few minutes.', code: 'RATE_LIMITED' },
         { status: 429, headers: { 'Retry-After': '300' } },
       );
     }
@@ -79,10 +79,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'OTP অনুরোধ সঠিক নয়।', code: 'VALIDATION_ERROR', details: error.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request.', code: 'VALIDATION_ERROR' }, { status: 400 });
     }
+
+    console.error('[auth:resend-otp] unexpected failure', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'OTP পুনরায় পাঠানো ব্যর্থ হয়েছে।', code: 'UNKNOWN_ERROR' },
+      { error: "Couldn't send a new code. Please try again.", code: 'UNKNOWN_ERROR' },
       { status: 500 },
     );
   }

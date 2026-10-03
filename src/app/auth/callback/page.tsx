@@ -188,11 +188,9 @@ export default function AuthCallbackPage() {
       } catch (err: unknown) {
         if (typeof window === 'undefined') return;
         const details = err as { code?: string; message?: string };
-        if (details.code === 'PROVIDER_LINK_REQUIRED' || details.code === 'PROVIDER_LINK_CONFLICT') {
+        if (details.code === 'PROVIDER_LINK_CONFLICT' || details.code === 'PROVIDER_LINK_REQUIRED') {
           setError(
-            details.code === 'PROVIDER_LINK_CONFLICT'
-              ? 'এই provider অ্যাকাউন্টটি ইতিমধ্যে অন্য একটি LofiMart অ্যাকাউন্টের সাথে যুক্ত। আগের অ্যাকাউন্টে login করুন।'
-              : 'এই ইমেইলে একটি LofiMart অ্যাকাউন্ট আগে থেকেই আছে। নিজের email/password দিয়ে login করে অ্যাকাউন্ট সেটিংস থেকে Google/Facebook অ্যাকাউন্ট link করুন, অথবা পাসওয়ার্ড ভুলে গেলে "Forgot password" ব্যবহার করুন।',
+            'This account is already linked to another LofiMart account. Sign in with the method you used before to continue.',
           );
           return;
         }

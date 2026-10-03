@@ -15,6 +15,7 @@ import {
 import toast from '@/lib/toast';
 
 export const Footer = () => {
+  const { openAuth } = useAuthModal();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterError, setNewsletterError] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);

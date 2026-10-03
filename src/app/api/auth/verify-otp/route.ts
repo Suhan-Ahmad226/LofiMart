@@ -3,7 +3,15 @@ import { z } from 'zod';
 import { getClientIp } from '@/app/api/auth/_utils/ip';
 import { takeRateLimit } from '@/features/auth/services/rateLimit';
 import { classifyLoginIdentifier } from '@/features/auth/services/identity';
-import { isAuthPurpose, verifyEmailOtp, verifySmsOtp, markEmailVerified, markPhoneVerified, resolvePasswordResetEmail, OTP_MAX_ATTEMPTS } from '@/features/auth/server/auth-service';
+import {
+  isAuthPurpose,
+  verifyEmailOtp,
+  verifySmsOtp,
+  markEmailVerified,
+  markPhoneVerified,
+  resolvePasswordResetEmail,
+} from '@/features/auth/server/auth-service';
+import { evaluateOtpVerification } from '@/features/auth/server/otp-policy';
 import { attachPasswordResetSessionCookie, createPasswordResetSession } from '@/features/auth/server/reset-session';
 import { createSupabaseServerClient } from '@/app/api/auth/supabase/shared';
 
@@ -16,11 +24,22 @@ const VerifyOtpSchema = z.object({
   pin: z.string().trim().min(6).max(8),
 });
 
+/** User-facing copy for each OTP failure. Never leaks provider internals. */
 const VERIFY_MESSAGES: Record<string, string> = {
-  INVALID: 'OTP সঠিক নয়। আবার চেষ্টা করুন।',
-  EXPIRED: 'OTP-এর মেয়াদ শেষ হয়েছে। নতুন OTP পাঠান।',
-  MAX_ATTEMPTS: 'অনেকবার ভুল OTP দেওয়া হয়েছে। নতুন OTP পাঠান।',
+  INVALID: 'Incorrect verification code.',
+  EXPIRED: 'Your verification code has expired. Please request a new one.',
+  MAX_ATTEMPTS: 'Too many attempts. Please request a new code.',
 };
+
+function otpFailure(code: keyof typeof VERIFY_MESSAGES | string, retryAfterSeconds = 0) {
+  const status = code === 'MAX_ATTEMPTS' ? 429 : 400;
+  const headers = retryAfterSeconds > 0 ? { 'Retry-After': String(retryAfterSeconds) } : undefined;
+
+  return NextResponse.json(
+    { error: VERIFY_MESSAGES[code] ?? VERIFY_MESSAGES.INVALID, code },
+    headers ? { status, headers } : { status },
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,25 +56,32 @@ export async function POST(request: NextRequest) {
 
     if (purpose === 'guest_claim') {
       return NextResponse.json(
-        { error: 'অর্ডার claim করতে ভেরিফিকেশন কোডটি তার নির্ধারিত জায়গায় ব্যবহার করুন।', code: 'CLAIM_SCOPE_REQUIRED' },
+        { error: 'This verification code cannot be used here.', code: 'CLAIM_SCOPE_REQUIRED' },
         { status: 400 },
       );
     }
 
     const classified = classifyLoginIdentifier(body.identifier);
     if (classified.type === 'invalid') {
-      return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+      return otpFailure('INVALID');
     }
 
     const clientIp = getClientIp(request);
-    const rateLimitKey = `otp:verify:${purpose}:${classified.value}:${clientIp}`;
-    const { allowed } = await takeRateLimit(rateLimitKey, { limit: OTP_MAX_ATTEMPTS, windowMs: 5 * 60 * 1000 });
+
+    // Per-IP throttling protects the endpoint itself; the policy below is what
+    // actually limits how often one code can be guessed.
+    const { allowed } = await takeRateLimit(`otp:verify:${purpose}:${classified.value}:${clientIp}`, {
+      limit: 10,
+      windowMs: 5 * 60 * 1000,
+    });
 
     if (!allowed) {
-      return NextResponse.json(
-        { error: VERIFY_MESSAGES.MAX_ATTEMPTS, code: 'MAX_ATTEMPTS' },
-        { status: 429, headers: { 'Retry-After': '300' } },
-      );
+      return otpFailure('MAX_ATTEMPTS', 300);
+    }
+
+    const policy = await evaluateOtpVerification({ purpose, identifier: classified.value });
+    if (!policy.allowed) {
+      return otpFailure(policy.code, policy.retryAfterSeconds);
     }
 
     // Registration OTPs are issued by Supabase Auth. Verification still goes
@@ -63,7 +89,7 @@ export async function POST(request: NextRequest) {
     // the browser never becomes the security boundary.
     if (purpose === 'register') {
       if (classified.type !== 'email') {
-        return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+        return otpFailure('INVALID');
       }
 
       const supabase = createSupabaseServerClient(false);
@@ -75,8 +101,7 @@ export async function POST(request: NextRequest) {
 
       if (error || !data.session) {
         const message = String(error?.message || '').toLowerCase();
-        const code = message.includes('expired') ? 'EXPIRED' : 'INVALID';
-        return NextResponse.json({ error: VERIFY_MESSAGES[code], code }, { status: 400 });
+        return otpFailure(message.includes('expired') ? 'EXPIRED' : 'INVALID');
       }
 
       return NextResponse.json({
@@ -94,12 +119,12 @@ export async function POST(request: NextRequest) {
     if (purpose === 'reset_password') {
       const resetEmail = await resolvePasswordResetEmail(body.identifier);
       if (!resetEmail) {
-        return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+        return otpFailure('INVALID');
       }
 
       const result = await verifyEmailOtp(resetEmail, body.pin);
       if (!result.verified) {
-        return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+        return otpFailure('INVALID');
       }
 
       const resetSession = await createPasswordResetSession({
@@ -138,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!verified) {
-      return NextResponse.json({ error: VERIFY_MESSAGES.INVALID, code: 'INVALID' }, { status: 400 });
+      return otpFailure('INVALID');
     }
 
     if (verifiedEmail) {
@@ -166,10 +191,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, verified: purpose });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'OTP অনুরোধ সঠিক নয়।', code: 'VALIDATION_ERROR', details: error.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Enter the 6-digit code.', code: 'VALIDATION_ERROR' }, { status: 400 });
     }
+
+    console.error('[auth:verify-otp] unexpected failure', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'OTP যাচাই ব্যর্থ হয়েছে।', code: 'UNKNOWN_ERROR' },
+      { error: 'Something went wrong. Please try again.', code: 'UNKNOWN_ERROR' },
       { status: 500 },
     );
   }

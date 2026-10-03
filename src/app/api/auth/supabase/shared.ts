@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { prisma } from '@/lib/server';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { createOrAdoptProfile } from '@/features/auth/server/identity-resolution';
 
 export const AUTH_ROLES = ['customer', 'seller', 'reseller'] as const;
 
@@ -11,6 +12,57 @@ export function isAuthRole(value: unknown): value is AuthRole {
 
 export function normalizeAuthRole(value: unknown): AuthRole {
   return isAuthRole(value) ? value : 'customer';
+}
+
+/**
+ * Picks the OAuth identity attached to a Supabase session. Email identities are
+ * skipped: they are already represented by the user's own email address.
+ */
+export function extractProviderIdentity(
+  supabaseUser: SupabaseUser | null | undefined,
+): { provider: string; providerAccountId: string } | null {
+  const identities = Array.isArray(supabaseUser?.identities) ? supabaseUser.identities : [];
+  const oauthIdentity = identities.find(
+    (identity) => identity && identity.provider !== 'email' && identity.id,
+  );
+
+  if (oauthIdentity?.provider && oauthIdentity.id) {
+    return { provider: oauthIdentity.provider, providerAccountId: oauthIdentity.id };
+  }
+
+  return null;
+}
+
+export function extractSupabaseAvatarUrl(supabaseUser: SupabaseUser | null | undefined): string | null {
+  if (!supabaseUser) return null;
+
+  const metadata = supabaseUser.user_metadata ?? {};
+  const identityMetadata = Array.isArray(supabaseUser.identities)
+    ? supabaseUser.identities
+        .map((identity) => identity?.identity_data)
+        .filter((value): value is Record<string, unknown> => Boolean(value))
+    : [];
+
+  const candidates = [
+    metadata.avatar_url,
+    metadata.picture,
+    metadata.avatar,
+    metadata.photo_url,
+    ...identityMetadata.flatMap((identity) => [
+      identity.avatar_url,
+      identity.picture,
+      identity.avatar,
+      identity.photo_url,
+    ]),
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && /^https?:\/\//i.test(candidate.trim())) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
 }
 
 export function createSupabaseServerClient(useServiceRole = false) {
@@ -69,6 +121,12 @@ export function formatAuthUser(user: {
   };
 }
 
+/**
+ * Creates the application profile for a Supabase identity.
+ *
+ * Delegates to the shared identity layer so a profile is only ever created in
+ * one place, with the same uniqueness and race handling as every other flow.
+ */
 export async function createLocalUserFromSupabase(input: {
   email: string;
   name?: string | null;
@@ -79,19 +137,20 @@ export async function createLocalUserFromSupabase(input: {
   avatarUrl?: string | null;
   supabaseAuthId?: string | null;
 }) {
-  const role = normalizeAuthRole(input.role);
-
-  return prisma.user.create({
-    data: {
-      email: input.email,
-      name: input.name || input.email.split('@')[0],
-      role,
-      phone: input.phone || null,
-      avatarUrl: input.avatarUrl || null,
-      supabaseAuthId: input.supabaseAuthId || null,
-      sellerStatus: role === 'seller' || role === 'reseller' ? 'draft' : 'approved',
-      emailVerified: Boolean(input.emailVerified),
-      emailVerifiedAt: input.emailVerified ? input.emailVerifiedAt || new Date() : null,
-    },
+  const result = await createOrAdoptProfile({
+    supabaseUserId: input.supabaseAuthId || `pending:${input.email.toLowerCase()}`,
+    email: input.email,
+    requestedRole: input.role,
+    emailVerified: Boolean(input.emailVerified),
+    emailVerifiedAt: input.emailVerifiedAt ?? null,
+    displayName: input.name,
+    avatarUrl: input.avatarUrl,
+    phone: input.phone,
   });
+
+  if ('conflict' in result) {
+    throw new Error('An account already exists for this identity.');
+  }
+
+  return result.user;
 }

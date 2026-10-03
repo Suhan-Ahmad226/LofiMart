@@ -41,10 +41,10 @@ const getIsActivePath = (pathname: string, path: string): boolean => {
 
 const getAccountPath = (
   isAuthenticated: boolean,
-  role?: string | null,
+  role: string | null | undefined,
 ): string => {
   if (!isAuthenticated) {
-    openAuth({ returnTo: '/account/dashboard' }); return '#';
+    return '#';
   }
 
   switch (role) {
@@ -64,7 +64,8 @@ const getAccountPath = (
 
 export const MobileBottomNav = () => {
   const { totalItems } = useCart();
-  const { user, isAuthenticated } = useUser();
+  const { user, isAuthenticated, isReady } = useUser();
+  const { openAuth } = useAuthModal();
   const { items: wishlistItems } = useWishlist();
   const location = useLocation();
 
@@ -316,11 +317,14 @@ export const MobileBottomNav = () => {
       },
       {
         label: 'Account',
-        path: getAccountPath(isAuthenticated, user?.role),
+        // Session hydration is async, so the auth state is unknown
+        // until UserProvider reports readiness. The entry stays inert
+        // instead of treating every visitor as signed out.
+        path: isReady ? getAccountPath(isAuthenticated, user?.role) : '#',
         icon: <User size={19} strokeWidth={2} />,
       },
     ];
-  }, [isAuthenticated, location.pathname, user?.role]);
+  }, [isAuthenticated, isReady, location.pathname, user?.role]);
 
   /*
    * Prevent excessive badge width.
@@ -397,12 +401,25 @@ export const MobileBottomNav = () => {
 
               const badgeCount = getBadgeCount(item);
               const badgeText = formatBadgeCount(badgeCount);
+              // The account entry is the only gated action: signed-out
+              // visitors get the auth prompt here, never a render-time
+              // modal trigger.
+              const requiresAuthPrompt =
+                isReady && !isAuthenticated && item.label === 'Account';
 
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   aria-current={active ? 'page' : undefined}
+                  onClick={
+                    requiresAuthPrompt
+                      ? (event) => {
+                          event.preventDefault();
+                          openAuth({ returnTo: '/account/dashboard' });
+                        }
+                      : undefined
+                  }
                   className={[
                     'relative flex min-w-0 flex-col items-center justify-center',
                     'px-1 py-2.5 sm:py-3',

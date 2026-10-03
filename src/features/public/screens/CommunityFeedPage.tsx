@@ -238,6 +238,7 @@ function CommunitySkeleton() {
 
 export const CommunityFeedPage = () => {
   const { token, isAuthenticated, user, isReady } = useUser();
+  const { openAuth } = useAuthModal();
   const [activeShare, setActiveShare] = useState<number | string | null>(null);
   const [activeTab, setActiveTab] = useState<FeedTab>('All');
   const [query, setQuery] = useState('');
