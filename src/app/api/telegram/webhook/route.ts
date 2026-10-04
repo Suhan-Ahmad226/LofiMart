@@ -28,34 +28,53 @@ function rateLimit(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (rateLimit(request)) {
-    return NextResponse.json({ error: 'Too many Telegram updates' }, { status: 429 });
-  }
-
-  if (!validateTelegramWebhookSecret(request.headers)) {
-    return NextResponse.json({ error: 'Invalid Telegram webhook secret' }, { status: 401 });
-  }
-
-  const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
-  if (!update || typeof update.update_id !== 'number') {
-    return NextResponse.json({ error: 'Invalid Telegram update' }, { status: 400 });
-  }
-
-  if (processedUpdateIds.has(update.update_id)) {
-    return NextResponse.json({ ok: true, already_processed: true });
-  }
-
-  processedUpdateIds.add(update.update_id);
-  if (processedUpdateIds.size > MAX_PROCESSED_IDS) {
-    const oldestId = processedUpdateIds.values().next().value;
-    if (oldestId !== undefined) {
-      processedUpdateIds.delete(oldestId);
+  try {
+    if (rateLimit(request)) {
+      return NextResponse.json({ error: 'Too many Telegram updates' }, { status: 429 });
     }
+
+    if (!validateTelegramWebhookSecret(request.headers)) {
+      return NextResponse.json({ error: 'Invalid Telegram webhook secret' }, { status: 401 });
+    }
+
+    const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
+    if (!update || typeof update.update_id !== 'number') {
+      return NextResponse.json({ error: 'Invalid Telegram update' }, { status: 400 });
+    }
+
+    if (processedUpdateIds.has(update.update_id)) {
+      return NextResponse.json({ ok: true, already_processed: true });
+    }
+
+    processedUpdateIds.add(update.update_id);
+    if (processedUpdateIds.size > MAX_PROCESSED_IDS) {
+      const oldestId = processedUpdateIds.values().next().value;
+      if (oldestId !== undefined) {
+        processedUpdateIds.delete(oldestId);
+      }
+    }
+
+    try {
+      await processTelegramUpdate(update);
+    } catch (error) {
+      // Telegram retries non-2xx webhook responses. Log the application error,
+      // but acknowledge the update so one bad update cannot poison the webhook.
+      console.error('[telegram] webhook processing failed', {
+        updateId: update.update_id,
+        error,
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('[telegram] webhook request failed', {
+      error,
+    });
+
+    // Keep malformed/internal processing failures from producing repeated
+    // Telegram webhook retries after the request has been safely parsed.
+    return NextResponse.json({ ok: true, error: 'Webhook processing failed' });
   }
-
-  await processTelegramUpdate(update);
-
-  return NextResponse.json({ ok: true });
 }
 
 export async function GET() {
