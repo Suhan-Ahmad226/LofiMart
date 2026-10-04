@@ -6,7 +6,8 @@ import { updateSellerOrderStatus } from './orderService';
 type TelegramConnectRole = 'seller' | 'admin' | 'reseller';
 
 function parseStartPayload(text?: string) {
-  const [command, payload] = String(text || '').trim().split(/\s+/, 2);
+  const [rawCommand, payload] = String(text || '').trim().split(/\s+/, 2);
+  const command = rawCommand?.split('@', 1)[0];
   if (command !== '/start' || !payload) return null;
   return payload;
 }
@@ -40,6 +41,8 @@ async function handleAccountOnboarding(update: TelegramUpdate) {
 
   if (!chatId || !connect) return false;
 
+  // Do not select the role field here. Production has a legacy role column
+  // representation that can make Prisma fail while decoding the returned enum.
   const account = await (prisma.user as any).findFirst({
     where: {
       id: connect.userId,
@@ -47,7 +50,6 @@ async function handleAccountOnboarding(update: TelegramUpdate) {
     },
     select: {
       id: true,
-      role: true,
       name: true,
       storeName: true,
       telegramChatId: true,
@@ -129,6 +131,11 @@ async function handleCallbackQuery(update: TelegramUpdate) {
     await answerTelegramCallback(query.id, `Order ${result.status}`);
     return true;
   } catch (error) {
+    console.error('[telegram] callback action failed', {
+      updateId: update.update_id,
+      callbackQueryId: query.id,
+      error,
+    });
     await answerTelegramCallback(
       query.id,
       error instanceof Error ? error.message : 'Action failed',
