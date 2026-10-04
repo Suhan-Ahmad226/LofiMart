@@ -63,9 +63,9 @@ export const AdminSellersPage = () => {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load sellers');
+        throw new Error(data?.error?.message || data?.error || 'Failed to load sellers');
       }
-      setSellers(Array.isArray(data) ? data : []);
+      setSellers(Array.isArray(data?.data) ? data.data : []);
     } catch (err) {
       setSellers([]);
       setError(err instanceof Error ? err.message : 'Failed to load sellers');
@@ -84,7 +84,7 @@ export const AdminSellersPage = () => {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load seller detail');
+        throw new Error(data?.error?.message || data?.error || 'Failed to load seller detail');
       }
       setSelectedSeller(data);
       setReviewReason('');
@@ -135,7 +135,7 @@ export const AdminSellersPage = () => {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to update seller status');
+        throw new Error(data?.error?.message || data?.error || 'Failed to update seller status');
       }
       toast.success(`Seller moved to ${reviewAction.replaceAll('_', ' ')}.`);
       await Promise.all([fetchSellers(), fetchSellerDetail(selectedSellerId)]);
