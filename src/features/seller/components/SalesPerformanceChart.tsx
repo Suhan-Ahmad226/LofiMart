@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatPrice } from '../../../lib/utils';
 
@@ -9,10 +9,28 @@ interface SalesPoint {
   revenue: number;
 }
 
+/**
+ * The insights endpoint labels each bucket with an ISO timestamp. Raw ISO
+ * strings are unreadable on an axis, so anything parseable is reduced to a
+ * short day/hour label; non-date labels pass through untouched.
+ */
+function formatAxisLabel(label: unknown): string {
+  if (typeof label !== 'string') return '';
+  const parsed = new Date(label);
+  if (Number.isNaN(parsed.getTime())) return label;
+
+  return parsed.toLocaleString('en-BD', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    hour12: true,
+  });
+}
+
 export default function SalesPerformanceChart({ data = [] }: { data?: SalesPoint[] }) {
   const chartRef = useRef<HTMLDivElement | null>(null);
   const [canRenderChart, setCanRenderChart] = useState(false);
-  const safeData = Array.isArray(data) ? data : [];
+  const safeData = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
   useEffect(() => {
     const node = chartRef.current;
@@ -32,9 +50,9 @@ export default function SalesPerformanceChart({ data = [] }: { data?: SalesPoint
 
   if (!safeData.length) {
     return (
-      <div className="flex h-[300px] w-full flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-border bg-secondary/20 px-6 text-center">
-        <p className="text-sm font-semibold text-slate-700">No live sales trend yet</p>
-        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+      <div className="lm-empty flex h-[300px] w-full flex-col items-center justify-center">
+        <p className="text-sm font-semibold text-lm-heading">No live sales trend yet</p>
+        <p className="mt-2 max-w-sm text-sm text-lm-meta">
           Once orders start flowing, this panel will show revenue momentum, trend direction, and performance spikes.
         </p>
       </div>
@@ -48,32 +66,46 @@ export default function SalesPerformanceChart({ data = [] }: { data?: SalesPoint
           <AreaChart data={safeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#16a34a" stopOpacity={0.02} />
+                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e4e4e7" />
-            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(value) => formatPrice(Number(value)).replace(/\.00$/, '')} />
+            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              minTickGap={28}
+              tick={{ fontSize: 11, fill: '#64748b' }}
+              tickFormatter={formatAxisLabel}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              width={64}
+              tick={{ fontSize: 11, fill: '#64748b' }}
+              tickFormatter={(value) => formatPrice(Number(value)).replace(/\.00$/, '')}
+            />
             <Tooltip
               formatter={(value) => formatPrice(Number(value ?? 0))}
+              labelFormatter={formatAxisLabel}
               labelStyle={{ color: '#0f172a', fontWeight: 700 }}
               contentStyle={{
-                borderRadius: '18px',
-                border: '1px solid rgba(148, 163, 184, 0.18)',
-                boxShadow: '0 18px 30px -20px rgb(15 23 42 / 0.35)',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.1)',
               }}
               itemStyle={{ color: '#0f172a' }}
             />
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="#16a34a"
-              strokeWidth={3}
+              stroke="#0d9488"
+              strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorSales)"
-              dot={{ r: 3, strokeWidth: 2, fill: '#ffffff', stroke: '#16a34a' }}
-              activeDot={{ r: 5, strokeWidth: 2, fill: '#ffffff', stroke: '#16a34a' }}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, fill: '#ffffff', stroke: '#0d9488' }}
             />
           </AreaChart>
         </ResponsiveContainer>

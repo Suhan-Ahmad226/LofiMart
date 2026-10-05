@@ -1,9 +1,18 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bot, CheckCircle2, Copy, ExternalLink, Loader2, RefreshCcw, Send, Unlink } from 'lucide-react';
+import { Bot, CheckCircle2, Copy, ExternalLink, Link2, Loader2, RefreshCcw, Send, Stethoscope, Unlink } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useUser } from '../../../features/shared/state/UserContext';
+
+type WebhookDiagnostics = {
+  reachable: boolean;
+  url?: string;
+  pending_updates?: number;
+  last_error?: string | null;
+  last_error_at?: string | null;
+  error?: string;
+};
 
 type TelegramStatus = {
   configured: boolean;
@@ -12,6 +21,7 @@ type TelegramStatus = {
   chat_id_masked: string | null;
   deep_link: string | null;
   store_name: string;
+  webhook?: WebhookDiagnostics;
 };
 
 export default function TelegramConnectPanel() {
@@ -20,27 +30,36 @@ export default function TelegramConnectPanel() {
   const [loading, setLoading] = useState(true);
   const [unlinking, setUnlinking] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [manualChatId, setManualChatId] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [checkingWebhook, setCheckingWebhook] = useState(false);
 
-  const loadStatus = useCallback(async () => {
-    if (!token) return;
+  const loadStatus = useCallback(
+    async (options?: { diagnostics?: boolean }) => {
+      if (!token) return;
 
-    setLoading(true);
-    try {
-      const response = await fetch('/api/seller/telegram/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to load Telegram status');
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `/api/seller/telegram/status${options?.diagnostics ? '?diagnostics=1' : ''}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Failed to load Telegram status');
+        }
+        setStatus(payload as TelegramStatus);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not load Telegram status.');
+        setStatus(null);
+      } finally {
+        setLoading(false);
       }
-      setStatus(payload as TelegramStatus);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load Telegram status.');
-      setStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+    },
+    [token],
+  );
 
   useEffect(() => {
     void loadStatus();
@@ -90,6 +109,48 @@ export default function TelegramConnectPanel() {
       toast.error(error instanceof Error ? error.message : 'Could not send Telegram test.');
     } finally {
       setTesting(false);
+    }
+  };
+
+  const linkManually = async () => {
+    if (!token) return;
+    const chatId = manualChatId.trim();
+    if (!/^-?\d+$/.test(chatId)) {
+      toast.error('Enter the numeric Telegram chat id.');
+      return;
+    }
+
+    setLinking(true);
+    try {
+      const response = await fetch('/api/seller/telegram/status', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chat_id: chatId }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to link Telegram');
+      }
+      setManualChatId('');
+      toast.success('Telegram chat linked.');
+      await loadStatus();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not link Telegram.');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const runWebhookDiagnostics = async () => {
+    setCheckingWebhook(true);
+    try {
+      await loadStatus({ diagnostics: true });
+      toast.success('Webhook diagnostics loaded.');
+    } finally {
+      setCheckingWebhook(false);
     }
   };
 
@@ -175,11 +236,20 @@ export default function TelegramConnectPanel() {
         ) : null}
         <button
           type="button"
-          onClick={loadStatus}
+          onClick={() => loadStatus()}
           className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700"
         >
           <RefreshCcw size={16} />
           Refresh
+        </button>
+        <button
+          type="button"
+          onClick={runWebhookDiagnostics}
+          disabled={checkingWebhook}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700 disabled:opacity-60"
+        >
+          {checkingWebhook ? <Loader2 className="animate-spin" size={16} /> : <Stethoscope size={16} />}
+          Diagnose webhook
         </button>
         {status?.linked ? (
           <button
@@ -204,6 +274,60 @@ export default function TelegramConnectPanel() {
           </button>
         ) : null}
       </div>
+      {!status?.linked ? (
+        <div className="mt-5 rounded-2xl border border-white/70 bg-white/80 px-4 py-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Can&apos;t connect?</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Message <code>@lofimart_bot</code> in Telegram. It replies with your numeric chat id. Paste it here to
+            link this chat directly.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input
+              value={manualChatId}
+              onChange={(event) => setManualChatId(event.target.value)}
+              inputMode="numeric"
+              placeholder="e.g. 123456789"
+              aria-label="Telegram chat id"
+              className="min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            />
+            <button
+              type="button"
+              onClick={linkManually}
+              disabled={linking}
+              className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
+            >
+              {linking ? <Loader2 className="animate-spin" size={16} /> : <Link2 size={16} />}
+              Link manually
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {status?.webhook ? (
+        <div className="mt-5 rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-sm">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Webhook diagnostics</p>
+          {status.webhook.reachable ? (
+            <div className="mt-2 space-y-1 text-slate-700">
+              <p className="break-all">
+                <span className="font-semibold">URL:</span> {status.webhook.url}
+              </p>
+              <p>
+                <span className="font-semibold">Pending updates:</span> {status.webhook.pending_updates ?? 0}
+              </p>
+              <p className={status.webhook.last_error ? 'text-rose-700' : 'text-emerald-700'}>
+                <span className="font-semibold">Last error:</span> {status.webhook.last_error || 'none'}
+              </p>
+              {status.webhook.last_error_at ? (
+                <p className="text-slate-500">
+                  <span className="font-semibold">At:</span> {status.webhook.last_error_at}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-rose-700">{status.webhook.error}</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

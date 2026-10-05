@@ -44,6 +44,21 @@ const contentSecurityPolicy = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+const noStoreHeaders = [
+  {
+    key: "Cache-Control",
+    value: "no-store, no-cache, must-revalidate",
+  },
+  {
+    key: "Pragma",
+    value: "no-cache",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+];
+
 if (isProd) {
   securityHeaders.push({
     key: "Content-Security-Policy",
@@ -88,21 +103,28 @@ const nextConfig: NextConfig = {
       headers: securityHeaders,
     },
     {
-      source: "/api/(.*)",
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "no-store, no-cache, must-revalidate",
-        },
-        {
-          key: "Pragma",
-          value: "no-cache",
-        },
-        {
-          key: "X-Content-Type-Options",
-          value: "nosniff",
-        },
-      ],
+      // Only auth/payment/checkout routes must never be cached. Public read
+      // routes ship their own Cache-Control (s-maxage + stale-while-revalidate)
+      // and a blanket no-store here was overriding all of them, forcing every
+      // page load to re-query the database.
+      source: "/api/auth/:path*",
+      headers: noStoreHeaders,
+    },
+    {
+      source: "/api/admin/:path*",
+      headers: noStoreHeaders,
+    },
+    {
+      source: "/api/seller/:path*",
+      headers: noStoreHeaders,
+    },
+    {
+      source: "/api/payment/:path*",
+      headers: noStoreHeaders,
+    },
+    {
+      source: "/api/checkout/:path*",
+      headers: noStoreHeaders,
     },
     {
       source: "/(.*)\\.(jpg|jpeg|png|gif|ico|svg|webp|avif)",

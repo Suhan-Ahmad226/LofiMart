@@ -1,3 +1,5 @@
+'use client';
+
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../../../lib/navigation';
 import {
@@ -18,6 +20,7 @@ import { ProductCard } from '@/features/shared/ui/product/ProductCard';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { getCachedClientValue } from '../../../lib/client-cache';
 import type { Product } from '../../../types';
+import type { HomepageInitialData } from './HomePage.data';
 
 type Category = {
   id: string | number;
@@ -95,6 +98,10 @@ const emptyProductGroups: HomepageProductGroups = {
 
 function takeFirst<T>(items: T[], count: number): T[] {
   return items.slice(0, count);
+}
+
+function filterRenderableBanners(banners: HomeBanner[]): HomeBanner[] {
+  return banners.filter((banner) => Boolean(banner?.image) && Boolean(banner?.title));
 }
 
 function getProductList(payload: unknown): Product[] {
@@ -676,24 +683,44 @@ const NewsletterSection = memo(function NewsletterSection({
   );
 });
 
-export const HomePage = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productGroups, setProductGroups] = useState<HomepageProductGroups>(emptyProductGroups);
-  const [hasMoreProducts, setHasMoreProducts] = useState(false);
+export const HomePage = ({ initialData }: { initialData?: HomepageInitialData }) => {
+  const [products, setProducts] = useState<Product[]>(initialData?.products ?? []);
+  const [productGroups, setProductGroups] = useState<HomepageProductGroups>({
+    flashSale: initialData?.flashSaleProducts ?? [],
+    featured: [],
+    bestSelling: [],
+    newArrivals: [],
+    trending: [],
+  });
+  const [hasMoreProducts, setHasMoreProducts] = useState(Boolean(initialData?.hasMoreProducts));
   const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
   const [productPage, setProductPage] = useState(1);
-  const [categories, setCategories] = useState<Category[]>(fallbackCategories);
-  const [banners, setBanners] = useState<HomeBanner[]>([]);
-  const [flashSaleEndsAt, setFlashSaleEndsAt] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>(
+    initialData?.categories && initialData.categories.length > 0
+      ? initialData.categories
+      : fallbackCategories,
+  );
+  const [banners, setBanners] = useState<HomeBanner[]>(
+    initialData ? filterRenderableBanners(initialData.banners) : [],
+  );
+  const [flashSaleEndsAt, setFlashSaleEndsAt] = useState<string | null>(
+    initialData?.flashSaleEndsAt ?? null,
+  );
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterMessage, setNewsletterMessage] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
 
+  const renderedFromServer = useRef(Boolean(initialData));
+
   useEffect(() => {
+    if (renderedFromServer.current) {
+      return;
+    }
+
     const controller = new AbortController();
 
     fetchHomepageData(controller.signal)
@@ -704,11 +731,7 @@ export const HomePage = () => {
         setHasMoreProducts(payload.hasMoreProducts);
         setProductPage(1);
         setCategories(payload.categories.length > 0 ? payload.categories : fallbackCategories);
-        setBanners(
-          payload.banners.filter(
-            (banner: HomeBanner) => Boolean(banner?.image) && Boolean(banner?.title),
-          ),
-        );
+        setBanners(filterRenderableBanners(payload.banners));
         setProductGroups({
           flashSale: payload.flashSaleProducts,
           featured: [],

@@ -72,14 +72,41 @@ async function handleAccountOnboarding(update: TelegramUpdate) {
     return true;
   }
 
-  await (prisma.user as any).update({
-    where: { id: account.id },
-    data: {
-      telegramChatId: String(chatId),
-      telegramLinkedAt: new Date(),
-    },
-  });
+  // Persisting the link is the whole point of this update, so it gets its own
+  // error handling. Without it a database failure surfaces as an opaque
+  // platform-level 500 and Telegram retries the update forever.
+  try {
+    await (prisma.user as any).update({
+      where: { id: account.id },
+      data: {
+        telegramChatId: String(chatId),
+        telegramLinkedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error('[telegram] failed to persist account link', {
+      updateId: update.update_id,
+      accountId: account.id,
+      chatId: String(chatId),
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
+    await sendTelegramMessage({
+      chatId,
+      text: [
+        '<b>Could not finish linking your account</b>',
+        'Your Telegram account is fine, but the LofiMart database rejected the link.',
+        'Please retry in a moment, or link your chat id manually from the seller panel.',
+      ].join('\n'),
+    }).catch(() => undefined);
+
+    return true;
+  }
+
+  // The link is already committed at this point. The confirmation message is
+  // best-effort: a Telegram API failure must not be reported as a failed
+  // connect, otherwise the seller reconnects forever against a linked account.
   await sendTelegramMessage({
     chatId,
     text: [
@@ -89,6 +116,12 @@ async function handleAccountOnboarding(update: TelegramUpdate) {
       'You will now receive order, stock, payment, and commission alerts here.',
     ].join('\n'),
     buttons: [[{ text: 'Open Dashboard', web_app: { url: getTelegramDashboardUrl(dashboardPathForRole(connect.role)) } }]],
+  }).catch((error: unknown) => {
+    console.error('[telegram] account linked but confirmation message failed', {
+      updateId: update.update_id,
+      accountId: account.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   });
 
   return true;
@@ -155,12 +188,17 @@ export async function processTelegramUpdate(update: TelegramUpdate) {
   }
 
   if (update.message?.chat.id) {
+    const chatId = update.message.chat.id;
     await sendTelegramMessage({
-      chatId: update.message.chat.id,
+      chatId,
       text: [
         '<b>LofiMart Bot</b>',
         'Use your seller, reseller, or admin deep link to connect this chat.',
         'After linking, you can receive marketplace alerts and use supported action buttons.',
+        '',
+        `Your Telegram chat id is <code>${chatId}</code>.`,
+        'If the deep link does not connect your account, paste this id into the',
+        '"Link manually" box on your LofiMart seller Telegram panel.',
       ].join('\n'),
     });
   }

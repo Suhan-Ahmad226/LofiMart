@@ -661,787 +661,1278 @@ export default function AuthModal() {
   };
 
   const content = (
-    <>
-      {view === 'entry' && (
-  <form
-    noValidate
-    onSubmit={(event) => {
-      event.preventDefault();
-      void continueIdentifier();
-    }}
-    className="w-full"
-  >
-    {/* Social Login */}
-    <div className="flex w-full flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => void social('google')}
-        disabled={loading}
-        className="
-          flex h-12 w-full items-center justify-center gap-3
-          rounded-xl border border-[#dfe3ef]
-          bg-white px-4
-          text-[14px] font-semibold text-[#20212b]
-          shadow-[0_1px_3px_rgba(16,24,40,0.05)]
-          transition-all duration-200
-          hover:border-[#cbd2e5]
-          hover:bg-[#fafbff]
-          hover:shadow-[0_4px_12px_rgba(16,24,40,0.06)]
-          active:scale-[0.99]
-          disabled:cursor-not-allowed
-          disabled:opacity-60
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-[#006c49]/25
-          focus-visible:ring-offset-1
-        "
-      >
-        <span className="flex shrink-0 items-center justify-center">
-          <GoogleIcon />
-        </span>
-
-        <span>Continue with Google</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => void social('facebook')}
-        disabled={loading}
-        className="
-          flex h-12 w-full items-center justify-center gap-3
-          rounded-xl border border-[#dfe3ef]
-          bg-white px-4
-          text-[14px] font-semibold text-[#20212b]
-          shadow-[0_1px_3px_rgba(16,24,40,0.05)]
-          transition-all duration-200
-          hover:border-[#cbd2e5]
-          hover:bg-[#fafbff]
-          hover:shadow-[0_4px_12px_rgba(16,24,40,0.06)]
-          active:scale-[0.99]
-          disabled:cursor-not-allowed
-          disabled:opacity-60
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-[#006c49]/25
-          focus-visible:ring-offset-1
-        "
-      >
-        <span className="flex shrink-0 items-center justify-center">
-          <Facebook
-            size={18}
-            fill="currentColor"
-            aria-hidden="true"
-          />
-        </span>
-
-        <span>Continue with Facebook</span>
-      </button>
-    </div>
-
-    {/* Divider */}
-    <div
-      className="my-5 flex w-full items-center gap-3"
-      role="separator"
-    >
-      <span
-        aria-hidden="true"
-        className="h-px flex-1 bg-[#e1e5ef]"
-      />
-
-      <span
-        className="
-          shrink-0 px-1
-          text-[11px] font-semibold uppercase
-          tracking-[0.12em] text-[#77798a]
-        "
-      >
-        or
-      </span>
-
-      <span
-        aria-hidden="true"
-        className="h-px flex-1 bg-[#e1e5ef]"
-      />
-    </div>
-
-    {/* Identifier Field */}
-    <div className="w-full">
-      <Field
-        label="Email address"
-        name="identifier"
-        value={identifier}
-        onChange={(next) => {
-          setIdentifier(next);
-          setIdentifierTouched(true);
+  <>
+    {/* =========================================================
+        ENTRY
+    ========================================================= */}
+    {view === 'entry' && (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void continueIdentifier();
         }}
-        autoComplete="username"
-        placeholder="user@example.com"
-        identity
-      />
-
-      {/* Live validity feedback so the button state is never a mystery. */}
-      {identifierTouched ? (
-        emailValid ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium leading-4 text-[#006c49]">
-            <CheckCircle2
-              size={14}
-              className="shrink-0"
-              aria-hidden="true"
-            />
-
-            <span>Valid email</span>
-          </p>
-        ) : (
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium leading-4 text-[#b3261e]">
-            <AlertCircle
-              size={14}
-              className="shrink-0"
-              aria-hidden="true"
-            />
-
-            <span>Please enter a valid email address.</span>
-          </p>
-        )
-      ) : (
-        <p
-          className="
-            mt-2
-            text-[11px] leading-4
-            text-[#77798a]
-          "
-        >
-          We&apos;ll send a verification code for new accounts.
-        </p>
-      )}
-    </div>
-
-    {/* Continue Button */}
-    <button
-      type="submit"
-      disabled={loading || !canContinue}
-      aria-disabled={loading || !canContinue}
-      className="
-        mt-4 flex h-12 w-full
-        items-center justify-center gap-2
-        rounded-xl
-        bg-[#006c49]
-        px-5
-        text-[14px] font-semibold
-        text-white
-        shadow-[0_4px_12px_rgba(0,108,73,0.18)]
-        transition-all duration-200
-        hover:bg-[#005b3d]
-        hover:shadow-[0_6px_16px_rgba(0,108,73,0.22)]
-        active:scale-[0.99]
-        disabled:cursor-not-allowed
-        disabled:bg-[#aeb8b3]
-        disabled:text-white/80
-        disabled:shadow-none
-        focus:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-[#006c49]/30
-        focus-visible:ring-offset-2
-      "
-      aria-busy={loading}
-    >
-      {loading ? (
-        <>
-          <Loader2
-            size={18}
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          <span>Checking...</span>
-        </>
-      ) : (
-        <>
-          <span>Continue</span>
-
-          <ArrowRight
-            size={18}
-            className="shrink-0"
-            aria-hidden="true"
-          />
-        </>
-      )}
-    </button>
-
-    {/* Security Notice */}
-    <div className="mt-5 flex flex-col items-center text-center">
-      <div className="flex items-center gap-1.5 text-[#464555]">
-        <ShieldCheck
-          size={15}
-          className="shrink-0 text-[#006c49]"
-          aria-hidden="true"
-        />
-
-        <span
-          className="
-            text-[11px] font-medium
-            leading-4 tracking-[0.04em]
-            text-[#5f6170]
-          "
-        >
-          Secure authentication
-        </span>
-      </div>
-
-      <p
-        className="
-          mt-2 max-w-[320px]
-          text-[11px] leading-[17px]
-          tracking-[0.01em]
-          text-[#77798a]
-        "
+        className="w-full"
       >
-        By continuing, you agree to LofiMart&apos;s{' '}
-        <a
-          href="/terms"
-          className="
-            font-medium text-[#006c49]
-            underline-offset-2
-            transition-colors
-            hover:text-[#005b3d]
-            hover:underline
-            focus:outline-none
-            focus-visible:underline
-          "
-        >
-          Terms of Service
-        </a>{' '}
-        and{' '}
-        <a
-          href="/privacy"
-          className="
-            font-medium text-[#006c49]
-            underline-offset-2
-            transition-colors
-            hover:text-[#005b3d]
-            hover:underline
-            focus:outline-none
-            focus-visible:underline
-          "
-        >
-          Privacy Policy
-        </a>
-        .
-      </p>
-    </div>
-  </form>
-)}
+        {/* Social Login */}
+        <div className="flex w-full flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => void social('google')}
+            disabled={loading}
+            className="
+              group flex h-[52px] w-full items-center justify-center gap-3
+              rounded-[14px]
+              border border-[#e2e5ec]
+              bg-white
+              px-5
+              text-[14px] font-semibold text-[#20212b]
+              shadow-[0_1px_2px_rgba(16,24,40,0.04)]
+              transition-all duration-200 ease-out
+              hover:-translate-y-[1px]
+              hover:border-[#cfd4df]
+              hover:bg-[#fcfcfd]
+              hover:shadow-[0_6px_18px_rgba(16,24,40,0.07)]
+              active:translate-y-0
+              active:scale-[0.99]
+              disabled:cursor-not-allowed
+              disabled:translate-y-0
+              disabled:opacity-60
+              disabled:shadow-none
+              focus:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-[#006c49]/20
+              focus-visible:ring-offset-2
+            "
+          >
+            <span
+              className="
+                flex h-7 w-7 shrink-0 items-center justify-center
+                rounded-full
+                transition-transform duration-200
+                group-hover:scale-[1.03]
+              "
+            >
+              <GoogleIcon />
+            </span>
 
-      {view === 'login-password' && (
-  <form
-    noValidate
-    onSubmit={(event) => {
-      event.preventDefault();
-      void doPasswordLogin();
-    }}
-    className="w-full"
-  >
-    {/* Account identity */}
-    <div
-      className="
-        mb-5 flex w-full items-center justify-between gap-3
-        rounded-xl
-        border border-[#e1e5f0]
-        bg-[#f7f8fc]
-        px-3 py-2.5
-      "
-    >
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span
-          className="
-            flex h-8 w-8 shrink-0 items-center justify-center
-            rounded-full
-            bg-[#e9e7ff]
-            text-[12px] font-bold
-            text-[#006c49]
-          "
-        >
-          {(email || identifier).charAt(0).toUpperCase()}
-        </span>
-
-        <span
-          className="
-            min-w-0 truncate
-            text-[13px] font-medium
-            leading-5 text-[#30313d]
-          "
-        >
-          {email ? maskEmail(email) : identifier}
-        </span>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setView('entry')}
-        className="
-          flex h-9 shrink-0 items-center justify-center
-          rounded-lg px-2.5
-          text-[12px] font-semibold
-          text-[#006c49]
-          transition-colors duration-150
-          hover:bg-[#ecebff]
-          hover:text-[#271bb0]
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-[#006c49]/25
-        "
-      >
-        Edit
-      </button>
-    </div>
-
-    {/* Password */}
-    <PasswordField
-      label="Password"
-      name="password"
-      value={password}
-      onChange={setPassword}
-      autoComplete="current-password"
-      autoFocus
-      labelRight={
-        <button
-          type="button"
-          onClick={() => {
-            setResetIdentifier(email || identifier);
-            setView('forgot-password');
-          }}
-          className={`${TAP_INLINE} mt-1 justify-center`}
-        >
-          Forgot password?
-        </button>
-      }
-    />
-
-    {/* Primary Login */}
-    <button
-      type="submit"
-      disabled={loading || !password}
-      className="
-        mt-4 flex h-12 w-full
-        items-center justify-center gap-2
-        rounded-xl
-        bg-[#006c49]
-        px-5
-        text-[14px] font-semibold
-        text-white
-        shadow-[0_4px_12px_rgba(0,108,73,0.18)]
-        transition-all duration-200
-        hover:bg-[#005b3d]
-        hover:shadow-[0_6px_16px_rgba(0,108,73,0.22)]
-        active:scale-[0.99]
-        disabled:cursor-not-allowed
-        disabled:bg-[#aeb8b3]
-        disabled:shadow-none
-        focus:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-[#006c49]/30
-        focus-visible:ring-offset-2
-      "
-      aria-busy={loading}
-    >
-      {loading ? (
-        <>
-          <Loader2
-            size={18}
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          <span>Signing in...</span>
-        </>
-      ) : (
-        <>
-          <span>Sign in</span>
-          <ArrowRight
-            size={18}
-            className="shrink-0"
-            aria-hidden="true"
-          />
-        </>
-      )}
-    </button>
-
-    {/* Create account */}
-    {email ? (
-      <button
-        type="button"
-        onClick={() => {
-          setError('');
-          setView('signup-start');
-        }}
-        className="
-          mt-3 flex min-h-11 w-full
-          items-center justify-center gap-1.5
-          rounded-lg
-          px-3 py-2
-          text-[12px] font-semibold
-          leading-4 tracking-[0.01em]
-          text-[#464555]
-          transition-colors duration-150
-          hover:bg-[#f5f6fa]
-          hover:text-[#131b2e]
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-[#006c49]/20
-        "
-      >
-        <span>New to LofiMart?</span>
-
-        <span className="text-[#006c49]">
-          Create an account
-        </span>
-      </button>
-    ) : (
-      <p
-        className="
-          mt-3 px-3
-          text-center
-          text-[12px] leading-4
-          text-[#646477]
-        "
-      >
-        New accounts need an email address, so sign up from the email
-        option.
-      </p>
-    )}
-
-    {/* Switch account */}
-    <button
-      type="button"
-      onClick={() => setView('entry')}
-        className="
-          mt-1 flex min-h-11 w-full
-          items-center justify-center gap-2
-          rounded-lg
-          px-3 py-2
-          text-[12px] font-semibold
-          leading-4 tracking-[0.01em]
-          text-[#646477]
-        transition-colors duration-150
-        hover:bg-[#f7f8fc]
-        hover:text-[#131b2e]
-        focus:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-[#006c49]/20
-      "
-    >
-      <ArrowLeft
-        size={15}
-        className="shrink-0"
-        aria-hidden="true"
-      />
-
-      <span>Use another account</span>
-    </button>
-  </form>
-)}
-
-      {view === 'signup-start' && (
-        <>
-          <div className="auth-account-badge flex items-center justify-between gap-2 rounded-xl px-3 py-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <Mail size={16} className="shrink-0 text-[#006c49]" />
-              <span className={`${LABEL} truncate`}>{maskEmail(email)}</span>
-            </div>
-            <button type="button" onClick={() => setView('login-password')} className={`${LABEL_SM} ml-2 flex-shrink-0 normal-case tracking-[0.04em] text-[#006c49] hover:underline`}>
-              Edit
-            </button>
-          </div>
-          <button type="button" onClick={() => void sendSignupOtp()} disabled={loading} className="auth-primary mt-4">
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <><span>Send verification code</span><Send size={18} /></>}
-          </button>
-        </>
-      )}
-
-      {view === 'signup-otp' && (
-  <div className="w-full">
-    {/* OTP Input */}
-    <div className="flex w-full justify-center">
-      <OtpInput
-        value={otp}
-        onChange={(next) => {
-          setOtp(next);
-
-          if (otpStatus !== 'verifying') {
-            setOtpStatus('idle');
-          }
-        }}
-        status={otpStatus}
-        autoFocus
-        disabled={loading}
-        ariaLabel="6 digit email verification code"
-        onComplete={(code) => void verifySignupOtp(code)}
-      />
-    </div>
-
-    {/* Verification status */}
-    <div
-      className="
-        mt-4 flex min-h-[22px]
-        flex-col items-center justify-center
-        gap-1
-      "
-      aria-live="polite"
-    >
-      <OtpStatusLine
-        status={otpStatus}
-        className="mt-0"
-      />
-
-      {/* The sixth digit verifies on its own, so there is no Verify button. */}
-      {otpStatus === 'idle' && !notice ? (
-        <p className="text-center text-[12px] leading-4 text-[#77798a]">
-          Enter the 6-digit code
-        </p>
-      ) : null}
-
-      {notice ? (
-        <p
-          className="
-            max-w-[320px]
-            text-center
-            text-[12px] leading-4
-            text-[#646477]
-          "
-        >
-          {notice}
-        </p>
-      ) : null}
-    </div>
-
-    {/* Resend */}
-    <div className="mt-5 flex justify-center">
-      <ResendRow
-        secondsLeft={resendIn}
-        loading={loading}
-        onResend={() => void resendOtp()}
-      />
-    </div>
-
-    {/* Help text */}
-    <p
-      className="
-        mx-auto mt-4 max-w-[300px]
-        text-center
-        text-[11px] leading-[17px]
-        text-[#77798a]
-      "
-    >
-      Didn&apos;t receive the code? Check your spam folder or request a
-      new code when the timer ends.
-    </p>
-  </div>
-)}
-
-     {view === 'signup-password' && (
-  <form
-    noValidate
-    onSubmit={(event) => {
-      event.preventDefault();
-      void completeRegistration();
-    }}
-    className="auth-reveal w-full"
-  >
-    {/* Intro */}
-    <div className="mb-5 flex flex-col items-center text-center">
-      <p className="flex items-center gap-1.5 text-[14px] font-semibold leading-5 text-[#006c49]">
-        <CheckCircle2
-          size={16}
-          className="shrink-0"
-          aria-hidden="true"
-        />
-
-        <span>Email verified</span>
-      </p>
-
-      <p
-        className="
-          mt-1 truncate
-          text-[13px] font-medium
-          leading-5 text-[#646477]
-        "
-      >
-        {maskEmail(email)}
-      </p>
-    </div>
-
-    {/* Password */}
-    <div className="w-full">
-      <PasswordField
-        label="Create password"
-        name="new-password"
-        value={password}
-        onChange={setPassword}
-        autoComplete="new-password"
-        disabled={!emailVerified || loading}
-        autoFocus
-      />
-    </div>
-
-    {/* Password requirements */}
-    <div className="mt-3">
-      <PasswordChecklist
-        password={password}
-        withMeter
-      />
-    </div>
-
-    {/* Create account */}
-    <button
-      type="submit"
-      disabled={
-        loading ||
-        !emailVerified ||
-        !isPasswordValid(password)
-      }
-      className="
-        mt-5 flex h-12 w-full
-        items-center justify-center gap-2
-        rounded-xl
-        bg-[#006c49]
-        px-5
-        text-[14px] font-semibold
-        text-white
-        shadow-[0_4px_12px_rgba(0,108,73,0.18)]
-        transition-all duration-200
-        hover:bg-[#005b3d]
-        hover:shadow-[0_6px_16px_rgba(0,108,73,0.22)]
-        active:scale-[0.99]
-        disabled:cursor-not-allowed
-        disabled:bg-[#aeb8b3]
-        disabled:shadow-none
-        focus:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-[#006c49]/30
-        focus-visible:ring-offset-2
-      "
-      aria-busy={loading}
-    >
-      {loading ? (
-        <>
-          <Loader2
-            size={18}
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          <span>Creating account...</span>
-        </>
-      ) : (
-        <>
-          <span>Create account</span>
-          <Check
-            size={18}
-            className="shrink-0"
-            aria-hidden="true"
-          />
-        </>
-      )}
-    </button>
-
-    {/* Security note */}
-    <div className="mt-4 flex items-center justify-center gap-1.5">
-      <ShieldCheck
-        size={14}
-        className="shrink-0 text-[#006c49]"
-        aria-hidden="true"
-      />
-
-      <span
-        className="
-          text-[11px] font-medium
-          leading-4 text-[#646477]
-        "
-      >
-        Your password is securely protected
-      </span>
-    </div>
-  </form>
-)}
-
-      {view === 'forgot-password' && (
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void startForgot();
-          }}
-        >
-          <div className="auth-notice-box mb-4 flex items-start gap-2.5 rounded-xl p-3">
-            <Info size={18} className="mt-0.5 shrink-0 text-[#006c49]" />
-            <p className="text-[12px] leading-4 tracking-[0.01em] text-[#464555]">
-              If an account exists, we'll send a verification code.
-            </p>
-          </div>
-
-          <Field
-            label="Email or phone"
-            name="reset-identifier"
-            value={resetIdentifier}
-            onChange={setResetIdentifier}
-            autoComplete="username"
-            placeholder="name@domain.com or phone"
-            inputMode="text"
-            identity
-            autoFocus
-          />
-
-          <button type="submit" disabled={loading} className="auth-primary mt-4">
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <><span>Send verification code</span><Send size={18} /></>}
+            <span className="leading-none">
+              Continue with Google
+            </span>
           </button>
 
           <button
             type="button"
-            onClick={() => setView('login-password')}
-            className={`${TAP_TARGET} mt-2 w-full text-[12px] font-semibold leading-4 tracking-[0.02em] text-[#006c49] hover:underline`}
+            onClick={() => void social('facebook')}
+            disabled={loading}
+            className="
+              group flex h-[52px] w-full items-center justify-center gap-3
+              rounded-[14px]
+              border border-[#e2e5ec]
+              bg-white
+              px-5
+              text-[14px] font-semibold text-[#20212b]
+              shadow-[0_1px_2px_rgba(16,24,40,0.04)]
+              transition-all duration-200 ease-out
+              hover:-translate-y-[1px]
+              hover:border-[#cfd4df]
+              hover:bg-[#fcfcfd]
+              hover:shadow-[0_6px_18px_rgba(16,24,40,0.07)]
+              active:translate-y-0
+              active:scale-[0.99]
+              disabled:cursor-not-allowed
+              disabled:translate-y-0
+              disabled:opacity-60
+              disabled:shadow-none
+              focus:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-[#006c49]/20
+              focus-visible:ring-offset-2
+            "
           >
-            Remember your password? Log in
+            <span
+              className="
+                flex h-7 w-7 shrink-0 items-center justify-center
+                rounded-full
+                transition-transform duration-200
+                group-hover:scale-[1.03]
+              "
+            >
+              <Facebook
+                size={18}
+                fill="currentColor"
+                aria-hidden="true"
+              />
+            </span>
+
+            <span className="leading-none">
+              Continue with Facebook
+            </span>
           </button>
-        </form>
-      )}
+        </div>
 
-      {view === 'reset-otp' && (
-        <>
-          <p className="mt-1 text-center text-[14px] leading-5 tracking-[0em] text-[#464555]">
-            We sent a 6-digit code to <span className={`${LABEL} text-[#131b2e]`}>{maskEmail(resetIdentifier)}</span>
+        {/* Divider */}
+        <div
+          className="my-6 flex w-full items-center gap-3"
+          role="separator"
+        >
+          <span
+            aria-hidden="true"
+            className="h-px flex-1 bg-[#e7e9ef]"
+          />
+
+          <span
+            className="
+              shrink-0
+              rounded-full
+              bg-[#f7f8fa]
+              px-3 py-1
+              text-[10px]
+              font-bold
+              uppercase
+              tracking-[0.14em]
+              text-[#858795]
+            "
+          >
+            Or
+          </span>
+
+          <span
+            aria-hidden="true"
+            className="h-px flex-1 bg-[#e7e9ef]"
+          />
+        </div>
+
+        {/* Identifier */}
+        <div className="w-full">
+          <div className="mb-2 flex items-center justify-between">
+            <label
+              htmlFor="identifier"
+              className="
+                text-[13px]
+                font-semibold
+                tracking-[-0.01em]
+                text-[#292a35]
+              "
+            >
+              Email address
+            </label>
+          </div>
+
+          <Field
+            name="identifier"
+            value={identifier}
+            onChange={(next) => {
+              setIdentifier(next);
+              setIdentifierTouched(true);
+            }}
+            autoComplete="username"
+            placeholder="user@example.com"
+            identity
+            label=""
+          />
+
+          {identifierTouched ? (
+            emailValid ? (
+              <div
+                className="
+                  mt-2.5
+                  flex items-center gap-2
+                  rounded-lg
+                  border border-[#b8e4d2]
+                  bg-[#f2fbf7]
+                  px-3 py-2
+                "
+              >
+                <CheckCircle2
+                  size={14}
+                  className="shrink-0 text-[#006c49]"
+                  aria-hidden="true"
+                />
+
+                <p className="text-[11px] font-medium leading-4 text-[#006c49]">
+                  Valid email address
+                </p>
+              </div>
+            ) : (
+              <div
+                className="
+                  mt-2.5
+                  flex items-start gap-2
+                  rounded-lg
+                  border border-[#f1c6c3]
+                  bg-[#fff7f6]
+                  px-3 py-2
+                "
+              >
+                <AlertCircle
+                  size={14}
+                  className="mt-[1px] shrink-0 text-[#b3261e]"
+                  aria-hidden="true"
+                />
+
+                <p className="text-[11px] font-medium leading-4 text-[#b3261e]">
+                  Please enter a valid email address.
+                </p>
+              </div>
+            )
+          ) : (
+            <div className="mt-2.5 flex items-start gap-2">
+              <div
+                aria-hidden="true"
+                className="
+                  mt-[5px]
+                  h-1.5 w-1.5
+                  shrink-0
+                  rounded-full
+                  bg-[#a4a6b1]
+                "
+              />
+
+              <p
+                className="
+                  text-[11px]
+                  leading-[17px]
+                  text-[#77798a]
+                "
+              >
+                We&apos;ll send a verification code for new accounts.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Continue */}
+        <button
+          type="submit"
+          disabled={loading || !canContinue}
+          aria-disabled={loading || !canContinue}
+          className="
+            mt-5
+            flex h-[52px] w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all duration-200 ease-out
+            hover:-translate-y-[1px]
+            hover:bg-[#005f40]
+            hover:shadow-[0_8px_22px_rgba(0,108,73,0.22)]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:translate-y-0
+            disabled:bg-[#b7bfbb]
+            disabled:text-white/85
+            disabled:shadow-none
+            focus:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-[#006c49]/25
+            focus-visible:ring-offset-2
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                size={18}
+                className="animate-spin"
+                aria-hidden="true"
+              />
+              <span>Checking...</span>
+            </>
+          ) : (
+            <>
+              <span>Continue</span>
+              <ArrowRight
+                size={18}
+                className="shrink-0"
+                aria-hidden="true"
+              />
+            </>
+          )}
+        </button>
+
+        {/* Security */}
+        <div className="mt-6 flex flex-col items-center text-center">
+          <div
+            className="
+              inline-flex
+              items-center gap-2
+              rounded-full
+              border border-[#e2e8e5]
+              bg-[#f7faf8]
+              px-3 py-1.5
+            "
+          >
+            <ShieldCheck
+              size={14}
+              className="shrink-0 text-[#006c49]"
+              aria-hidden="true"
+            />
+
+            <span
+              className="
+                text-[10px]
+                font-semibold
+                tracking-[0.05em]
+                text-[#555762]
+              "
+            >
+              Secure authentication
+            </span>
+          </div>
+
+          <p
+            className="
+              mt-3
+              max-w-[330px]
+              text-[10.5px]
+              leading-[17px]
+              text-[#81838f]
+            "
+          >
+            By continuing, you agree to LofiMart&apos;s{' '}
+            <a
+              href="/terms"
+              className="
+                font-semibold
+                text-[#006c49]
+                underline-offset-2
+                transition-colors
+                hover:text-[#005b3d]
+                hover:underline
+              "
+            >
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a
+              href="/privacy"
+              className="
+                font-semibold
+                text-[#006c49]
+                underline-offset-2
+                transition-colors
+                hover:text-[#005b3d]
+                hover:underline
+              "
+            >
+              Privacy Policy
+            </a>
+            .
           </p>
+        </div>
+      </form>
+    )}
 
-          <div className="mt-4">
-            <OtpInput
-              value={otp}
-              onChange={(next) => {
-                setOtp(next);
-                if (otpStatus !== 'verifying') setOtpStatus('idle');
+    {/* =========================================================
+        LOGIN PASSWORD
+    ========================================================= */}
+    {view === 'login-password' && (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void doPasswordLogin();
+        }}
+        className="w-full"
+      >
+        {/* Account */}
+        <div
+          className="
+            mb-5
+            flex w-full items-center justify-between gap-3
+            rounded-[14px]
+            border border-[#e2e5ec]
+            bg-[#f7f8fa]
+            px-3.5 py-3
+          "
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              className="
+                flex h-9 w-9 shrink-0 items-center justify-center
+                rounded-full
+                border border-[#d8e9e2]
+                bg-[#edf8f3]
+                text-[12px] font-bold
+                text-[#006c49]
+              "
+            >
+              {(email || identifier).charAt(0).toUpperCase()}
+            </span>
+
+            <span
+              className="
+                min-w-0 truncate
+                text-[13px]
+                font-medium
+                leading-5
+                text-[#30313d]
+              "
+            >
+              {email ? maskEmail(email) : identifier}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setView('entry')}
+            className="
+              flex h-9 shrink-0 items-center justify-center
+              rounded-[10px]
+              px-3
+              text-[12px]
+              font-semibold
+              text-[#006c49]
+              transition-all
+              hover:bg-white
+              hover:text-[#005b3d]
+              focus:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-[#006c49]/20
+            "
+          >
+            Edit
+          </button>
+        </div>
+
+        {/* Password */}
+        <PasswordField
+          label="Password"
+          name="password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          autoFocus
+          labelRight={
+            <button
+              type="button"
+              onClick={() => {
+                setResetIdentifier(email || identifier);
+                setView('forgot-password');
               }}
-              status={otpStatus}
-              autoFocus
-              disabled={loading}
-              ariaLabel="6 digit reset verification code"
-              onComplete={(code) => void verifyResetOtp(code)}
+              className={`${TAP_INLINE} mt-1 justify-center`}
+            >
+              Forgot password?
+            </button>
+          }
+        />
+
+        {/* Login */}
+        <button
+          type="submit"
+          disabled={loading || !password}
+          className="
+            mt-5
+            flex h-12 w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px] font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all duration-200
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            hover:shadow-[0_8px_22px_rgba(0,108,73,0.22)]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:translate-y-0
+            disabled:bg-[#aeb8b3]
+            disabled:shadow-none
+            focus:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-[#006c49]/30
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                size={18}
+                className="animate-spin"
+                aria-hidden="true"
+              />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign in</span>
+              <ArrowRight size={18} />
+            </>
+          )}
+        </button>
+
+        {/* Create account */}
+        {email ? (
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setView('signup-start');
+            }}
+            className="
+              mt-3
+              flex min-h-11 w-full
+              items-center justify-center gap-1.5
+              rounded-[10px]
+              px-3 py-2
+              text-[12px]
+              font-semibold
+              text-[#464555]
+              transition-colors
+              hover:bg-[#f5f6fa]
+            "
+          >
+            <span>New to LofiMart?</span>
+            <span className="text-[#006c49]">
+              Create an account
+            </span>
+          </button>
+        ) : (
+          <p
+            className="
+              mt-3 px-3
+              text-center
+              text-[12px]
+              leading-4
+              text-[#646477]
+            "
+          >
+            New accounts need an email address, so sign up from the
+            email option.
+          </p>
+        )}
+
+        {/* Switch */}
+        <button
+          type="button"
+          onClick={() => setView('entry')}
+          className="
+            mt-1
+            flex min-h-11 w-full
+            items-center justify-center gap-2
+            rounded-[10px]
+            px-3 py-2
+            text-[12px]
+            font-semibold
+            text-[#646477]
+            transition-colors
+            hover:bg-[#f7f8fc]
+            hover:text-[#131b2e]
+          "
+        >
+          <ArrowLeft size={15} />
+          <span>Use another account</span>
+        </button>
+      </form>
+    )}
+
+    {/* =========================================================
+        SIGNUP START
+    ========================================================= */}
+    {view === 'signup-start' && (
+      <div className="w-full">
+        {/* Identity */}
+        <div
+          className="
+            flex w-full items-center justify-between gap-3
+            rounded-[14px]
+            border border-[#e2e5ec]
+            bg-[#f7f8fa]
+            px-3.5 py-3
+          "
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className="
+                flex h-9 w-9 shrink-0
+                items-center justify-center
+                rounded-full
+                border border-[#d8e9e2]
+                bg-[#edf8f3]
+              "
+            >
+              <Mail
+                size={16}
+                className="text-[#006c49]"
+                aria-hidden="true"
+              />
+            </span>
+
+            <div className="min-w-0">
+              <p
+                className="
+                  mb-0.5
+                  text-[10px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.1em]
+                  text-[#858795]
+                "
+              >
+                Creating account
+              </p>
+
+              <span
+                className="
+                  block min-w-0 truncate
+                  text-[13px]
+                  font-semibold
+                  leading-5
+                  text-[#30313d]
+                "
+              >
+                {maskEmail(email)}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setView('entry')}
+            className="
+              flex h-9 shrink-0
+              items-center justify-center
+              rounded-[10px]
+              px-3
+              text-[12px]
+              font-semibold
+              text-[#006c49]
+              transition-all
+              hover:bg-white
+            "
+          >
+            Edit
+          </button>
+        </div>
+
+        {/* CTA */}
+        <button
+          type="button"
+          onClick={() => void sendSignupOtp()}
+          disabled={loading}
+          className="
+            mt-5
+            flex h-[52px] w-full
+            items-center justify-center gap-2.5
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all duration-200
+            hover:-translate-y-[1px]
+            hover:bg-[#005f40]
+            hover:shadow-[0_8px_22px_rgba(0,108,73,0.22)]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:bg-[#b7bfbb]
+            disabled:shadow-none
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                size={18}
+                className="animate-spin"
+                aria-hidden="true"
+              />
+              <span>Sending code...</span>
+            </>
+          ) : (
+            <>
+              <span>Send verification code</span>
+              <Send size={18} aria-hidden="true" />
+            </>
+          )}
+        </button>
+      </div>
+    )}
+
+    {/* =========================================================
+        REUSABLE OTP UI
+        SIGNUP OTP + RESET OTP
+    ========================================================= */}
+    {(view === 'signup-otp' || view === 'reset-otp') && (
+      <div className="w-full">
+        {/*
+          The OTP interface is intentionally identical for both flows.
+          Only the content and verification callback differ.
+        */}
+        <div
+          className="
+            overflow-hidden
+            rounded-[18px]
+            border border-[#e5e7eb]
+            bg-[#fafbfc]
+            shadow-[0_8px_24px_rgba(25,35,65,0.04)]
+          "
+        >
+          {/* Header */}
+          <div
+            className="
+              border-b border-[#e9ebef]
+              px-4 py-4
+              sm:px-5
+            "
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="
+                  flex h-10 w-10 shrink-0
+                  items-center justify-center
+                  rounded-[12px]
+                  border border-[#d8e9e2]
+                  bg-[#edf8f3]
+                "
+              >
+                <Mail
+                  size={18}
+                  className="text-[#006c49]"
+                  aria-hidden="true"
+                />
+              </span>
+
+              <div className="min-w-0">
+                <p
+                  className="
+                    text-[14px]
+                    font-semibold
+                    leading-5
+                    text-[#20212b]
+                  "
+                >
+                  {view === 'signup-otp'
+                    ? 'Verify your email'
+                    : 'Verify your identity'}
+                </p>
+
+                <p
+                  className="
+                    mt-0.5
+                    text-[11.5px]
+                    leading-[17px]
+                    text-[#77798a]
+                  "
+                >
+                  {view === 'signup-otp'
+                    ? 'Enter the code we sent to your email.'
+                    : 'Enter the verification code to continue.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Destination */}
+            <div
+              className="
+                mt-3
+                flex min-w-0 items-center
+                rounded-[10px]
+                border border-[#e5e8ed]
+                bg-white
+                px-3 py-2
+              "
+            >
+              <span
+                className="
+                  min-w-0 truncate
+                  text-[12px]
+                  font-semibold
+                  leading-4
+                  text-[#30313d]
+                "
+              >
+                {maskEmail(
+                  view === 'signup-otp'
+                    ? email
+                    : resetIdentifier,
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* OTP Body */}
+          <div className="px-4 py-5 sm:px-5 sm:py-6">
+            <div className="flex w-full justify-center">
+              <OtpInput
+                value={otp}
+                onChange={(next) => {
+                  setOtp(next);
+
+                  if (otpStatus !== 'verifying') {
+                    setOtpStatus('idle');
+                  }
+                }}
+                status={otpStatus}
+                autoFocus
+                disabled={loading}
+                ariaLabel="6 digit verification code"
+                onComplete={(code) => {
+                  if (view === 'signup-otp') {
+                    void verifySignupOtp(code);
+                  } else {
+                    void verifyResetOtp(code);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Status */}
+            <div
+              className="
+                mt-5
+                flex min-h-[46px]
+                flex-col items-center justify-center
+                gap-1.5
+              "
+              aria-live="polite"
+            >
+              <OtpStatusLine
+                status={otpStatus}
+                className="mt-0"
+              />
+
+              {otpStatus === 'idle' && !notice ? (
+                <p
+                  className="
+                    text-center
+                    text-[11px]
+                    font-medium
+                    leading-4
+                    text-[#77798a]
+                  "
+                >
+                  Enter the 6-digit code
+                </p>
+              ) : null}
+
+              {notice ? (
+                <p
+                  className="
+                    max-w-[320px]
+                    rounded-[10px]
+                    border border-[#e8e9ee]
+                    bg-white
+                    px-3.5 py-2.5
+                    text-center
+                    text-[11px]
+                    font-medium
+                    leading-[17px]
+                    text-[#646477]
+                    shadow-[0_2px_8px_rgba(25,35,65,0.03)]
+                  "
+                >
+                  {notice}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Resend */}
+            <div
+              className="
+                mt-5
+                border-t border-[#eceef2]
+                pt-4
+              "
+            >
+              <ResendRow
+                secondsLeft={resendIn}
+                loading={loading}
+                onResend={() => void resendOtp()}
+              />
+            </div>
+
+            {/* Help */}
+            <div
+              className="
+                mt-4
+                flex items-start gap-2
+                rounded-[12px]
+                border border-[#e8e9ee]
+                bg-[#f7f8fa]
+                px-3 py-2.5
+              "
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
+                className="
+                  mt-[1px]
+                  h-3.5 w-3.5
+                  shrink-0
+                  text-[#858795]
+                "
+              >
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                />
+
+                <path
+                  d="M10 8.7V13"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+
+                <circle
+                  cx="10"
+                  cy="6.2"
+                  r=".75"
+                  fill="currentColor"
+                />
+              </svg>
+
+              <p
+                className="
+                  text-[10.5px]
+                  font-medium
+                  leading-[17px]
+                  text-[#858795]
+                "
+              >
+                Check your spam folder or request a new code when
+                the timer ends.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* =========================================================
+        SIGNUP PASSWORD
+    ========================================================= */}
+    {view === 'signup-password' && (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void completeRegistration();
+        }}
+        className="w-full"
+      >
+        {/* Verified */}
+        <div
+          className="
+            mb-5
+            flex flex-col items-center text-center
+          "
+        >
+          <div
+            className="
+              inline-flex
+              items-center gap-1.5
+              rounded-full
+              border border-[#cfe9df]
+              bg-[#f0faf6]
+              px-3 py-1.5
+            "
+          >
+            <CheckCircle2
+              size={15}
+              className="text-[#006c49]"
+            />
+
+            <span
+              className="
+                text-[12px]
+                font-semibold
+                leading-4
+                text-[#006c49]
+              "
+            >
+              Email verified
+            </span>
+          </div>
+
+          <p
+            className="
+              mt-2
+              max-w-full
+              truncate
+              px-2
+              text-[12.5px]
+              font-medium
+              leading-5
+              text-[#646477]
+            "
+          >
+            {maskEmail(email)}
+          </p>
+        </div>
+
+        {/* Password */}
+        <div
+          className="
+            rounded-[18px]
+            border border-[#e7e9ef]
+            bg-[#fafbfc]
+            p-4
+            sm:p-[18px]
+          "
+        >
+          <PasswordField
+            label="Create password"
+            name="new-password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            disabled={!emailVerified || loading}
+            autoFocus
+          />
+
+          <div className="mt-3">
+            <PasswordChecklist
+              password={password}
+              withMeter
+            />
+          </div>
+        </div>
+
+        {/* Create */}
+        <button
+          type="submit"
+          disabled={
+            loading ||
+            !emailVerified ||
+            !isPasswordValid(password)
+          }
+          className="
+            mt-5
+            flex h-12 w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            hover:shadow-[0_8px_22px_rgba(0,108,73,0.22)]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:translate-y-0
+            disabled:bg-[#aeb8b3]
+            disabled:shadow-none
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                size={18}
+                className="animate-spin"
+              />
+              <span>Creating account...</span>
+            </>
+          ) : (
+            <>
+              <span>Create account</span>
+              <Check size={18} />
+            </>
+          )}
+        </button>
+
+        <div
+          className="
+            mt-4
+            flex items-center justify-center gap-1.5
+            px-2
+          "
+        >
+          <ShieldCheck
+            size={14}
+            className="text-[#006c49]"
+          />
+
+          <span
+            className="
+              text-center
+              text-[10.5px]
+              font-medium
+              leading-4
+              text-[#77798a]
+            "
+          >
+            Your password is securely protected
+          </span>
+        </div>
+      </form>
+    )}
+
+    {/* =========================================================
+        FORGOT PASSWORD
+    ========================================================= */}
+    {view === 'forgot-password' && (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void startForgot();
+        }}
+        className="w-full"
+      >
+        {/* Information */}
+        <div
+          className="
+            mb-5
+            flex items-start gap-3
+            rounded-[14px]
+            border border-[#dceee7]
+            bg-[#f5fbf8]
+            px-3.5 py-3
+          "
+        >
+          <div
+            className="
+              mt-0.5
+              flex h-8 w-8 shrink-0
+              items-center justify-center
+              rounded-full
+              bg-[#e6f5ef]
+            "
+          >
+            <Info
+              size={16}
+              className="text-[#006c49]"
             />
           </div>
 
-          <div className="mt-3 flex flex-col items-center gap-1">
-            <OtpStatusLine status={otpStatus} className="mt-0" />
-            {notice ? <p className="text-center text-[12px] leading-4 tracking-[0.01em] text-[#464555]">{notice}</p> : null}
-          </div>
+          <p
+            className="
+              pt-0.5
+              text-[12px]
+              font-medium
+              leading-[17px]
+              text-[#464555]
+            "
+          >
+            If an account exists, we&apos;ll send a verification
+            code.
+          </p>
+        </div>
 
-          <ResendRow
-            secondsLeft={resendIn}
-            loading={loading}
-            onResend={() => void resendOtp()}
-          />
-        </>
-      )}
+        {/* Identifier */}
+        <Field
+          label="Email or phone"
+          name="reset-identifier"
+          value={resetIdentifier}
+          onChange={setResetIdentifier}
+          autoComplete="username"
+          placeholder="name@domain.com or phone"
+          inputMode="text"
+          identity
+          autoFocus
+        />
 
-      {view === 'reset-password' && (
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void doReset();
-          }}
+        {/* Send */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="
+            mt-5
+            flex h-12 w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            hover:shadow-[0_8px_22px_rgba(0,108,73,0.22)]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:bg-[#aeb8b3]
+            disabled:shadow-none
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                className="animate-spin"
+                size={18}
+              />
+              <span>Sending verification code...</span>
+            </>
+          ) : (
+            <>
+              <span>Send verification code</span>
+              <Send size={18} />
+            </>
+          )}
+        </button>
+
+        {/* Back */}
+        <button
+          type="button"
+          onClick={() => setView('login-password')}
+          className="
+            mt-3
+            flex min-h-10 w-full
+            items-center justify-center
+            rounded-[10px]
+            px-3 py-2
+            text-[12px]
+            font-semibold
+            text-[#006c49]
+            transition-colors
+            hover:bg-[#f3faf7]
+            hover:underline
+          "
+        >
+          Remember your password? Log in
+        </button>
+      </form>
+    )}
+
+    {/* =========================================================
+        RESET PASSWORD
+    ========================================================= */}
+    {view === 'reset-password' && (
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void doReset();
+        }}
+        className="w-full"
+      >
+        <div
+          className="
+            rounded-[18px]
+            border border-[#e7e9ef]
+            bg-[#fafbfc]
+            p-4
+            sm:p-[18px]
+          "
         >
           <PasswordField
             label="New password"
@@ -1451,6 +1942,7 @@ export default function AuthModal() {
             autoComplete="new-password"
             autoFocus
           />
+
           <div className="mt-3">
             <PasswordField
               label="Confirm password"
@@ -1462,143 +1954,489 @@ export default function AuthModal() {
           </div>
 
           {confirm && password !== confirm ? (
-            <div className="auth-error-box mt-2 flex items-center gap-2 rounded-xl p-2.5">
-              <X size={16} className="shrink-0" />
-              <span className="text-[12px] leading-4 tracking-[0.01em]">Passwords do not match</span>
+            <div
+              className="
+                mt-3
+                flex items-center gap-2.5
+                rounded-[12px]
+                border border-[#f1d6d6]
+                bg-[#fff7f7]
+                px-3 py-2.5
+                text-[#b42318]
+              "
+              role="alert"
+            >
+              <div
+                className="
+                  flex h-6 w-6 shrink-0
+                  items-center justify-center
+                  rounded-full
+                  bg-[#fdeaea]
+                "
+              >
+                <X size={14} />
+              </div>
+
+              <span
+                className="
+                  text-[11.5px]
+                  font-medium
+                  leading-4
+                "
+              >
+                Passwords do not match
+              </span>
             </div>
           ) : null}
 
-          <div className="mt-3 rounded-xl bg-[#f2f6f4] p-3">
-            <div className="flex items-center gap-2 text-[12px] leading-4 tracking-[0.01em] text-[#464555]">
+          <div
+            className="
+              mt-3
+              rounded-[12px]
+              border border-[#e2ebe7]
+              bg-[#f2f6f4]
+              px-3 py-2.5
+            "
+          >
+            <div
+              className="
+                flex items-center gap-2.5
+                text-[11.5px]
+                font-medium
+                leading-4
+                text-[#464555]
+              "
+            >
               {isPasswordValid(password) ? (
-                <CheckCircle2 size={16} className="shrink-0 text-[#006c49]" />
+                <CheckCircle2
+                  size={16}
+                  className="text-[#006c49]"
+                />
               ) : (
-                <Circle size={16} className="shrink-0 text-[#7a8a85]" />
+                <Circle
+                  size={16}
+                  className="text-[#7a8a85]"
+                />
               )}
-              <span>Requires 8+ characters &amp; 1 number</span>
+
+              <span>
+                Requires 8+ characters &amp; 1 number
+              </span>
             </div>
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading || !isPasswordValid(password) || password !== confirm}
-            className="auth-primary mt-4"
+        <button
+          type="submit"
+          disabled={
+            loading ||
+            !isPasswordValid(password) ||
+            password !== confirm
+          }
+          className="
+            mt-5
+            flex h-12 w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            active:translate-y-0
+            active:scale-[0.99]
+            disabled:cursor-not-allowed
+            disabled:bg-[#aeb8b3]
+            disabled:shadow-none
+          "
+          aria-busy={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2
+                className="animate-spin"
+                size={18}
+              />
+              <span>Resetting password...</span>
+            </>
+          ) : (
+            <>
+              <span>Reset password</span>
+              <LockKeyhole size={18} />
+            </>
+          )}
+        </button>
+      </form>
+    )}
+
+    {/* =========================================================
+        RESET SUCCESS
+    ========================================================= */}
+    {view === 'reset-success' && (
+      <div className="w-full text-center">
+        {/* Success */}
+        <div
+          className="
+            relative mx-auto
+            flex h-[88px] w-[88px]
+            items-center justify-center
+          "
+        >
+          <span
+            aria-hidden="true"
+            className="
+              absolute inset-0
+              rounded-full
+              bg-[#6cf8bb]/30
+            "
+          />
+
+          <span
+            aria-hidden="true"
+            className="
+              absolute
+              h-[76px] w-[76px]
+              rounded-full
+              border border-[#bdebd9]
+              bg-[#f0faf6]
+            "
+          />
+
+          <span
+            className="
+              relative
+              flex h-[62px] w-[62px]
+              items-center justify-center
+              rounded-full
+              bg-[#006c49]
+              text-white
+              shadow-[0_8px_20px_rgba(0,108,73,0.22)]
+            "
           >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <><span>Reset password</span><LockKeyhole size={18} /></>}
-          </button>
-        </form>
-      )}
+            <Check
+              size={32}
+              strokeWidth={2.5}
+            />
+          </span>
+        </div>
 
-      {view === 'reset-success' && (
-        <>
-          <div className="auth-success-emblem relative mx-auto my-2 flex h-20 w-20 items-center justify-center">
-            <span aria-hidden="true" className="auth-success-ping absolute inset-0 rounded-full bg-[#6cf8bb]/40" />
-            <span className="auth-success-mark relative flex h-16 w-16 items-center justify-center rounded-full bg-[#006c49] text-[#ffffff] shadow-lg">
-              <Check size={34} />
+        <p
+          className={`
+            ${HEADING}
+            mt-4
+            text-center
+          `}
+        >
+          Password updated
+        </p>
+
+        <p
+          className="
+            mx-auto
+            mt-1.5
+            max-w-[300px]
+            text-center
+            text-[13px]
+            font-medium
+            leading-5
+            text-[#646477]
+          "
+        >
+          Your new password is ready.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            setIdentifier(resetIdentifier);
+            setPassword('');
+            setConfirm('');
+            setView('login-password');
+          }}
+          className="
+            mt-6
+            flex h-12 w-full
+            items-center justify-center
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            active:translate-y-0
+          "
+        >
+          Log in
+        </button>
+
+        <div
+          className="
+            mt-4
+            flex items-center
+            justify-center gap-1.5
+          "
+        >
+          <Check
+            size={13}
+            className="text-[#006c49]"
+            strokeWidth={2.5}
+          />
+
+          <span
+            className="
+              text-[10.5px]
+              font-medium
+              leading-4
+              text-[#77798a]
+            "
+          >
+            Your password has been securely updated
+          </span>
+        </div>
+      </div>
+    )}
+
+    {/* =========================================================
+        ACCOUNT SUCCESS
+    ========================================================= */}
+    {view === 'success' && (
+      <div className="w-full text-center">
+        {/* Success Emblem */}
+        <div
+          className="
+            relative mx-auto
+            my-2
+            flex h-[84px] w-[84px]
+            items-center justify-center
+          "
+        >
+          <span
+            aria-hidden="true"
+            className="
+              absolute inset-0
+              rounded-full
+              bg-[#6cf8bb]/30
+            "
+          />
+
+          <span
+            className="
+              relative
+              flex h-[66px] w-[66px]
+              items-center justify-center
+              rounded-full
+              bg-[#006c49]
+              text-white
+              shadow-[0_8px_20px_rgba(0,108,73,0.22)]
+            "
+          >
+            <Check size={34} />
+          </span>
+        </div>
+
+        {/* Heading */}
+        <div className="mt-2 flex flex-col items-center text-center">
+          <span className="flex items-center gap-1.5">
+            <span className={HEADING}>
+              Welcome to LofiMart
             </span>
-          </div>
-          <p className={`${HEADING} mt-2 text-center`}>Password updated</p>
-          <p className="mt-0.5 text-center text-[16px] leading-6 text-[#464555]">Your new password is ready.</p>
+
+            <span
+              aria-hidden="true"
+              className="text-[20px]"
+            >
+              🎉
+            </span>
+          </span>
+
+          <p
+            className="
+              mt-0.5
+              text-[16px]
+              leading-6
+              text-[#464555]
+            "
+          >
+            Your account is ready.
+          </p>
+
+          <p
+            className={`
+              ${LABEL}
+              mt-1
+              text-[#006c49]
+            `}
+          >
+            What would you like to do?
+          </p>
+        </div>
+
+        {/* Shopping */}
+        <button
+          type="button"
+          onClick={() => {
+            closeAuth();
+            router.replace(destination);
+          }}
+          className="
+            mt-5
+            flex h-12 w-full
+            items-center justify-center gap-2
+            rounded-[14px]
+            bg-[#006c49]
+            px-5
+            text-[14px]
+            font-semibold
+            text-white
+            shadow-[0_5px_16px_rgba(0,108,73,0.18)]
+            transition-all
+            hover:-translate-y-[1px]
+            hover:bg-[#005b3d]
+            active:translate-y-0
+            active:scale-[0.99]
+          "
+        >
+          <ShoppingCart size={18} />
+          <span>Start Shopping</span>
+        </button>
+
+        {/* Divider */}
+        <div className="my-4 flex w-full items-center gap-2">
+          <span className="h-px flex-1 bg-[#d7e6de]" />
+
+          <span
+            className={`
+              ${LABEL_SM}
+              whitespace-nowrap
+              text-[#464555]
+            `}
+          >
+            Want to sell or resell?
+          </span>
+
+          <span className="h-px flex-1 bg-[#d7e6de]" />
+        </div>
+
+        {/* Ecosystem */}
+        <div className="grid w-full grid-cols-1 gap-2.5">
           <button
             type="button"
-            onClick={() => {
-              setIdentifier(resetIdentifier);
-              setPassword('');
-              setConfirm('');
-              setView('login-password');
-            }}
-            className="auth-primary mt-5"
+            onClick={() => void startOnboarding('seller')}
+            disabled={loading}
+            className="
+              auth-ecosystem-card
+              flex items-center justify-between gap-3
+              rounded-[16px]
+              p-3
+              text-left
+            "
           >
-            Log in
-          </button>
-        </>
-      )}
+            <span className="flex min-w-0 items-center gap-3">
+              <span
+                className="
+                  flex h-10 w-10 shrink-0
+                  items-center justify-center
+                  rounded-[12px]
+                  bg-white
+                  text-[#006c49]
+                  shadow-sm
+                "
+              >
+                <Store size={20} />
+              </span>
 
-      {view === 'success' && (
-        <>
-          <div className="auth-success-emblem relative mx-auto my-2 flex h-20 w-20 items-center justify-center">
-            <span aria-hidden="true" className="auth-success-ping absolute inset-0 rounded-full bg-[#6cf8bb]/40" />
-            <span className="auth-success-mark relative flex h-16 w-16 items-center justify-center rounded-full bg-[#006c49] text-[#ffffff] shadow-lg">
-              <Check size={34} />
-            </span>
-          </div>
+              <span className="min-w-0">
+                <span
+                  className="
+                    block truncate
+                    text-[14px]
+                    font-semibold
+                    leading-5
+                    text-[#131b2e]
+                  "
+                >
+                  Become a Seller
+                </span>
 
-          <div className="mt-2 flex flex-col items-center text-center">
-            <span className="inline-flex items-center gap-1.5">
-              <span className={HEADING}>Welcome to LofiMart</span>
-              <span aria-hidden="true" className="text-[20px]">
-                🎉
+                <span
+                  className="
+                    block
+                    text-[12px]
+                    leading-4
+                    text-[#464555]
+                  "
+                >
+                  Store setup in 4 quick steps
+                </span>
               </span>
             </span>
-            <p className="mt-0.5 text-[16px] leading-6 text-[#464555]">Your account is ready.</p>
-            <p className={`${LABEL} mt-1 text-[#006c49]`}>What would you like to do?</p>
-          </div>
+          </button>
 
           <button
             type="button"
-            onClick={() => {
-              closeAuth();
-              router.replace(destination);
-            }}
-            className="auth-primary mt-5"
+            onClick={() => void startOnboarding('reseller')}
+            disabled={loading}
+            className="
+              auth-ecosystem-card
+              flex items-center justify-between gap-3
+              rounded-[16px]
+              p-3
+              text-left
+            "
           >
-            <ShoppingCart size={18} />
-            <span>Start Shopping</span>
+            <span className="flex min-w-0 items-center gap-3">
+              <span
+                className="
+                  flex h-10 w-10 shrink-0
+                  items-center justify-center
+                  rounded-[12px]
+                  bg-white
+                  text-[#006c49]
+                  shadow-sm
+                "
+              >
+                <Share2 size={20} />
+              </span>
+
+              <span className="min-w-0">
+                <span
+                  className="
+                    block truncate
+                    text-[14px]
+                    font-semibold
+                    leading-5
+                    text-[#131b2e]
+                  "
+                >
+                  Become a Reseller
+                </span>
+
+                <span
+                  className="
+                    block
+                    text-[12px]
+                    leading-4
+                    text-[#464555]
+                  "
+                >
+                  Share links &amp; earn 12% margins
+                </span>
+              </span>
+            </span>
           </button>
-
-          <div className="my-4 flex w-full items-center gap-2">
-            <span className="h-px flex-1 bg-[#d7e6de]" />
-            <span className={`${LABEL_SM} text-[#464555]`}>Want to sell or resell?</span>
-            <span className="h-px flex-1 bg-[#d7e6de]" />
-          </div>
-
-          <div className="grid w-full grid-cols-1 gap-2.5">
-            <button
-              type="button"
-              onClick={() => void startOnboarding('seller')}
-              disabled={loading}
-              className="auth-ecosystem-card flex items-center justify-between gap-3 rounded-2xl p-3 text-left"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#006c49] shadow-sm">
-                  <Store size={20} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-semibold leading-5 tracking-[0.01em] text-[#131b2e]">
-                    Become a Seller
-                  </span>
-                  <span className="block text-[12px] leading-4 tracking-[0.01em] text-[#464555]">
-                    Store setup in 4 quick steps
-                  </span>
-                </span>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void startOnboarding('reseller')}
-              disabled={loading}
-              className="auth-ecosystem-card flex items-center justify-between gap-3 rounded-2xl p-3 text-left"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#006c49] shadow-sm">
-                  <Share2 size={20} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-semibold leading-5 tracking-[0.01em] text-[#131b2e]">
-                    Become a Reseller
-                  </span>
-                  <span className="block text-[12px] leading-4 tracking-[0.01em] text-[#464555]">
-                    Share links &amp; earn 12% margins
-                  </span>
-                </span>
-              </span>
-            </button>
-          </div>
-        </>
-      )}
-    </>
-  );
+        </div>
+      </div>
+    )}
+  </>
+);
 
   const viewBadge: Partial<Record<AuthView, string>> = {
     'login-password': 'Step 2 of 2',

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bell,
   CreditCard,
   FileText,
@@ -8,9 +9,14 @@ import {
   LayoutDashboard,
   Mail,
   MapPin,
+  Megaphone,
+  MessageCircle,
+  MoreHorizontal,
   Package,
+  Repeat,
   Settings,
   Share2,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Star,
@@ -23,7 +29,14 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react';
-import type { DashboardConfig, DashboardMenuItem, DashboardMobileAction, DashboardProfileItem, DashboardRole } from './dashboard.types';
+import type {
+  DashboardConfig,
+  DashboardMenuItem,
+  DashboardMobileAction,
+  DashboardMoreGroup,
+  DashboardProfileItem,
+  DashboardRole,
+} from './dashboard.types';
 
 // ============================================================================
 // Role navigation model — single source of truth for every dashboard's chrome.
@@ -59,11 +72,14 @@ const customerSections: DashboardConfig['sections'] = [
   },
 ];
 
+// Seller navigation follows the Stitch "Seller Center" grouping: a short
+// overview group, then operations, growth and service groups. Every path below
+// resolves to a real route under src/app/(seller).
 const sellerSections: DashboardConfig['sections'] = [
   {
     title: 'Overview',
     items: [
-      { icon: <LayoutDashboard size={20} />, label: 'Overview', path: '/seller/dashboard' },
+      { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/seller/dashboard' },
       { icon: <Sparkles size={20} />, label: 'Onboarding', path: '/seller/onboarding' },
     ],
   },
@@ -77,58 +93,76 @@ const sellerSections: DashboardConfig['sections'] = [
   {
     title: 'Products',
     items: [
-      { icon: <ShoppingBag size={20} />, label: 'All Products', path: '/seller/products' },
-      { icon: <Package size={20} />, label: 'Add Product', path: '/seller/products/add' },
-      { icon: <FileText size={20} />, label: 'Bulk Upload', path: '/seller/products/bulk' },
+      { icon: <Package size={20} />, label: 'All Products', path: '/seller/products' },
+      { icon: <Sparkles size={20} />, label: 'Add Product', path: '/seller/products/add' },
+      { icon: <BarChart3 size={20} />, label: 'Bulk Upload', path: '/seller/products/bulk' },
     ],
   },
   {
-    title: 'Inventory',
+    title: 'Operations & Logistics',
     items: [
       { icon: <Package size={20} />, label: 'Stock Control', path: '/seller/inventory' },
-    ],
-  },
-  {
-    title: 'Courier',
-    items: [
-      { icon: <Truck size={20} />, label: 'Courier Center', path: '/seller/courier' },
+      { icon: <Truck size={20} />, label: 'Delivery Shipments', path: '/seller/courier' },
       { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
     ],
   },
   {
-    title: 'Support & Community',
+    title: 'Growth & Finance',
     items: [
-      { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/notifications' },
-      { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
-      { icon: <Mail size={20} />, label: 'Support Tickets', path: '/seller/support/tickets' },
-      { icon: <Undo2 size={20} />, label: 'Returns', path: '/seller/support/returns' },
-    ],
-  },
-  {
-    title: 'Finance',
-    items: [
-      { icon: <CreditCard size={20} />, label: 'Earnings', path: '/seller/earnings' },
-      { icon: <Wallet size={20} />, label: 'Payouts', path: '/seller/payouts' },
-    ],
-  },
-  {
-    title: 'Marketing',
-    items: [
-      { icon: <Zap size={20} />, label: 'Promotions', path: '/seller/flash-sale' },
+      { icon: <Wallet size={20} />, label: 'Earnings', path: '/seller/earnings' },
+      { icon: <CreditCard size={20} />, label: 'Payouts', path: '/seller/payouts' },
+      { icon: <Zap size={20} />, label: 'Flash Sales', path: '/seller/flash-sale' },
       { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
+      { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
+      { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
+      { icon: <Repeat size={20} />, label: 'Automation Queue', path: '/social-automation/products' },
     ],
   },
   {
-    title: 'Social Automation',
+    title: 'Customer Service & Store',
     items: [
-      { icon: <Share2 size={20} />, label: 'Overview', path: '/social-automation' },
-      { icon: <ShoppingBag size={20} />, label: 'Products', path: '/social-automation/products' },
+      { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
+      { icon: <MessageCircle size={20} />, label: 'Support Tickets', path: '/seller/support/tickets' },
+      { icon: <Undo2 size={20} />, label: 'Returns', path: '/seller/support/returns' },
+      { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/notifications' },
+      { icon: <Settings size={20} />, label: 'Store Settings & KYC', path: '/seller/settings' },
+    ],
+  },
+];
+
+// The More hub hosts everything that does not fit the four-item mobile tab bar
+// (Home / Orders / Products / More). Grouping mirrors the Stitch More Hub
+// screen: Operations, Growth & Finance, then Customer Service & Store.
+const sellerMoreHubGroups: DashboardMoreGroup[] = [
+  {
+    title: 'Operations & Logistics',
+    items: [
+      { icon: <Package size={20} />, label: 'Inventory & Stock Health', path: '/seller/inventory' },
+      { icon: <Truck size={20} />, label: 'Delivery & Shipments', path: '/seller/courier' },
+      { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
+      { icon: <FileText size={20} />, label: 'Manual Orders', path: '/seller/manual-orders' },
     ],
   },
   {
-    title: 'Settings',
+    title: 'Growth & Finance',
     items: [
-      { icon: <Settings size={20} />, label: 'General Settings', path: '/seller/settings' },
+      { icon: <Wallet size={20} />, label: 'Finance & Payouts', path: '/seller/earnings' },
+      { icon: <CreditCard size={20} />, label: 'Payout History', path: '/seller/payouts' },
+      { icon: <Zap size={20} />, label: 'Flash Sales', path: '/seller/flash-sale' },
+      { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
+      { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
+      { icon: <Share2 size={20} />, label: 'Social Commerce Automator', path: '/social-automation' },
+      { icon: <Sparkles size={20} />, label: 'Store Onboarding', path: '/seller/onboarding' },
+    ],
+  },
+  {
+    title: 'Customer Service & Store',
+    items: [
+      { icon: <Star size={20} />, label: 'Customer Feedback & Reviews', path: '/seller/support/reviews' },
+      { icon: <MessageCircle size={20} />, label: 'Helpdesk & Support Tickets', path: '/seller/support/tickets' },
+      { icon: <Undo2 size={20} />, label: 'Returns & Disputes', path: '/seller/support/returns' },
+      { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/notifications' },
+      { icon: <ShieldCheck size={20} />, label: 'Store Settings & KYC', path: '/seller/settings' },
     ],
   },
 ];
@@ -245,10 +279,12 @@ const customerMobileActions: DashboardMobileAction[] = [
 const sellerMobileActions: DashboardMobileAction[] = [
   { label: 'Overview', path: '/seller/dashboard', icon: <LayoutDashboard size={16} /> },
   { label: 'Orders', path: '/seller/orders', icon: <ShoppingBag size={16} /> },
-  { label: 'Products', path: '/seller/products', icon: <ShoppingBag size={16} /> },
+  { label: 'Products', path: '/seller/products', icon: <Package size={16} /> },
+  { label: 'Inventory', path: '/seller/inventory', icon: <BarChart3 size={16} /> },
+  { label: 'Courier', path: '/seller/courier', icon: <Truck size={16} /> },
   { label: 'Social', path: '/social-automation', icon: <Share2 size={16} /> },
-  { label: 'Alerts', path: '/seller/notifications', icon: <Bell size={16} /> },
   { label: 'Finance', path: '/seller/earnings', icon: <Wallet size={16} /> },
+  { label: 'More', path: '/seller/more', icon: <MoreHorizontal size={16} /> },
 ];
 
 const adminMobileActions: DashboardMobileAction[] = [
@@ -266,6 +302,15 @@ const resellerMobileActions: DashboardMobileAction[] = [
 // Mobile bottom navigation (app-bottom-nav). Empty for customer / seller to
 // preserve today's behavior.
 // ----------------------------------------------------------------------------
+
+// Stitch Seller Center tab bar: Home / Orders / Products / More. Kept to four
+// destinations so every entry clears the 44px touch target without crowding.
+const sellerBottomNav: DashboardMenuItem[] = [
+  { label: 'Home', path: '/seller/dashboard', icon: <LayoutDashboard size={20} /> },
+  { label: 'Orders', path: '/seller/orders', icon: <ShoppingBag size={20} /> },
+  { label: 'Products', path: '/seller/products', icon: <Package size={20} /> },
+  { label: 'More', path: '/seller/more', icon: <MoreHorizontal size={20} /> },
+];
 
 const adminBottomNav: DashboardMenuItem[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={18} /> },
@@ -358,8 +403,10 @@ export const DASHBOARD_CONFIG: Record<DashboardRole, DashboardConfig> = {
     sections: sellerSections,
     mobileActions: sellerMobileActions,
     profileMenu: sellerProfileMenu,
-    bottomNav: [],
+    bottomNav: sellerBottomNav,
     footerMenu: sellerFooter,
+    moreHubPath: '/seller/more',
+    moreHubGroups: sellerMoreHubGroups,
   },
   admin: {
     role: 'admin',

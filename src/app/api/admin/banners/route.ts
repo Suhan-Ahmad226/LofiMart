@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/server';
 import { requireAdminRole, requireApiUser } from '../../_compat/shared';
 import { associateEntityMedia } from '@/lib/media';
+import { HOMEPAGE_CACHE_TAGS } from '@/features/shop/screens/HomePage.data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,6 +73,8 @@ export async function POST(request: NextRequest) {
     fieldName: 'image',
     urls: [banner.image],
   });
+
+  revalidateTag(HOMEPAGE_CACHE_TAGS.banners);
 
   return NextResponse.json(serializeBanner(banner), { status: 201 });
 }

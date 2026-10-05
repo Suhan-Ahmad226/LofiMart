@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
 import { raceWithTimeout } from '../../_utils/route-timeout';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { value: banners, timedOut } = await raceWithTimeout(
@@ -24,7 +27,10 @@ export async function GET(request: NextRequest) {
     );
 
     if (timedOut) {
-      console.warn('GET /api/v2/banners timed out; returning fallback banner payload');
+      return NextResponse.json(
+        { success: false, error: 'Banners are temporarily unavailable', data: [] },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     return NextResponse.json({
@@ -40,11 +46,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('GET /api/v2/banners fallback:', error);
-    return NextResponse.json({
-      success: true,
-      data: [],
-      warning: 'Banners are temporarily unavailable',
-    });
+    console.error('GET /api/v2/banners error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Banners are temporarily unavailable', data: [] },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }

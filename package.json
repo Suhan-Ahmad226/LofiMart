@@ -30,7 +30,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "migrate": "npm run prisma:deploy",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "telegram:webhook:info": "node scripts/telegram-webhook.cjs info",
+    "telegram:webhook:set": "node scripts/telegram-webhook.cjs set",
+    "telegram:webhook:delete": "node scripts/telegram-webhook.cjs delete"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

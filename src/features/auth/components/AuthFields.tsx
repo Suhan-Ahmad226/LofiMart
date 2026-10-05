@@ -223,10 +223,6 @@ export function ResendRow({
         </button>
       </div>
 
-      <p className={`mt-4 flex items-center justify-center gap-1.5 text-center ${MUTED}`}>
-        <Lock size={13} className="shrink-0 text-[#7a8a85]" />
-        Secure verification <span aria-hidden="true">•</span> 5 min
-      </p>
     </>
   );
 }

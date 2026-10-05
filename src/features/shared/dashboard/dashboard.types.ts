@@ -26,6 +26,11 @@ export type DashboardProfileItem = {
   path: string;
 };
 
+export type DashboardMoreGroup = {
+  title: string;
+  items: DashboardMenuItem[];
+};
+
 export interface DashboardConfig {
   role: DashboardRole;
   /** Short uppercase label under the LofiMart brand chip. */
@@ -46,6 +51,13 @@ export interface DashboardConfig {
   bottomNav: DashboardMenuItem[];
   /** Pinned account/settings icons shown at the bottom of the sidebar. */
   footerMenu: DashboardMenuItem[];
+  /**
+   * Path of the "More" hub that hosts everything not reachable from
+   * `bottomNav`. Optional: roles without a More hub leave it unset.
+   */
+  moreHubPath?: string;
+  /** Grouped destination list rendered by the More hub. */
+  moreHubGroups?: DashboardMoreGroup[];
 }
 
 export type DashboardSearchSubmitHandler = (event: FormEvent<HTMLFormElement>) => void;

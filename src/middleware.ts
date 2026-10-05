@@ -28,6 +28,15 @@ const SENSITIVE_PATHS = [
   /^\/api\/checkout/,
 ];
 
+// Supabase SSR keeps the session in chunked sb-*-auth-token cookies. An
+// anonymous visitor has none of them, so the claims lookup would be a wasted
+// network round trip on every page view and every public API call.
+const AUTH_COOKIE_PATTERN = /^sb-[a-z0-9]+-auth-token/;
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => AUTH_COOKIE_PATTERN.test(cookie.name));
+}
+
 function isBotRequest(userAgent: string | null): boolean {
   if (!userAgent) return false;
   return BOT_USER_AGENTS.some((pattern) => pattern.test(userAgent));
@@ -86,7 +95,7 @@ export async function middleware(request: NextRequest) {
 
   // Bearer-authenticated API routes verify the token themselves. Avoid doing
   // the same Supabase claims lookup in middleware for every dashboard request.
-  if (supabaseUrl && supabaseKey && !hasBearerToken) {
+  if (supabaseUrl && supabaseKey && !hasBearerToken && hasSupabaseAuthCookie(request)) {
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {

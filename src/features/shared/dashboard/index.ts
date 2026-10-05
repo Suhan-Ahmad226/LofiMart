@@ -9,5 +9,6 @@ export type {
   DashboardMenuItem,
   DashboardMenuSection,
   DashboardMobileAction,
+  DashboardMoreGroup,
   DashboardProfileItem,
 } from './dashboard.types';

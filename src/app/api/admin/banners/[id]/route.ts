@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/server';
 import { requireAdminRole, requireApiUser } from '../../../_compat/shared';
 import { associateEntityMedia, collectEntityMedia, deleteManyMedia, enqueueMediaDelete, parseCloudinaryAssetUrl } from '@/lib/media';
+import { HOMEPAGE_CACHE_TAGS } from '@/features/shop/screens/HomePage.data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +72,8 @@ export async function PATCH(request: NextRequest, context: { params: Params }) {
     })));
   }
 
+  revalidateTag(HOMEPAGE_CACHE_TAGS.banners);
+
   return NextResponse.json(serializeBanner(banner));
 }
 
@@ -90,6 +94,8 @@ export async function DELETE(request: NextRequest, context: { params: Params }) 
     entityType: 'Banner',
     entityId: id,
   })));
+
+  revalidateTag(HOMEPAGE_CACHE_TAGS.banners);
 
   return NextResponse.json({ success: true });
 }

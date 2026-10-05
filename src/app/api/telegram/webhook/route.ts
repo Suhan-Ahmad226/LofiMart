@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { processTelegramUpdate, validateTelegramWebhookSecret, type TelegramUpdate } from '../../../../features/telegram_bot';
 
 export const runtime = 'nodejs';
@@ -54,16 +55,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    try {
-      await processTelegramUpdate(update);
-    } catch (error) {
-      // Telegram retries non-2xx webhook responses. Log the application error,
-      // but acknowledge the update so one bad update cannot poison the webhook.
-      console.error('[telegram] webhook processing failed', {
-        updateId: update.update_id,
-        error,
-      });
-    }
+    // Acknowledge before touching the database or Telegram. Telegram treats
+    // any non-2xx response as a failed delivery and retries with backoff, so a
+    // slow or fragile downstream step must never delay or replace the 200.
+    after(async () => {
+      try {
+        await processTelegramUpdate(update);
+      } catch (error) {
+        console.error('[telegram] webhook processing failed', {
+          updateId: update.update_id,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

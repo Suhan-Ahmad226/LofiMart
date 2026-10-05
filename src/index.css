@@ -101,6 +101,532 @@
   --color-bg-light: #F8FAFC;
 }
 
+/* ==========================================================================
+   LofiMart Seller Center tokens
+   Source of truth: Google Stitch project 5778808678858409263, design system
+   "LofiMart Seller Center" (Corporate Modern SaaS, teal primary).
+
+   The legacy platform palette above stays untouched so the customer, reseller
+   and admin surfaces keep their current appearance. Every seller-surface
+   component reads these variables instead, which lets later seller phases
+   converge on one visual language without a global restyle.
+   ========================================================================== */
+
+@theme {
+  /* Brand core ---------------------------------------------------------- */
+  --color-lm-primary: #0D9488;
+  --color-lm-primary-hover: #0F766E;
+  --color-lm-primary-active: #115E59;
+  --color-lm-primary-soft: #CCFBF1;
+  --color-lm-primary-border: #99F6E4;
+
+  /* Reserved for finance / payouts / analytics integrations ------------- */
+  --color-lm-secondary: #4F46E5;
+  --color-lm-secondary-hover: #4338CA;
+  --color-lm-secondary-soft: #E0E7FF;
+
+  /* Operational semantics ---------------------------------------------- */
+  --color-lm-success: #10B981;
+  --color-lm-success-soft: #D1FAE5;
+  --color-lm-success-text: #047857;
+  --color-lm-warning: #F59E0B;
+  --color-lm-warning-soft: #FEF3C7;
+  --color-lm-warning-text: #B45309;
+  --color-lm-danger: #EF4444;
+  --color-lm-danger-soft: #FEE2E2;
+  --color-lm-danger-text: #B91C1C;
+  --color-lm-info: #3B82F6;
+  --color-lm-info-soft: #DBEAFE;
+  --color-lm-info-text: #1D4ED8;
+  --color-lm-pending: #8B5CF6;
+  --color-lm-pending-soft: #EDE9FE;
+  --color-lm-pending-text: #6D28D9;
+  --color-lm-neutral-soft: #F1F5F9;
+  --color-lm-neutral-text: #475569;
+
+  /* Canvas / surface / type hierarchy ----------------------------------- */
+  --color-lm-canvas: #F8FAFC;
+  --color-lm-surface: #FFFFFF;
+  --color-lm-surface-hover-border: #CBD5E1;
+  --color-lm-border: #E2E8F0;
+  --color-lm-border-soft: #F1F5F9;
+  --color-lm-heading: #0F172A;
+  --color-lm-body: #334155;
+  --color-lm-meta: #64748B;
+  --color-lm-placeholder: #94A3B8;
+
+  /* Elevation ladder --------------------------------------------------- */
+  --shadow-lm-1: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-lm-2: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lm-3: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+  --scrim-lm: rgba(15, 23, 42, 0.45);
+
+  /* Shape scale, exposed to Tailwind's radius namespace so utilities such as
+     rounded-lm-md resolve against the design system instead of ad-hoc values. */
+  --radius-lm-sm: 0.25rem;
+  --radius-lm: 0.5rem;
+  --radius-lm-md: 0.75rem;
+  --radius-lm-lg: 1rem;
+  --radius-lm-xl: 1.5rem;
+}
+
+@layer base {
+  :root {
+    /* Base-4 spacing scale (design system) */
+    --lm-space-xs: 0.25rem;
+    --lm-space-sm: 0.5rem;
+    --lm-space-md: 0.75rem;
+    --lm-space-lg: 1rem;
+    --lm-space-xl: 1.25rem;
+    --lm-space-2xl: 1.5rem;
+    --lm-space-3xl: 2rem;
+
+    /* Shape scale */
+    --lm-radius-sm: 0.25rem;
+    --lm-radius: 0.5rem;
+    --lm-radius-md: 0.75rem;
+    --lm-radius-lg: 1rem;
+    --lm-radius-xl: 1.5rem;
+
+    /* Control heights: 40px desktop, 44px mobile touch target */
+    --lm-control-height: 2.5rem;
+    --lm-touch-target: 2.75rem;
+
+    /* Layout metrics */
+    --lm-rail-width: 260px;
+    --lm-rail-width-collapsed: 64px;
+    --lm-content-max: 1440px;
+    --lm-content-margin: 2rem;
+  }
+
+  @media (max-width: 1023px) {
+    :root {
+      --lm-content-margin: 1.5rem;
+    }
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --lm-content-margin: 1rem;
+      --lm-control-height: var(--lm-touch-target);
+    }
+  }
+}
+
+@layer components {
+  /* ==========================================================================
+     LofiMart Seller Center primitives
+     Consumed by every seller surface. Layered on top of the legacy platform
+     palette, so nothing outside the seller workspace changes appearance.
+     ========================================================================== */
+
+  /* --- Surfaces ---------------------------------------------------------- */
+  .lm-card {
+    @apply border bg-white;
+    border-color: var(--color-lm-border);
+    border-radius: var(--lm-radius-md);
+    box-shadow: var(--shadow-lm-1);
+  }
+
+  .lm-card--interactive {
+    @apply transition;
+  }
+
+  .lm-card--interactive:hover {
+    border-color: var(--color-lm-surface-hover-border);
+    box-shadow: var(--shadow-lm-2);
+  }
+
+  .lm-card--flat {
+    box-shadow: none;
+  }
+
+  /* --- Typography -------------------------------------------------------- */
+  .lm-eyebrow {
+    @apply font-semibold;
+    color: var(--color-lm-meta);
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .lm-title {
+    @apply font-bold tracking-tight;
+    color: var(--color-lm-heading);
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .lm-section-title {
+    @apply font-bold tracking-tight;
+    color: var(--color-lm-heading);
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+
+  .lm-body {
+    color: var(--color-lm-body);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .lm-meta {
+    color: var(--color-lm-meta);
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .lm-label {
+    @apply font-semibold;
+    color: var(--color-lm-body);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .lm-label-sm {
+    @apply font-semibold;
+    color: var(--color-lm-meta);
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* All seller currency, metric and identifier output uses tabular numerals so
+     values do not jitter horizontally while dashboards refresh. */
+  .lm-metric {
+    @apply font-bold;
+    color: var(--color-lm-heading);
+    font-size: 1.75rem;
+    line-height: 2.125rem;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lm-numeric {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 767px) {
+    .lm-metric {
+      font-size: 1.375rem;
+      line-height: 1.75rem;
+    }
+  }
+
+  /* --- Buttons ----------------------------------------------------------- */
+  .lm-btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold transition;
+    height: var(--lm-control-height);
+    border-radius: var(--lm-radius);
+    padding-inline: var(--lm-space-lg);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .lm-btn:focus-visible {
+    outline: 2px solid rgba(13, 148, 136, 0.2);
+    outline-offset: 2px;
+  }
+
+  .lm-btn:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .lm-btn--primary {
+    background: var(--color-lm-primary);
+    color: #ffffff;
+  }
+
+  .lm-btn--primary:hover:not(:disabled) {
+    background: var(--color-lm-primary-hover);
+  }
+
+  .lm-btn--primary:active:not(:disabled) {
+    background: var(--color-lm-primary-active);
+  }
+
+  .lm-btn--secondary {
+    @apply border bg-white;
+    border-color: var(--color-lm-border);
+    color: var(--color-lm-body);
+  }
+
+  .lm-btn--secondary:hover:not(:disabled) {
+    background: var(--color-lm-canvas);
+    border-color: var(--color-lm-surface-hover-border);
+  }
+
+  .lm-btn--ghost {
+    @apply border border-transparent;
+    color: var(--color-lm-body);
+  }
+
+  .lm-btn--ghost:hover:not(:disabled) {
+    background: var(--color-lm-border-soft);
+  }
+
+  .lm-btn--danger {
+    background: var(--color-lm-danger-soft);
+    border: 1px solid #fecaca;
+    color: var(--color-lm-danger-text);
+  }
+
+  .lm-btn--danger:hover:not(:disabled) {
+    background: var(--color-lm-danger);
+    color: #ffffff;
+  }
+
+  .lm-icon-btn {
+    @apply inline-flex shrink-0 items-center justify-center transition;
+    width: var(--lm-control-height);
+    height: var(--lm-control-height);
+    border-radius: var(--lm-radius);
+    color: var(--color-lm-meta);
+  }
+
+  .lm-icon-btn:hover {
+    background: var(--color-lm-border-soft);
+    color: var(--color-lm-heading);
+  }
+
+  .lm-icon-btn:focus-visible {
+    outline: 2px solid rgba(13, 148, 136, 0.2);
+    outline-offset: 2px;
+  }
+
+  /* --- Form controls ----------------------------------------------------- */
+  .lm-input {
+    @apply w-full border bg-white outline-none transition;
+    height: var(--lm-control-height);
+    border-color: var(--color-lm-surface-hover-border);
+    border-radius: var(--lm-radius);
+    padding-inline: var(--lm-space-md);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-lm-heading);
+  }
+
+  .lm-input::placeholder {
+    color: var(--color-lm-placeholder);
+  }
+
+  .lm-input:focus {
+    border-color: var(--color-lm-primary);
+    outline: 2px solid rgba(13, 148, 136, 0.2);
+    outline-offset: 0;
+  }
+
+  /* --- Status chips ------------------------------------------------------ */
+  .lm-chip {
+    @apply inline-flex items-center gap-1 font-semibold;
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .lm-chip--success {
+    background: var(--color-lm-success-soft);
+    color: var(--color-lm-success-text);
+  }
+
+  .lm-chip--warning {
+    background: var(--color-lm-warning-soft);
+    color: var(--color-lm-warning-text);
+  }
+
+  .lm-chip--danger {
+    background: var(--color-lm-danger-soft);
+    color: var(--color-lm-danger-text);
+  }
+
+  .lm-chip--info {
+    background: var(--color-lm-info-soft);
+    color: var(--color-lm-info-text);
+  }
+
+  .lm-chip--pending {
+    background: var(--color-lm-pending-soft);
+    color: var(--color-lm-pending-text);
+  }
+
+  .lm-chip--neutral {
+    background: var(--color-lm-neutral-soft);
+    color: var(--color-lm-neutral-text);
+  }
+
+  .lm-chip--primary {
+    background: var(--color-lm-primary-soft);
+    color: var(--color-lm-primary-active);
+  }
+
+  /* --- Icon tile --------------------------------------------------------- */
+  .lm-icon-tile {
+    @apply inline-flex shrink-0 items-center justify-center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--lm-radius-md);
+    background: var(--color-lm-canvas);
+    color: var(--color-lm-primary);
+  }
+
+  .lm-icon-tile--primary {
+    background: var(--color-lm-primary-soft);
+    color: var(--color-lm-primary-active);
+  }
+
+  .lm-icon-tile--success {
+    background: var(--color-lm-success-soft);
+    color: var(--color-lm-success-text);
+  }
+
+  .lm-icon-tile--warning {
+    background: var(--color-lm-warning-soft);
+    color: var(--color-lm-warning-text);
+  }
+
+  .lm-icon-tile--danger {
+    background: var(--color-lm-danger-soft);
+    color: var(--color-lm-danger-text);
+  }
+
+  .lm-icon-tile--info {
+    background: var(--color-lm-info-soft);
+    color: var(--color-lm-info-text);
+  }
+
+  .lm-icon-tile--pending {
+    background: var(--color-lm-pending-soft);
+    color: var(--color-lm-pending-text);
+  }
+
+  .lm-icon-tile--secondary {
+    background: var(--color-lm-secondary-soft);
+    color: var(--color-lm-secondary-hover);
+  }
+
+  /* --- Progress ---------------------------------------------------------- */
+  .lm-progress {
+    height: 0.375rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: var(--color-lm-border-soft);
+  }
+
+  .lm-progress__fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--color-lm-primary);
+    transition: width 300ms ease;
+  }
+
+  .lm-progress__fill--success {
+    background: var(--color-lm-success);
+  }
+
+  .lm-progress__fill--warning {
+    background: var(--color-lm-warning);
+  }
+
+  .lm-progress__fill--danger {
+    background: var(--color-lm-danger);
+  }
+
+  /* --- Data tables ------------------------------------------------------- */
+  .lm-table {
+    @apply w-full border-collapse text-left;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-lm-body);
+  }
+
+  .lm-table thead th {
+    @apply font-semibold;
+    background: var(--color-lm-canvas);
+    border-bottom: 1px solid var(--color-lm-border);
+    height: 2.75rem;
+    padding-inline: var(--lm-space-md);
+    color: var(--color-lm-meta);
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .lm-table tbody td {
+    border-bottom: 1px solid var(--color-lm-border-soft);
+    height: 3.25rem;
+    padding-inline: var(--lm-space-md);
+  }
+
+  .lm-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .lm-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+
+  .lm-table tbody tr:hover {
+    background: var(--color-lm-canvas);
+  }
+
+  .lm-table__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- Layout ------------------------------------------------------------ */
+  .lm-content {
+    width: 100%;
+    max-width: var(--lm-content-max);
+    margin-inline: auto;
+    padding-inline: var(--lm-content-margin);
+  }
+
+  .lm-rail-link {
+    @apply flex w-full items-center gap-3 font-medium transition;
+    min-height: var(--lm-touch-target);
+    border-radius: var(--lm-radius);
+    padding-inline: var(--lm-space-md);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-lm-meta);
+  }
+
+  .lm-rail-link:hover {
+    background: var(--color-lm-border-soft);
+    color: var(--color-lm-heading);
+  }
+
+  .lm-rail-link:focus-visible {
+    outline: 2px solid rgba(13, 148, 136, 0.2);
+    outline-offset: 2px;
+  }
+
+  .lm-rail-link--active {
+    background: var(--color-lm-primary-soft);
+    color: var(--color-lm-primary-active);
+    font-weight: 600;
+  }
+
+  .lm-rail-link--active:hover {
+    background: var(--color-lm-primary-soft);
+    color: var(--color-lm-primary-active);
+  }
+
+  /* --- Empty / loading states -------------------------------------------- */
+  .lm-empty {
+    @apply border border-dashed text-center;
+    border-color: var(--color-lm-border);
+    border-radius: var(--lm-radius-md);
+    background: var(--color-lm-canvas);
+    padding-block: 2.5rem;
+    padding-inline: var(--lm-space-lg);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-lm-meta);
+  }
+
+}
+
 @layer base {
   html {
     @apply font-sans;
@@ -727,6 +1253,19 @@
     min-height: calc(100vh - 64px);
   }
 
+  /* Seller rail variant: Stitch prescribes a 260px desktop rail (64px
+     collapsed) with 32px outer margins, driven by the --lm-rail-* tokens. */
+  .seller-app-frame--rail .seller-sidebar-wrap {
+    height: calc(100vh - 4rem);
+    max-height: calc(100vh - 4rem);
+  }
+
+  .seller-app-frame--rail .seller-sidebar-shell {
+    height: 100%;
+    max-height: none;
+    border-right: 1px solid var(--color-lm-border);
+  }
+
   .seller-topbar-shell__row {
     min-height: 64px;
   }
@@ -862,6 +1401,12 @@
     overflow-y: auto;
   }
 
+  /* Seller surfaces use the Stitch canvas and base-4 outer margins. */
+  .seller-app-frame--rail .seller-main-content {
+    background: var(--color-lm-canvas);
+    padding: var(--lm-content-margin);
+  }
+
   @media (max-width: 1023px) {
     .seller-topbar-shell {
       border-bottom: 1px solid var(--color-border);
@@ -870,6 +1415,10 @@
     .seller-main-content {
       min-height: auto;
       padding: 0.875rem;
+    }
+
+    .seller-app-frame--rail .seller-main-content {
+      padding: var(--lm-content-margin);
     }
 
     .seller-main-content > * {

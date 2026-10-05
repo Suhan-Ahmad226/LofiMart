@@ -3,6 +3,7 @@
 import React from 'react';
 import { Link } from '../../../lib/navigation';
 import { cn } from '../../../lib/utils';
+import { SellerSidebar } from '@/features/seller/components/SellerSidebar';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardSidebar } from './DashboardSidebar';
 import type { DashboardConfig } from './dashboard.types';
@@ -57,6 +58,9 @@ export function DashboardShell({
   onLogout,
 }: DashboardShellProps) {
   const hasBottomNav = config.bottomNav.length > 0;
+  // The seller workspace renders the Stitch-aligned rail; every other role
+  // keeps the legacy DashboardSidebar.
+  const isSeller = config.role === 'seller';
 
   return (
     <div className="dashboard-shell seller-app-shell">
@@ -77,21 +81,39 @@ export function DashboardShell({
         onLogout={onLogout}
       />
 
-      <div className="seller-app-frame">
-        <DashboardSidebar
-          collapsed={collapsed}
-          currentSections={config.sections}
-          footerMenu={config.footerMenu}
-          pathname={pathname}
-          badges={badges}
-          sectionBadgeTotals={sectionBadgeTotals}
-          activeSectionTitles={activeSectionTitles}
-          collapsedSections={collapsedSections}
-          toggleSection={toggleSection}
-          mobileOpen={mobileOpen}
-          setMobileOpen={setMobileOpen}
-          subtitle={config.subtitle}
-        />
+      <div className={cn('seller-app-frame', isSeller && 'seller-app-frame--rail')}>
+        {isSeller ? (
+          <SellerSidebar
+            collapsed={collapsed}
+            currentSections={config.sections}
+            pathname={pathname}
+            badges={badges}
+            sectionBadgeTotals={sectionBadgeTotals}
+            activeSectionTitles={activeSectionTitles}
+            collapsedSections={collapsedSections}
+            toggleSection={toggleSection}
+            mobileOpen={mobileOpen}
+            setMobileOpen={setMobileOpen}
+            subtitle={config.subtitle}
+            morePath={config.moreHubPath}
+            moreLabel="More"
+          />
+        ) : (
+          <DashboardSidebar
+            collapsed={collapsed}
+            currentSections={config.sections}
+            footerMenu={config.footerMenu}
+            pathname={pathname}
+            badges={badges}
+            sectionBadgeTotals={sectionBadgeTotals}
+            activeSectionTitles={activeSectionTitles}
+            collapsedSections={collapsedSections}
+            toggleSection={toggleSection}
+            mobileOpen={mobileOpen}
+            setMobileOpen={setMobileOpen}
+            subtitle={config.subtitle}
+          />
+        )}
 
         <main
           className={cn(
@@ -106,23 +128,54 @@ export function DashboardShell({
       {hasBottomNav ? (
         <nav className="app-bottom-nav fixed inset-x-0 bottom-0 z-40 md:hidden" aria-label="Mobile dashboard navigation">
           <div className="mx-auto max-w-lg">
-            <div className="flex items-center justify-around border-t border-border bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur">
+            <div
+              className={cn(
+                'flex items-stretch justify-around border-t bg-white/95 px-1 pb-[env(safe-area-inset-bottom)]',
+                isSeller ? 'border-lm-border backdrop-blur-xl' : 'border-border px-2 pt-1 backdrop-blur',
+              )}
+            >
               {config.bottomNav.map((item) => {
-                const active = activeMenuEntryPath === item.path;
+                const active = activeMenuEntryPath === item.path || pathname.startsWith(`${item.path}/`);
+
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-semibold transition',
-                      active ? 'text-primary' : 'text-slate-400',
+                      isSeller
+                        ? 'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition'
+                        : 'flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-semibold transition',
+                      isSeller
+                        ? active
+                          ? 'text-lm-primary-active'
+                          : 'text-lm-meta'
+                        : active
+                          ? 'text-primary'
+                          : 'text-slate-400',
                     )}
                   >
-                    <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl', active ? 'bg-primary/10 text-primary' : '')}>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center transition',
+                        isSeller ? 'rounded-lm-md' : 'rounded-xl',
+                        isSeller
+                          ? active
+                            ? 'bg-lm-primary-soft'
+                            : ''
+                          : active
+                            ? 'bg-primary/10 text-primary'
+                            : '',
+                      )}
+                    >
                       {item.icon}
                     </span>
-                    {item.label}
+                    {isSeller ? (
+                      <span className="max-w-full truncate text-[11px] font-semibold leading-4">{item.label}</span>
+                    ) : (
+                      item.label
+                    )}
                   </Link>
                 );
               })}
