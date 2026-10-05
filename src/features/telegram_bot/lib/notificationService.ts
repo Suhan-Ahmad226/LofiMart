@@ -62,7 +62,7 @@ export async function sendOrderStatusNotification(input: SellerOrderMessageInput
     chatId: seller.telegramChatId,
     text: `<b>Order ${escapeTelegramHtml(input.status)}</b>\nOrder: <code>${escapeTelegramHtml(input.orderCode || input.orderId)}</code>`,
     buttons:
-      input.status === 'accepted'
+      ['processing', 'packed', 'ready_for_pickup'].includes(input.status)
         ? [[{ text: 'Mark Shipped', callback_data: `order:ship:${input.orderId}:${input.sellerId}` }]]
         : undefined,
   });
