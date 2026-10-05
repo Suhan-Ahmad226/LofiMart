@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return NextResponse.json(serializeVerificationSubmission(submission));
+  return NextResponse.json({ success: true, verification: serializeVerificationSubmission(submission) });
 }
 
 export async function POST(request: NextRequest) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   if (!['seller', 'reseller'].includes(String(user.role))) {
     return NextResponse.json(
-      { error: 'KYC submission is only available for seller and reseller accounts' },
+      { success: false, error: { code: 'KYC_ROLE_REQUIRED', message: 'KYC submission is only available for seller and reseller accounts' } },
       { status: 403 },
     );
   }
@@ -86,49 +86,52 @@ export async function POST(request: NextRequest) {
   const { allowed, resetAfterMs } = await takeRateLimit(`kyc-submit:${user.id}`, { limit: 10, windowMs: 60_000 });
   if (!allowed) {
     return NextResponse.json(
-      { error: 'Too many requests, please slow down.' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(Math.ceil(resetAfterMs / 1000)) },
-      },
+      { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests, please slow down.' } },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(resetAfterMs / 1000)) } },
     );
   }
 
   const body = await request.json().catch(() => ({}));
-  const parsed = verificationSubmissionSchema.safeParse({
-    ...body,
-    documents: body?.documents,
-  });
+  const parsed = verificationSubmissionSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message || 'Invalid verification payload' },
+      { success: false, error: { code: 'INVALID_KYC_PAYLOAD', message: parsed.error.issues[0]?.message || 'Invalid verification payload' } },
       { status: 400 },
     );
   }
+
+  const uploadedMedia: Array<{ publicId: string | null; resourceType: string }> = [];
 
   try {
     const uploads = await Promise.all(
       Object.entries(parsed.data.documents).map(async ([key, file]) => {
         if (!file) return null;
+
         validateUploadInput({
           dataUrl: file.data_url,
           mimeType: file.mime_type,
           sizeBytes: file.size_bytes,
         });
 
+        const resourceType = file.mime_type === 'application/pdf' ? 'raw' : 'auto';
         const uploaded = await uploadMedia({
           dataUrl: file.data_url,
           mimeType: file.mime_type,
           sizeBytes: file.size_bytes,
           folder: 'amarshop/kyc',
           publicIdPrefix: `${user.id}-${key}`,
-          resourceType: file.mime_type === 'application/pdf' ? 'raw' : 'auto',
+          resourceType,
           ownerType: 'User',
           ownerId: String(user.id),
           entityType: 'VerificationSubmission',
           entityId: String(user.id),
           fieldName: key,
+        });
+
+        uploadedMedia.push({
+          publicId: uploaded.publicId ?? null,
+          resourceType: file.mime_type === 'application/pdf' ? 'raw' : 'image',
         });
 
         return {
@@ -144,14 +147,12 @@ export async function POST(request: NextRequest) {
 
     const filteredUploads = uploads.filter(Boolean) as Array<Record<string, unknown>>;
 
-    let persisted: { submission: Awaited<ReturnType<typeof prisma.verificationSubmission.upsert>>; replacedDocuments: Array<{ url: string; publicId: string | null; mimeType: string | null }> };
-
-    try {
-      persisted = await prisma.$transaction(async (tx) => {
+    const persisted = await prisma.$transaction(async (tx) => {
       const existing = await tx.verificationSubmission.findUnique({
         where: { userId: String(user.id) },
         include: { documents: true },
       });
+
       const replacedDocuments = existing?.documents ?? [];
 
       if (existing) {
@@ -190,6 +191,7 @@ export async function POST(request: NextRequest) {
           businessLicenseUrl: filteredUploads.find((item) => item.type === 'business_license')?.url as string | undefined,
           notes: parsed.data.notes || null,
           status: 'pending',
+          submittedAt: new Date(),
           documents: {
             create: filteredUploads.map((item) => ({
               type: String(item.type),
@@ -207,63 +209,58 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await tx.mediaAsset.updateMany({
-        where: {
-          publicId: {
-            in: filteredUploads
-              .map((item) => (typeof item.publicId === 'string' ? item.publicId : null))
-              .filter((publicId): publicId is string => Boolean(publicId)),
-          },
-        },
-        data: { entityType: 'VerificationSubmission', entityId: submission.id },
-      });
+      const publicIds = filteredUploads
+        .map((item) => (typeof item.publicId === 'string' ? item.publicId : null))
+        .filter((publicId): publicId is string => Boolean(publicId));
+
+      if (publicIds.length) {
+        await tx.mediaAsset.updateMany({
+          where: { publicId: { in: publicIds } },
+          data: { entityType: 'VerificationSubmission', entityId: submission.id },
+        });
+      }
 
       return { submission, replacedDocuments };
     });
-    } catch (error) {
-      const newMedia = filteredUploads.map((item) => ({
-        publicId: typeof item.publicId === 'string' ? item.publicId : null,
-        resourceType: item.mimeType === 'application/pdf' ? 'raw' : 'image',
-      }));
-      const cleanup = await deleteManyMedia(newMedia);
-      await Promise.all(
-        cleanup.errors.map((failed) =>
-          enqueueMediaDelete({
-            publicId: failed.item.publicId,
-            resourceType: failed.item.resourceType,
-            reason: 'verification-db-failed-new-asset',
-          }),
-        ),
-      );
-      throw error;
-    }
 
     const oldMedia = persisted.replacedDocuments.map((document) => ({
       url: document.url,
       publicId: document.publicId,
       resourceType: document.mimeType === 'application/pdf' ? 'raw' : 'image',
     }));
-    const replacedCleanup = await deleteManyMedia(oldMedia);
+    if (oldMedia.length) {
+      const replacedCleanup = await deleteManyMedia(oldMedia);
+      await Promise.all(
+        replacedCleanup.errors.map((failed) =>
+          enqueueMediaDelete({
+            publicId: failed.item.publicId,
+            url: failed.item.url,
+            resourceType: failed.item.resourceType,
+            reason: 'verification-replaced-old-asset',
+          }),
+        ),
+      );
+    }
+
+    await handleAuditLog(String(user.id), 'kyc.submitted', 'verification_submission', persisted.submission.id, {
+      document_type: persisted.submission.documentType,
+    });
+
+    return NextResponse.json({ success: true, verification: serializeVerificationSubmission(persisted.submission) });
+  } catch (error: unknown) {
+    const cleanup = await deleteManyMedia(uploadedMedia);
     await Promise.all(
-      replacedCleanup.errors.map((failed) =>
+      cleanup.errors.map((failed) =>
         enqueueMediaDelete({
           publicId: failed.item.publicId,
-          url: failed.item.url,
           resourceType: failed.item.resourceType,
-          reason: 'verification-replaced-old-asset',
+          reason: 'verification-db-failed-new-asset',
         }),
       ),
     );
 
-    const submission = persisted.submission;
-
-    await handleAuditLog(String(user.id), 'kyc.submitted', 'verification_submission', submission.id, {
-      document_type: submission.documentType,
-    });
-
-    return NextResponse.json({ success: true, verification: serializeVerificationSubmission(submission) });
-  } catch (error: unknown) {
+    console.error('POST /api/users/verification error:', error);
     const message = error instanceof Error ? error.message : 'Failed to submit verification';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ success: false, error: { code: 'KYC_SUBMISSION_FAILED', message } }, { status: 500 });
   }
 }
