@@ -23,51 +23,54 @@ async function getTelegramUserContact(userId: string): Promise<TelegramUserConta
 
 export async function sendNewOrderNotification(input: SellerOrderMessageInput) {
   const seller = await getTelegramUserContact(input.sellerId);
-
   if (!seller?.telegramChatId) return false;
 
   const orderLabel = escapeTelegramHtml(input.orderCode || input.orderId);
-
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
-    text: [
-      '<b>New Order</b>',
-      `Order: <code>${orderLabel}</code>`,
-      `Store: ${escapeTelegramHtml(seller.storeName || seller.name || 'Seller')}`,
-      input.total ? `Total: ${escapeTelegramHtml(input.total)} BDT` : null,
-    ]
-      .filter(Boolean)
-      .join('\n'),
-    buttons: [
-      [
-        { text: 'Accept Order', callback_data: `order:accept:${input.orderId}:${input.sellerId}` },
-        { text: 'Reject Order', callback_data: `order:reject:${input.orderId}:${input.sellerId}` },
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
+      text: [
+        '<b>New Order</b>',
+        `Order: <code>${orderLabel}</code>`,
+        `Store: ${escapeTelegramHtml(seller.storeName || seller.name || 'Seller')}`,
+        input.total ? `Total: ${escapeTelegramHtml(input.total)} BDT` : null,
+      ].filter(Boolean).join('\n'),
+      buttons: [
+        [
+          { text: 'Accept Order', callback_data: `order:accept:${input.orderId}:${input.sellerId}` },
+          { text: 'Reject Order', callback_data: `order:reject:${input.orderId}:${input.sellerId}` },
+        ],
+        [
+          { text: 'View Invoice', url: getTelegramDashboardUrl(`/account/orders/${input.orderId}/invoice`) },
+          { text: 'Open Dashboard', web_app: { url: getTelegramDashboardUrl('/seller/orders') } },
+        ],
       ],
-      [
-        { text: 'View Invoice', url: getTelegramDashboardUrl(`/account/orders/${input.orderId}/invoice`) },
-        { text: 'Open Dashboard', web_app: { url: getTelegramDashboardUrl('/seller/orders') } },
-      ],
-    ],
-  });
-
-  return true;
+    });
+    return true;
+  } catch (error) {
+    console.error('[telegram] new order notification failed', { sellerId: input.sellerId, orderId: input.orderId, error });
+    return false;
+  }
 }
 
 export async function sendOrderStatusNotification(input: SellerOrderMessageInput & { status: string }) {
   const seller = await getTelegramUserContact(input.sellerId);
-
   if (!seller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
-    text: `<b>Order ${escapeTelegramHtml(input.status)}</b>\nOrder: <code>${escapeTelegramHtml(input.orderCode || input.orderId)}</code>`,
-    buttons:
-      input.status === 'accepted'
-        ? [[{ text: 'Mark Shipped', callback_data: `order:ship:${input.orderId}:${input.sellerId}` }]]
-        : undefined,
-  });
-
-  return true;
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
+      text: `<b>Order ${escapeTelegramHtml(input.status)}</b>\nOrder: <code>${escapeTelegramHtml(input.orderCode || input.orderId)}</code>`,
+      buttons:
+        ['processing', 'packed', 'ready_for_pickup'].includes(input.status)
+          ? [[{ text: 'Mark Shipped', callback_data: `order:ship:${input.orderId}:${input.sellerId}` }]]
+          : undefined,
+    });
+    return true;
+  } catch (error) {
+    console.error('[telegram] order status notification failed', { sellerId: input.sellerId, orderId: input.orderId, status: input.status, error });
+    return false;
+  }
 }
 
 export async function sendLowStockAlert(input: {
@@ -77,16 +80,19 @@ export async function sendLowStockAlert(input: {
   threshold: number;
 }) {
   const seller = await getTelegramUserContact(input.sellerId);
-
   if (!seller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
-    text: `<b>Low Stock Alert</b>\n${escapeTelegramHtml(input.productName)}\nStock: <b>${input.stock}</b> / Threshold: ${input.threshold}`,
-    buttons: [[{ text: 'Open Inventory', web_app: { url: getTelegramDashboardUrl('/seller/inventory') } }]],
-  });
-
-  return true;
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
+      text: `<b>Low Stock Alert</b>\n${escapeTelegramHtml(input.productName)}\nStock: <b>${input.stock}</b> / Threshold: ${input.threshold}`,
+      buttons: [[{ text: 'Open Inventory', web_app: { url: getTelegramDashboardUrl('/seller/inventory') } }]],
+    });
+    return true;
+  } catch (error) {
+    console.error('[telegram] low stock notification failed', { sellerId: input.sellerId, error });
+    return false;
+  }
 }
 
 export async function sendPaymentReceivedNotification(input: SellerOrderMessageInput) {
@@ -100,18 +106,8 @@ export async function sendPaymentReceivedNotificationsForOrder(orderId: string) 
       id: true,
       orderCode: true,
       total: true,
-      shipments: {
-        select: {
-          sellerId: true,
-          total: true,
-        },
-      },
-      resellerCommissions: {
-        select: {
-          resellerId: true,
-          amount: true,
-        },
-      },
+      shipments: { select: { sellerId: true, total: true } },
+      resellerCommissions: { select: { resellerId: true, amount: true } },
     },
   });
 
@@ -119,20 +115,12 @@ export async function sendPaymentReceivedNotificationsForOrder(orderId: string) 
 
   const sellerTotals = new Map<string, number>();
   for (const shipment of order.shipments || []) {
-    sellerTotals.set(
-      shipment.sellerId,
-      (sellerTotals.get(shipment.sellerId) || 0) + Number(shipment.total || 0),
-    );
+    sellerTotals.set(shipment.sellerId, (sellerTotals.get(shipment.sellerId) || 0) + Number(shipment.total || 0));
   }
 
   const sellerResults = await Promise.all(
     [...sellerTotals.entries()].map(([sellerId, total]) =>
-      sendPaymentReceivedNotification({
-        sellerId,
-        orderId: order.id,
-        orderCode: order.orderCode,
-        total,
-      }),
+      sendPaymentReceivedNotification({ sellerId, orderId: order.id, orderCode: order.orderCode, total }),
     ),
   );
 
@@ -158,14 +146,17 @@ export async function sendCommissionEarnedNotification(input: {
   orderId: string;
 }) {
   const reseller = await getTelegramUserContact(input.resellerId);
-
   if (!reseller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: reseller.telegramChatId,
-    text: `<b>Commission Earned</b>\nAmount: ${escapeTelegramHtml(input.amount)} BDT\nOrder: <code>${escapeTelegramHtml(input.orderId)}</code>`,
-    buttons: [[{ text: 'Open Earnings', web_app: { url: getTelegramDashboardUrl('/reseller-dashboard/earnings') } }]],
-  });
-
-  return true;
+  try {
+    await sendTelegramMessage({
+      chatId: reseller.telegramChatId,
+      text: `<b>Commission Earned</b>\nAmount: ${escapeTelegramHtml(input.amount)} BDT\nOrder: <code>${escapeTelegramHtml(input.orderId)}</code>`,
+      buttons: [[{ text: 'Open Earnings', web_app: { url: getTelegramDashboardUrl('/reseller-dashboard/earnings') } }]],
+    });
+    return true;
+  } catch (error) {
+    console.error('[telegram] commission notification failed', { resellerId: input.resellerId, orderId: input.orderId, error });
+    return false;
+  }
 }

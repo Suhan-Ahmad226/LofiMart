@@ -2,6 +2,7 @@ import { prisma } from '@/lib/server';
 import type { TelegramUpdate } from '../types';
 import { answerTelegramCallback, escapeTelegramHtml, getTelegramDashboardUrl, sendTelegramMessage } from './telegram';
 import { updateSellerOrderStatus } from './orderService';
+import { ensureRedis } from '@/features/shared/services/messaging/redis';
 
 type TelegramConnectRole = 'seller' | 'admin' | 'reseller';
 
@@ -138,6 +139,14 @@ async function handleCallbackQuery(update: TelegramUpdate) {
   }
 
   try {
+    const redis = await ensureRedis();
+    const callbackKey = `telegram:callback:${query.id}`;
+    const claimed = await redis.set(callbackKey, '1', 'EX', 300, 'NX');
+    if (claimed !== 'OK') {
+      await answerTelegramCallback(query.id, 'This action was already processed.', true);
+      return true;
+    }
+
     const mappedAction =
       action === 'accept'
         ? 'accept'
@@ -161,7 +170,11 @@ async function handleCallbackQuery(update: TelegramUpdate) {
       action: mappedAction,
     });
 
-    await answerTelegramCallback(query.id, `Order ${result.status}`);
+    try {
+      await answerTelegramCallback(query.id, `Order ${result.status}`);
+    } catch (error) {
+      console.error('[telegram] callback acknowledgement failed', { updateId: update.update_id, callbackQueryId: query.id, error });
+    }
     return true;
   } catch (error) {
     console.error('[telegram] callback action failed', {
@@ -169,11 +182,15 @@ async function handleCallbackQuery(update: TelegramUpdate) {
       callbackQueryId: query.id,
       error,
     });
-    await answerTelegramCallback(
-      query.id,
-      error instanceof Error ? error.message : 'Action failed',
-      true,
-    );
+    try {
+      await answerTelegramCallback(
+        query.id,
+        error instanceof Error && error.message.length <= 180 ? error.message : 'Action failed',
+        true,
+      );
+    } catch (ackError) {
+      console.error('[telegram] callback error acknowledgement failed', { updateId: update.update_id, callbackQueryId: query.id, error: ackError });
+    }
     return true;
   }
 }

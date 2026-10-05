@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
+import { ensureRedis } from '@/features/shared/services/messaging/redis';
 import { processTelegramUpdate, validateTelegramWebhookSecret, type TelegramUpdate } from '../../../../features/telegram_bot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const webhookHits = new Map<string, { count: number; resetAt: number }>();
-const processedUpdateIds = new Set<number>();
-const MAX_PROCESSED_IDS = 1000;
-
 function rateLimit(request: NextRequest) {
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -43,16 +41,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Telegram update' }, { status: 400 });
     }
 
-    if (processedUpdateIds.has(update.update_id)) {
-      return NextResponse.json({ ok: true, already_processed: true });
-    }
+    const redis = await ensureRedis();
+    const updateKey = `telegram:update:${update.update_id}`;
+    const claimed = await redis.set(updateKey, '1', 'EX', 24 * 60 * 60, 'NX');
 
-    processedUpdateIds.add(update.update_id);
-    if (processedUpdateIds.size > MAX_PROCESSED_IDS) {
-      const oldestId = processedUpdateIds.values().next().value;
-      if (oldestId !== undefined) {
-        processedUpdateIds.delete(oldestId);
-      }
+    if (claimed !== 'OK') {
+      return NextResponse.json({ ok: true, already_processed: true });
     }
 
     // Acknowledge before touching the database or Telegram. Telegram treats
