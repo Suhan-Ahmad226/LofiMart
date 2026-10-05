@@ -5,6 +5,7 @@ import {
   SELLER_STATUSES,
   buildSellerApprovalRequirements,
   getMissingSellerApprovalRequirements,
+  isKycSubmittedStatus,
   normalizeSellerStatus,
 } from '@/lib/sellerApproval';
 
@@ -59,8 +60,7 @@ export async function POST(request: NextRequest, context: { params: Params }) {
     hasStoreInfo: Boolean(seller.storeName?.trim() && seller.storefrontSlug?.trim()),
     hasPickupLocation: seller.warehouses.length > 0,
     hasKycSubmission: Boolean(
-      seller.verificationSubmission &&
-      ['submitted', 'under_review', 'approved'].includes(String(seller.verificationSubmission.status).toLowerCase()),
+      seller.verificationSubmission && isKycSubmittedStatus(seller.verificationSubmission.status),
     ),
     hasPayoutMethod: seller.payoutMethods.length > 0,
   });
