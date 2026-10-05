@@ -44,18 +44,26 @@ async function handleAccountOnboarding(update: TelegramUpdate) {
 
   // Do not select the role field here. Production has a legacy role column
   // representation that can make Prisma fail while decoding the returned enum.
-  const account = await (prisma.user as any).findFirst({
-    where: {
-      id: connect.userId,
-      role: connect.role,
-    },
-    select: {
-      id: true,
-      name: true,
-      storeName: true,
-      telegramChatId: true,
-    },
-  });
+  // The live database has had mixed legacy representations for User.role
+  // (text in older deployments, enum in the reconciled schema). Prisma can
+  // throw P2032 while decoding the role column even when role is not selected.
+  // Cast the column to text in SQL so this onboarding lookup remains compatible
+  // with both representations without changing or migrating production data.
+  const accounts = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      name: string | null;
+      storeName: string | null;
+      telegramChatId: string | null;
+    }>
+  >`
+    SELECT "id", "name", "storeName", "telegramChatId"
+    FROM "public"."User"
+    WHERE "id" = ${connect.userId}
+      AND "role"::text = ${connect.role}
+    LIMIT 1
+  `;
+  const account = accounts[0] ?? null;
 
   if (!account) {
     await sendTelegramMessage({
