@@ -223,10 +223,10 @@ export const SellerOnboardingPage = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            storefront_slug: storefrontForm.storefront_slug,
-            storefront_headline: storefrontForm.storefront_headline,
-            storefront_accent_color: storefrontForm.storefront_accent_color,
-            storefront_published: storefrontForm.storefront_published,
+            storefrontSlug: storefrontForm.storefront_slug,
+            storefrontHeadline: storefrontForm.storefront_headline,
+            storefrontAccentColor: storefrontForm.storefront_accent_color,
+            storefrontPublished: storefrontForm.storefront_published,
           }),
         }),
       ]);
