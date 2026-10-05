@@ -77,6 +77,18 @@ export function getSellerStatusTone(status: unknown) {
   return "neutral";
 }
 
+/**
+ * A KYC submission is considered present once the seller has successfully
+ * submitted it. `pending` is the normal initial review state created by the
+ * KYC submission API; `under_review` and `approved` are also valid submitted
+ * states. Rejected KYC is intentionally not considered complete.
+ */
+export function isKycSubmittedStatus(status: unknown) {
+  return ["pending", "submitted", "under_review", "approved"].includes(
+    String(status || "").trim().toLowerCase(),
+  );
+}
+
 export function buildSellerApprovalRequirements(input: {
   emailVerified: boolean;
   phoneVerified: boolean;
