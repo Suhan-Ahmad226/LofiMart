@@ -36,7 +36,12 @@ export async function GET(request: NextRequest) {
       warehouses: { select: { id: true }, take: 100 },
       payoutMethods: { select: { id: true }, take: 100 },
       verificationSubmission: {
-        select: { status: true, rejectionReason: true },
+        select: {
+          status: true,
+          rejectionReason: true,
+          documentNumber: true,
+          documents: { select: { type: true } },
+        },
       },
     },
   });
@@ -46,12 +51,20 @@ export async function GET(request: NextRequest) {
   }
 
   const verificationStatus = String(seller.verificationSubmission?.status || '').toLowerCase();
-  const hasKycSubmission = ['pending', 'submitted', 'under_review', 'approved', 'verified'].includes(verificationStatus);
+  const verificationDocumentTypes = new Set(
+    (seller.verificationSubmission?.documents || []).map((document) => String(document.type).toLowerCase()),
+  );
+  const hasKycSubmission =
+    ['pending', 'submitted', 'under_review', 'approved', 'verified'].includes(verificationStatus) &&
+    Boolean(seller.verificationSubmission?.documentNumber?.trim()) &&
+    verificationDocumentTypes.has('front') &&
+    verificationDocumentTypes.has('back') &&
+    verificationDocumentTypes.has('selfie');
 
   const requirements = buildSellerApprovalRequirements({
     emailVerified: seller.emailVerified,
     phoneVerified: seller.phoneVerified,
-    hasStoreInfo: Boolean(seller.storeName?.trim() && seller.storefrontSlug?.trim()),
+    hasStoreInfo: Boolean(seller.storeName?.trim()),
     hasPickupLocation: seller.warehouses.length > 0,
     hasKycSubmission,
     hasPayoutMethod: seller.payoutMethods.length > 0,

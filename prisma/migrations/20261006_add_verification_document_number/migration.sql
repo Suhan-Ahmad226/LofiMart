@@ -1,0 +1,1 @@
+ALTER TABLE "public"."VerificationSubmission" ADD COLUMN "documentNumber" TEXT;\n

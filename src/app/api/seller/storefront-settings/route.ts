@@ -55,6 +55,20 @@ export async function PATCH(request: NextRequest) {
   if (roleError) return roleError;
 
   const body = await request.json().catch(() => ({}));
+
+  if (body?.storefrontPublished === true || body?.storefront_published === true) {
+    const sellerState = await prisma.user.findUnique({
+      where: { id: String(user.id) },
+      select: { sellerStatus: true },
+    });
+    if (String(user.role) !== 'admin' && String(sellerState?.sellerStatus || '').toLowerCase() !== 'approved') {
+      return NextResponse.json(
+        { error: 'Your seller account must be approved before the storefront can be published.' },
+        { status: 403 },
+      );
+    }
+  }
+
   const data: Record<string, any> = {};
 
   const storeName = typeof body?.storeName === 'string' ? body.storeName : body?.store_name;

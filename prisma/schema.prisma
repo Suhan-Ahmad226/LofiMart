@@ -1640,6 +1640,7 @@ model VerificationSubmission {
   role               String
   status             String    @default("pending")
   documentType       String    @default("nid")
+  documentNumber     String?
   businessName       String?
   businessLicenseUrl String?
   notes              String?

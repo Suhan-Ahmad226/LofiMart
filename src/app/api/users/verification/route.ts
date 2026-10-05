@@ -31,6 +31,7 @@ function serializeVerificationSubmission(submission: any) {
     role: submission.role,
     status: submission.status,
     document_type: submission.documentType,
+    document_number: submission.documentNumber ?? null,
     business_name: submission.businessName ?? null,
     business_license_url: submission.businessLicenseUrl ?? null,
     notes: submission.notes ?? null,
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
         update: {
           role: String(user.role),
           documentType: parsed.data.document_type,
+          documentNumber: parsed.data.document_number?.trim() || null,
           businessName: parsed.data.business_name || null,
           businessLicenseUrl: filteredUploads.find((item) => item.type === 'business_license')?.url as string | undefined,
           notes: parsed.data.notes || null,
@@ -200,6 +202,7 @@ export async function POST(request: NextRequest) {
           userId: String(user.id),
           role: String(user.role),
           documentType: parsed.data.document_type,
+          documentNumber: parsed.data.document_number?.trim() || null,
           businessName: parsed.data.business_name || null,
           businessLicenseUrl: filteredUploads.find((item) => item.type === 'business_license')?.url as string | undefined,
           notes: parsed.data.notes || null,

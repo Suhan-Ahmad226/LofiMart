@@ -231,6 +231,7 @@ export function ProfileManager({ role, title, description, enabledSections, show
   });
   const [verificationMeta, setVerificationMeta] = useState({
     document_type: 'nid',
+    document_number: '',
     business_name: '',
     notes: '',
   });
@@ -529,6 +530,7 @@ export function ProfileManager({ role, title, description, enabledSections, show
         },
         body: JSON.stringify({
           document_type: verificationMeta.document_type,
+          document_number: verificationMeta.document_number,
           business_name: verificationMeta.business_name,
           notes: verificationMeta.notes,
           documents: uploadedDocuments,
@@ -1025,6 +1027,13 @@ export function ProfileManager({ role, title, description, enabledSections, show
                   <option value="passport">Passport</option>
                 </select>
                 <input
+                  value={verificationMeta.document_number}
+                  onChange={(e) => setVerificationMeta((current) => ({ ...current, document_number: e.target.value.replace(/[^0-9A-Za-z-]/g, '').slice(0, 80) }))}
+                  placeholder="NID / document number"
+                  inputMode="numeric"
+                  className="rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <input
                   value={verificationMeta.business_name}
                   onChange={(e) => setVerificationMeta((current) => ({ ...current, business_name: e.target.value }))}
                   placeholder="Business name (optional)"
@@ -1086,12 +1095,11 @@ export function ProfileManager({ role, title, description, enabledSections, show
                 >
                   <option value="bank_account">Bank account</option>
                   <option value="mobile_banking">Mobile banking</option>
-                  <option value="paypal">PayPal</option>
                 </select>
                 <input
                   value={payoutForm.provider}
                   onChange={(e) => setPayoutForm((current) => ({ ...current, provider: e.target.value }))}
-                  placeholder="Provider name"
+                  placeholder={payoutForm.type === 'bank_account' ? 'Bank name' : 'Mobile banking provider'}
                   className="rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <input
