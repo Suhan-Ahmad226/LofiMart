@@ -39,7 +39,7 @@ export const CustomerOrdersPage = () => {
     if (token) void fetchOrders(); else { setOrders([]); setLoading(false); }
   }, [token]);
 
-  const getCourierEventSummary = (shipment: CustomerOrder['shipments'][number]) => {
+  const getCourierEventSummary = (shipment: NonNullable<CustomerOrder['shipments']>[number]) => {
     const providerStatus = typeof shipment?.provider_status === 'string' ? shipment.provider_status.trim() : '';
     return providerStatus ? providerStatus.replaceAll('_', ' ').replaceAll('.', ' ') : null;
   };
