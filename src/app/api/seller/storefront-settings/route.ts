@@ -57,18 +57,29 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const data: Record<string, any> = {};
 
-  if (typeof body?.storeName === 'string') data.storeName = body.storeName.trim() || null;
-  if (typeof body?.storefrontSlug === 'string') data.storefrontSlug = body.storefrontSlug.trim() || null;
-  if (typeof body?.storefrontBannerUrl === 'string') data.storefrontBannerUrl = body.storefrontBannerUrl.trim() || null;
-  if (typeof body?.storefrontHeadline === 'string') data.storefrontHeadline = body.storefrontHeadline.trim() || null;
-  if (typeof body?.storefrontAccentColor === 'string') data.storefrontAccentColor = body.storefrontAccentColor.trim() || null;
-  if (typeof body?.storefrontCustomDomain === 'string') data.storefrontCustomDomain = body.storefrontCustomDomain.trim() || null;
-  if (typeof body?.storefrontPublished === 'boolean') data.storefrontPublished = body.storefrontPublished;
-  if (typeof body?.profileVisibility === 'string') data.profileVisibility = body.profileVisibility;
-  if (body?.responseTimeHours === null || typeof body?.responseTimeHours === 'number') {
-    data.responseTimeHours = Number.isFinite(Number(body.responseTimeHours)) ? Number(body.responseTimeHours) : null;
+  const storeName = typeof body?.storeName === 'string' ? body.storeName : body?.store_name;
+  const storefrontSlug = typeof body?.storefrontSlug === 'string' ? body.storefrontSlug : body?.storefront_slug;
+  const storefrontHeadline = typeof body?.storefrontHeadline === 'string' ? body.storefrontHeadline : body?.storefront_headline;
+  const storefrontAccentColor = typeof body?.storefrontAccentColor === 'string' ? body.storefrontAccentColor : body?.storefront_accent_color;
+  const storefrontPublished = typeof body?.storefrontPublished === 'boolean' ? body.storefrontPublished : body?.storefront_published;
+  const storefrontBannerUrl = typeof body?.storefrontBannerUrl === 'string' ? body.storefrontBannerUrl : body?.storefront_banner_url;
+  const storefrontCustomDomain = typeof body?.storefrontCustomDomain === 'string' ? body.storefrontCustomDomain : body?.storefront_custom_domain;
+  const profileVisibility = typeof body?.profileVisibility === 'string' ? body.profileVisibility : body?.profile_visibility;
+  const responseTimeHours = body?.responseTimeHours ?? body?.response_time_hours;
+  const bio = typeof body?.bio === 'string' ? body.bio : undefined;
+
+  if (typeof storeName === 'string') data.storeName = storeName.trim() || null;
+  if (typeof storefrontSlug === 'string') data.storefrontSlug = storefrontSlug.trim() || null;
+  if (typeof storefrontBannerUrl === 'string') data.storefrontBannerUrl = storefrontBannerUrl.trim() || null;
+  if (typeof storefrontHeadline === 'string') data.storefrontHeadline = storefrontHeadline.trim() || null;
+  if (typeof storefrontAccentColor === 'string') data.storefrontAccentColor = storefrontAccentColor.trim() || null;
+  if (typeof storefrontCustomDomain === 'string') data.storefrontCustomDomain = storefrontCustomDomain.trim() || null;
+  if (typeof storefrontPublished === 'boolean') data.storefrontPublished = storefrontPublished;
+  if (typeof profileVisibility === 'string') data.profileVisibility = profileVisibility;
+  if (responseTimeHours === null || typeof responseTimeHours === 'number') {
+    data.responseTimeHours = Number.isFinite(Number(responseTimeHours)) ? Number(responseTimeHours) : null;
   }
-  if (typeof body?.bio === 'string') data.bio = body.bio.trim() || null;
+  if (typeof bio === 'string') data.bio = bio.trim() || null;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update.' }, { status: 400 });
