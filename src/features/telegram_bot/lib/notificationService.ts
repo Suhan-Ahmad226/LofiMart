@@ -28,8 +28,9 @@ export async function sendNewOrderNotification(input: SellerOrderMessageInput) {
 
   const orderLabel = escapeTelegramHtml(input.orderCode || input.orderId);
 
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
     text: [
       '<b>New Order</b>',
       `Order: <code>${orderLabel}</code>`,
@@ -48,7 +49,11 @@ export async function sendNewOrderNotification(input: SellerOrderMessageInput) {
         { text: 'Open Dashboard', web_app: { url: getTelegramDashboardUrl('/seller/orders') } },
       ],
     ],
-  });
+    });
+  } catch (error) {
+    console.error('[telegram] new order notification failed', { sellerId: input.sellerId, orderId: input.orderId, error });
+    return false;
+  }
 
   return true;
 }
@@ -58,14 +63,19 @@ export async function sendOrderStatusNotification(input: SellerOrderMessageInput
 
   if (!seller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
     text: `<b>Order ${escapeTelegramHtml(input.status)}</b>\nOrder: <code>${escapeTelegramHtml(input.orderCode || input.orderId)}</code>`,
     buttons:
       ['processing', 'packed', 'ready_for_pickup'].includes(input.status)
         ? [[{ text: 'Mark Shipped', callback_data: `order:ship:${input.orderId}:${input.sellerId}` }]]
         : undefined,
-  });
+    });
+  } catch (error) {
+    console.error('[telegram] order status notification failed', { sellerId: input.sellerId, orderId: input.orderId, status: input.status, error });
+    return false;
+  }
 
   return true;
 }
@@ -80,11 +90,16 @@ export async function sendLowStockAlert(input: {
 
   if (!seller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: seller.telegramChatId,
+  try {
+    await sendTelegramMessage({
+      chatId: seller.telegramChatId,
     text: `<b>Low Stock Alert</b>\n${escapeTelegramHtml(input.productName)}\nStock: <b>${input.stock}</b> / Threshold: ${input.threshold}`,
     buttons: [[{ text: 'Open Inventory', web_app: { url: getTelegramDashboardUrl('/seller/inventory') } }]],
-  });
+    });
+  } catch (error) {
+    console.error('[telegram] low stock notification failed', { sellerId: input.sellerId, error });
+    return false;
+  }
 
   return true;
 }
@@ -161,8 +176,9 @@ export async function sendCommissionEarnedNotification(input: {
 
   if (!reseller?.telegramChatId) return false;
 
-  await sendTelegramMessage({
-    chatId: reseller.telegramChatId,
+  try {
+    await sendTelegramMessage({
+      chatId: reseller.telegramChatId,
     text: `<b>Commission Earned</b>\nAmount: ${escapeTelegramHtml(input.amount)} BDT\nOrder: <code>${escapeTelegramHtml(input.orderId)}</code>`,
     buttons: [[{ text: 'Open Earnings', web_app: { url: getTelegramDashboardUrl('/reseller-dashboard/earnings') } }]],
   });
