@@ -108,6 +108,19 @@ export async function POST(request: NextRequest) {
       Object.entries(parsed.data.documents).map(async ([key, file]) => {
         if (!file) return null;
 
+        // New clients upload each KYC document through /api/media/upload first.
+        // Keep the legacy inline data_url path for backward compatibility.
+        if ('url' in file) {
+          return {
+            type: key,
+            label: key.replace(/_/g, ' '),
+            url: file.url,
+            publicId: file.public_id ?? null,
+            mimeType: file.mime_type,
+            sizeBytes: file.size_bytes,
+          };
+        }
+
         validateUploadInput({
           dataUrl: file.data_url,
           mimeType: file.mime_type,
