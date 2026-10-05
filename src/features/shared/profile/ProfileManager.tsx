@@ -37,7 +37,50 @@ type SectionShellProps = {
   children: React.ReactNode;
 };
 
-async function fileToUploadPayload(file: File) {
+async function fileToUploadPayload(file: File, maxBytes = 3 * 1024 * 1024) {
+  if (file.size > maxBytes && file.type.startsWith('image/')) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('Failed to read image'));
+      reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Failed to decode image'));
+      element.src = dataUrl;
+    });
+
+    const maxDimension = 2200;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Image processing is not supported by this browser');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.82;
+    let output = canvas.toDataURL('image/jpeg', quality);
+    while (output.length * 0.75 > maxBytes && quality > 0.5) {
+      quality -= 0.08;
+      output = canvas.toDataURL('image/jpeg', quality);
+    }
+
+    const estimatedBytes = Math.floor(output.length * 0.75);
+    if (estimatedBytes > maxBytes) {
+      throw new Error('Image is too large. Please choose a smaller image.');
+    }
+
+    return { data_url: output, mime_type: 'image/jpeg', size_bytes: estimatedBytes };
+  }
+
+  if (file.size > maxBytes) {
+    throw new Error(`${file.name} is too large. Please keep each document under 3 MB.`);
+  }
+
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -50,6 +93,20 @@ async function fileToUploadPayload(file: File) {
     mime_type: file.type,
     size_bytes: file.size,
   };
+}
+
+async function parseApiResponse(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      response.status === 413
+        ? 'Upload is too large. Please choose smaller documents (maximum 3 MB each).'
+        : `Request failed (${response.status}). Please try again.`,
+    );
+  }
 }
 
 const emptyAddress = {
@@ -419,15 +476,49 @@ export function ProfileManager({ role, title, description, enabledSections, show
   const submitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     await runAction(async () => {
-      const front = verificationFiles.front ? await fileToUploadPayload(verificationFiles.front) : null;
-      const back = verificationFiles.back ? await fileToUploadPayload(verificationFiles.back) : null;
-      const selfie = verificationFiles.selfie ? await fileToUploadPayload(verificationFiles.selfie) : null;
-      const businessLicense = verificationFiles.business_license
-        ? await fileToUploadPayload(verificationFiles.business_license)
-        : null;
+      const requiredFiles = {
+        front: verificationFiles.front,
+        back: verificationFiles.back,
+        selfie: verificationFiles.selfie,
+      };
 
-      if (!front || !back || !selfie) {
+      if (!requiredFiles.front || !requiredFiles.back || !requiredFiles.selfie) {
         throw new Error('Front, back, and selfie files are required for verification.');
+      }
+
+      const uploadVerificationFile = async (file: File, fieldName: string) => {
+        const payload = await fileToUploadPayload(file);
+        const response = await fetch('/api/media/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            dataUrl: payload.data_url,
+            mimeType: payload.mime_type,
+            sizeBytes: payload.size_bytes,
+            entityType: 'VerificationSubmission',
+            entityId: String(user?.id || ''),
+            fieldName,
+          }),
+        });
+        const data = await parseApiResponse(response);
+        if (!response.ok || !data.url) {
+          throw new Error(data.error?.message || data.error || `Failed to upload ${fieldName.replace(/_/g, ' ')}`);
+        }
+        return {
+          url: String(data.url),
+          public_id: data.publicId ? String(data.publicId) : undefined,
+          mime_type: payload.mime_type,
+          size_bytes: payload.size_bytes,
+        };
+      };
+
+      const uploadedDocuments: Record<string, any> = {};
+      for (const [fieldName, file] of Object.entries(verificationFiles)) {
+        if (!file) continue;
+        uploadedDocuments[fieldName] = await uploadVerificationFile(file, fieldName);
       }
 
       const response = await fetch('/api/users/verification', {
@@ -440,16 +531,11 @@ export function ProfileManager({ role, title, description, enabledSections, show
           document_type: verificationMeta.document_type,
           business_name: verificationMeta.business_name,
           notes: verificationMeta.notes,
-          documents: {
-            front,
-            back,
-            selfie,
-            ...(businessLicense ? { business_license: businessLicense } : {}),
-          },
+          documents: uploadedDocuments,
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to submit KYC verification');
+      const data = await parseApiResponse(response);
+      if (!response.ok) throw new Error(data.error?.message || data.error || 'Failed to submit KYC verification');
       setMessage('Verification submitted successfully.');
       setVerificationFiles({ front: null, back: null, selfie: null, business_license: null });
       await fetchProfile();
