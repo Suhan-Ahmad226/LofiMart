@@ -100,15 +100,25 @@ export const uploadAssetSchema = z.object({
   size_bytes: z.number().int().positive().max(5 * 1024 * 1024),
 });
 
+const verificationDocumentSchema = z.union([
+  uploadAssetSchema,
+  z.object({
+    url: z.string().trim().url().max(2000),
+    public_id: z.string().trim().max(500).optional(),
+    mime_type: z.string().trim().min(3).max(120),
+    size_bytes: z.number().int().positive().max(5 * 1024 * 1024),
+  }),
+]);
+
 export const verificationSubmissionSchema = z.object({
   document_type: z.enum(['nid', 'birth_certificate', 'passport']).default('nid'),
   business_name: z.string().trim().max(160).optional(),
   notes: z.string().trim().max(500).optional(),
   documents: z.object({
-    front: uploadAssetSchema,
-    back: uploadAssetSchema,
-    selfie: uploadAssetSchema,
-    business_license: uploadAssetSchema.optional(),
+    front: verificationDocumentSchema,
+    back: verificationDocumentSchema,
+    selfie: verificationDocumentSchema,
+    business_license: verificationDocumentSchema.optional(),
   }),
 });
 
