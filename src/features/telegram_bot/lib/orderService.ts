@@ -74,6 +74,7 @@ export async function updateSellerOrderStatus(input: {
     where: {
       orderId: input.orderId,
       sellerId: input.sellerId,
+      status: currentStatus as any,
     },
     data: {
       status: status as any,
@@ -105,19 +106,18 @@ export async function updateSellerOrderStatus(input: {
     select: { orderCode: true },
   });
 
-  await sendOrderStatusNotification({
-    sellerId: input.sellerId,
-    orderId: input.orderId,
-    orderCode: order?.orderCode,
-    status,
-  });
+  try {
+    await sendOrderStatusNotification({ sellerId: input.sellerId, orderId: input.orderId, orderCode: order?.orderCode, status });
+  } catch (error) {
+    console.error('[telegram] order status notification failed', { orderId: input.orderId, sellerId: input.sellerId, status, error });
+  }
 
   if (status === 'processing') {
-    await sendInvoiceToTelegram({
-      chatId: input.chatId,
-      orderId: input.orderId,
-      caption: `Invoice for order ${order?.orderCode || input.orderId}`,
-    });
+    try {
+      await sendInvoiceToTelegram({ chatId: input.chatId, orderId: input.orderId, caption: `Invoice for order ${order?.orderCode || input.orderId}` });
+    } catch (error) {
+      console.error('[telegram] invoice delivery failed', { orderId: input.orderId, sellerId: input.sellerId, error });
+    }
   }
 
   return { status };
