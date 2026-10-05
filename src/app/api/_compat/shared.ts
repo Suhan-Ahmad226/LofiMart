@@ -245,13 +245,21 @@ export function serializeTenantSetting(setting: any) {
 }
 
 export async function getProfilePayload(userId: string) {
-  const [user, notificationPreference, addresses] = await Promise.all([
+  const [user, notificationPreference, addresses, verification, payoutMethods] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.notificationPreference.findUnique({ where: { userId } }).catch(() => null),
     prisma.address.findMany({
       where: { userId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     }),
+    prisma.verificationSubmission.findUnique({
+      where: { userId },
+      include: { documents: true },
+    }).catch(() => null),
+    prisma.payoutMethod.findMany({
+      where: { userId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    }).catch(() => []),
   ]);
 
   if (!user) return null;
@@ -259,8 +267,43 @@ export async function getProfilePayload(userId: string) {
   return {
     user: serializeUser(user),
     notification_preferences: serializeNotificationPreference(notificationPreference),
-    verification: null,
-    payout_methods: [],
+    verification: verification
+      ? {
+          id: verification.id,
+          role: verification.role,
+          status: verification.status,
+          document_type: verification.documentType,
+          business_name: verification.businessName ?? null,
+          business_license_url: verification.businessLicenseUrl ?? null,
+          notes: verification.notes ?? null,
+          rejection_reason: verification.rejectionReason ?? null,
+          risk_score: verification.riskScore ?? 0,
+          submitted_at: verification.submittedAt ? new Date(verification.submittedAt).toISOString() : null,
+          reviewed_at: verification.reviewedAt ? new Date(verification.reviewedAt).toISOString() : null,
+          documents: Array.isArray(verification.documents)
+            ? verification.documents.map((document: any) => ({
+                id: document.id,
+                type: document.type,
+                label: document.label,
+                url: document.url,
+                mime_type: document.mimeType ?? null,
+                size_bytes: document.sizeBytes ?? null,
+              }))
+            : [],
+        }
+      : null,
+    payout_methods: payoutMethods.map((method: any) => ({
+      id: method.id,
+      type: method.type,
+      provider: method.provider,
+      account_name: method.accountName ?? null,
+      account_number: method.accountNumber ?? null,
+      routing_number: method.routingNumber ?? null,
+      mobile_number: method.mobileNumber ?? null,
+      is_default: Boolean(method.isDefault),
+      metadata: method.metadata ?? null,
+      created_at: method.createdAt ? new Date(method.createdAt).toISOString() : null,
+    })),
     transaction_history: [],
     privacy_requests: [],
     risk_flags: [],
