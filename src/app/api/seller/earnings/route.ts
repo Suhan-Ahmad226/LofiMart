@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
   if (roleError) return roleError;
 
   const sellerId = String(user.id);
+  const tenantId = user.tenantId;
+  if (!tenantId) {
+    return NextResponse.json({ error: 'Seller tenant context is required.' }, { status: 403 });
+  }
   const { searchParams } = new URL(request.url);
   const range = searchParams.get('range') || '30d';
 
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest) {
   const [orderItems, products] = await Promise.all([
     prisma.orderItem.findMany({
       where: {
-        product: { sellerId, tenantId: user.tenantId ?? undefined },
+        product: { sellerId, tenantId },
         order: {
           createdAt: { gte: startDate, lt: now },
           status: 'delivered',
@@ -47,7 +51,7 @@ export async function GET(request: NextRequest) {
         order: { select: { createdAt: true, paymentStatus: true } },
       },
     }),
-    prisma.product.count({ where: { sellerId, tenantId: user.tenantId ?? undefined } }),
+    prisma.product.count({ where: { sellerId, tenantId } }),
   ]);
 
   const totalEarnings = orderItems.reduce(

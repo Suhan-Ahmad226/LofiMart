@@ -80,51 +80,68 @@ export async function grantReward(input: RewardGrantInput) {
   const walletAmount = input.walletAmount ?? 0;
   const discountAmount = input.discountAmount ?? 0;
 
-  const user = await prisma.user.update({
-    where: { id: input.userId },
-    data: {
-      points: { increment: coins },
-      walletBalance: { increment: walletAmount },
-    },
-    select: {
-      id: true,
-      points: true,
-      walletBalance: true,
-      tenantId: true,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const currentUser = await tx.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true, points: true, walletBalance: true, tenantId: true },
+    });
 
-  await prisma.rewardLog.create({
-    data: {
-      userId: input.userId,
-      tenantId: input.tenantId ?? user.tenantId ?? null,
-      eventType: input.eventType,
-      coinsAmount: coins,
-      walletAmount,
-      discountAmount,
-      source: input.source,
-      description: input.description,
-      referenceId: input.referenceId ?? null,
-      metadata: input.metadata ?? Prisma.JsonNull,
-    },
-  });
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
 
-  if (walletAmount !== 0) {
-    await prisma.walletTransaction.create({
+    if (input.tenantId && currentUser.tenantId !== input.tenantId) {
+      throw new Error('Tenant mismatch');
+    }
+
+    const tenantId = input.tenantId ?? currentUser.tenantId ?? null;
+
+    const user = await tx.user.update({
+      where: { id: currentUser.id },
+      data: {
+        points: { increment: coins },
+        walletBalance: { increment: walletAmount },
+      },
+      select: {
+        id: true,
+        points: true,
+        walletBalance: true,
+        tenantId: true,
+      },
+    });
+
+    await tx.rewardLog.create({
       data: {
         userId: input.userId,
-        tenantId: input.tenantId ?? user.tenantId ?? null,
-        type: walletAmount >= 0 ? 'credit' : 'debit',
-        amount: Math.abs(walletAmount),
+        tenantId,
+        eventType: input.eventType,
+        coinsAmount: coins,
+        walletAmount,
+        discountAmount,
         source: input.source,
         description: input.description,
-        balanceAfter: user.walletBalance,
+        referenceId: input.referenceId ?? null,
         metadata: input.metadata ?? Prisma.JsonNull,
       },
     });
-  }
 
-  return user;
+    if (walletAmount !== 0) {
+      await tx.walletTransaction.create({
+        data: {
+          userId: input.userId,
+          tenantId,
+          type: walletAmount >= 0 ? 'credit' : 'debit',
+          amount: Math.abs(walletAmount),
+          source: input.source,
+          description: input.description,
+          balanceAfter: user.walletBalance,
+          metadata: input.metadata ?? Prisma.JsonNull,
+        },
+      });
+    }
+
+    return user;
+  });
 }
 
 export async function ensureDefaultMissions(tenantId?: string | null) {

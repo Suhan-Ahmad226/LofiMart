@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
   if (roleError) return roleError;
 
   const sellerId = String(user.id);
+  const tenantId = user.tenantId;
+  if (!tenantId) {
+    return NextResponse.json({ error: 'Seller tenant context is required.' }, { status: 403 });
+  }
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
 
@@ -32,14 +36,16 @@ export async function GET(request: NextRequest) {
   // Keep this calculation in Postgres so the query remains bounded for large sellers.
   const [totalProducts, totalOrders, revenueAggregate, productSales, periodRevenue, previousPeriodRevenue] =
     await Promise.all([
-      prisma.product.count({ where: { sellerId } }),
-      prisma.order.count({ where: { items: { some: { product: { sellerId } } } } }),
+      prisma.product.count({ where: { sellerId, tenantId } }),
+      prisma.order.count({ where: { items: { some: { product: { sellerId, tenantId } } } } }),
       prisma.$queryRaw<Array<{ total: unknown }>>`
         SELECT COALESCE(SUM(oi."qty" * oi."price"), 0) AS total
         FROM "OrderItem" oi
         INNER JOIN "Product" p ON p."id" = oi."productId"
         INNER JOIN "Order" o ON o."id" = oi."orderId"
         WHERE p."sellerId" = ${sellerId}
+          AND p."tenantId" = ${tenantId}
+          AND o."tenantId" = ${tenantId}
           AND o."status" <> 'cancelled'
       `,
       prisma.$queryRaw<Array<{ productId: string; sales: unknown; revenue: unknown }>>`
@@ -80,7 +86,7 @@ export async function GET(request: NextRequest) {
   const productIds = productSales.map((row) => row.productId);
   const products = productIds.length
     ? await prisma.product.findMany({
-        where: { sellerId, id: { in: productIds } },
+        where: { sellerId, tenantId, id: { in: productIds } },
         select: { id: true, name: true, image: true },
       })
     : [];
