@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     })
     .filter((product): product is NonNullable<typeof product> => product !== null);
 
-  const [liveProducts, lowStockCount, outOfStockCount, pendingOrders, deliveredOrders, cancelledOrders, activeShipments, deliveredShipments, last30Orders] =
+  const [liveProducts, lowStockCount, outOfStockCount, pendingOrders, deliveredOrders, cancelledOrders, activeShipments, deliveredShipments, last30Orders, revenueOrderCount30d] =
     await Promise.all([
       prisma.product.count({ where: { sellerId, productStatus: 'published' } }),
       prisma.product.count({ where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
@@ -109,14 +109,14 @@ export async function GET(request: NextRequest) {
         where: {
           createdAt: { gte: thirtyDaysAgo },
           items: { some: { product: { sellerId } } },
-          status: { in: ['pending', 'processing', 'packed', 'ready_for_pickup', 'pickup_requested', 'picked_up'] },
+          status: { in: ['pending', 'processing', 'packed', 'ready_for_pickup', 'pickup_requested'] },
         },
       }),
       prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } }, status: 'delivered' } }),
       prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } }, status: 'cancelled' } }),
       prisma.orderShipment.count({ where: { sellerId, status: { in: ACTIVE_SHIPMENT_STATUSES } } }),
       prisma.orderShipment.count({ where: { sellerId, status: 'delivered' } }),
-      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } } } }),
+      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, status: { not: 'cancelled' }, items: { some: { product: { sellerId } } } } }),
     ]);
 
   const revenue30d = Number(periodRevenue[0]?.total ?? 0);
@@ -143,6 +143,6 @@ export async function GET(request: NextRequest) {
     revenue30d,
     revenuePrev30d,
     revenueTrendPct: revenuePrev30d > 0 ? Math.round(((revenue30d - revenuePrev30d) / revenuePrev30d) * 1000) / 10 : null,
-    averageOrderValue30d: resolved30dOrders > 0 ? Math.round((revenue30d / resolved30dOrders) * 100) / 100 : 0,
+    averageOrderValue30d: revenueOrderCount30d > 0 ? Math.round((revenue30d / revenueOrderCount30d) * 100) / 100 : 0,
   });
 }
