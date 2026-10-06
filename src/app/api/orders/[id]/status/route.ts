@@ -166,7 +166,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                     : 'processing';
 
       const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
+        where: { id: orderId, tenantId: user.tenantId ?? undefined },
         data: { status: orderStatus as any },
       });
 
