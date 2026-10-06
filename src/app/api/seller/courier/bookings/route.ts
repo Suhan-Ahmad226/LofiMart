@@ -247,24 +247,20 @@ async function findOrCreateShipmentFromOrder({
   warehouseId: string;
   isAdmin: boolean;
   tenantId: string | null;
-}: {
-  orderId: string;
-  sellerId: string;
-  warehouseId: string;
-  isAdmin: boolean;
 }) {
   const order = await prisma.order.findUnique({
-    where: { id: orderId },
+    where: { id: orderId, ...(tenantId ? { tenantId } : {}) },
     select: {
       id: true,
       total: true,
-      items: { select: { product: { select: { sellerId: true } } } },
+      tenantId: true,
+      items: { select: { product: { select: { sellerId: true, tenantId: true } } } },
     },
   });
 
   if (!order) return null;
 
-  const ownsOrder = order.items.some((item) => item.product?.sellerId === sellerId);
+  const ownsOrder = order.items.some((item) => item.product?.sellerId === sellerId && (!tenantId || item.product?.tenantId === tenantId));
   if (!ownsOrder && !isAdmin) return null;
 
   if (!isAdmin && warehouseId) {
@@ -279,7 +275,7 @@ async function findOrCreateShipmentFromOrder({
   }
 
   const existing = await prisma.orderShipment.findFirst({
-    where: { orderId, sellerId },
+    where: { orderId, sellerId, order: tenantId ? { tenantId } : undefined },
     orderBy: { createdAt: 'asc' },
     select: { id: true, orderId: true, warehouseId: true, status: true },
   });
