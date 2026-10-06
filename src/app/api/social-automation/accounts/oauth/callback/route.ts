@@ -77,8 +77,15 @@ export async function GET(request: NextRequest) {
       oauth: 'select_page',
       state: oauthState.state,
     });
-  } catch {
+  } catch (error) {
     await invalidateOAuthState(oauthState.id).catch(() => undefined);
+
+    console.error('[facebook-oauth] callback failed', {
+      sellerId,
+      oauthStateId: oauthState.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
     return oauthRedirect(env, { oauth: 'error', message: 'facebook_oauth_failed' });
   }
 }
