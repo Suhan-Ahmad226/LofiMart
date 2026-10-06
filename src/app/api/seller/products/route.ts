@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (roleError) return roleError;
 
   const products = await prisma.product.findMany({
-    where: { sellerId: String(user.id) },
+    where: { sellerId: String(user.id), tenantId: user.tenantId ?? undefined },
     orderBy: { createdAt: 'desc' },
   });
 
