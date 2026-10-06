@@ -139,6 +139,7 @@ const adminSections: DashboardConfig['sections'] = [
   { title: 'Finance', items: [{ icon: <CreditCard size={20} />, label: 'Payments', path: '/admin/payments' }] },
   { title: 'Catalog', items: [
     { icon: <ShoppingBag size={20} />, label: 'All Products', path: '/admin/products' },
+    { icon: <BarChart3 size={20} />, label: 'Inventory', path: '/admin/inventory' },
     { icon: <Tag size={20} />, label: 'Categories', path: '/admin/categories' },
     { icon: <Zap size={20} />, label: 'Flash Sale', path: '/admin/flash-sale' },
     { icon: <Zap size={20} />, label: 'Coupons', path: '/admin/coupons' },
