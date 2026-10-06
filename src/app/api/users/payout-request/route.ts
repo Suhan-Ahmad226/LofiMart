@@ -67,7 +67,46 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const transaction = await prisma.payoutTransaction.create({
+  let transaction;
+  try {
+    transaction = await prisma.$transaction(async (tx) => {
+    const settledRevenueRows = await tx.$queryRaw<Array<{ total: unknown }>>`
+      SELECT COALESCE(SUM(oi."qty" * oi."price"), 0) AS total
+      FROM "OrderItem" oi
+      INNER JOIN "Product" p ON p."id" = oi."productId"
+      INNER JOIN "Order" o ON o."id" = oi."orderId"
+      WHERE p."sellerId" = ${String(user.id)}
+        AND o."status" = 'delivered'
+    `;
+    const grossAvailable = Number(settledRevenueRows[0]?.total ?? 0);
+
+    const committedRows = await tx.payoutTransaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId: String(user.id),
+        status: { in: ['pending', 'approved', 'processing'] },
+      },
+    });
+    const committed = Number(committedRows._sum.amount ?? 0);
+    const available = Math.max(0, grossAvailable - committed);
+
+    if (amount > available + 0.000001) {
+      throw new Error(`INSUFFICIENT_PAYOUT_BALANCE:${available.toFixed(2)}`);
+    }
+
+    return tx.payoutTransaction.create({
+      data: {
+        userId: String(user.id),
+        payoutMethodId: payoutMethod?.id ?? null,
+        type: 'payout_request',
+        amount,
+        currency: 'BDT',
+        status: 'pending',
+        notes,
+        metadata: { tenantId: user.tenantId ?? null },
+      },
+    });
+  });
     data: {
       userId: String(user.id),
       payoutMethodId: payoutMethod?.id ?? null,
@@ -79,6 +118,9 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  await handleAuditLog(String(user.id), 'payout.requested', 'payout_transaction', transaction.id, { amount });
+  await handleAuditLog(String(user.id), 'payout.requested', 'payout_transaction', transaction.id, {
+    amount,
+    tenantId: user.tenantId ?? null,
+  });
   return NextResponse.json({ success: true, transaction });
 }
