@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     })
     .filter((product): product is NonNullable<typeof product> => product !== null);
 
-  const [liveProducts, lowStockCount, outOfStockCount, pendingOrders, deliveredOrders, cancelledOrders, activeShipments, deliveredShipments, last30Orders, revenueOrderCount30d] =
+  const [liveProducts, lowStockCount, outOfStockCount, pendingOrders, deliveredOrders, cancelledOrders, activeShipments, deliveredShipments, last30Orders] =
     await Promise.all([
       prisma.product.count({ where: { sellerId, productStatus: 'published' } }),
       prisma.product.count({ where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
@@ -143,6 +143,6 @@ export async function GET(request: NextRequest) {
     revenue30d,
     revenuePrev30d,
     revenueTrendPct: revenuePrev30d > 0 ? Math.round(((revenue30d - revenuePrev30d) / revenuePrev30d) * 1000) / 10 : null,
-    averageOrderValue30d: revenueOrderCount30d > 0 ? Math.round((revenue30d / revenueOrderCount30d) * 100) / 100 : 0,
+    averageOrderValue30d: last30Orders > 0 ? Math.round((revenue30d / last30Orders) * 100) / 100 : 0,
   });
 }
