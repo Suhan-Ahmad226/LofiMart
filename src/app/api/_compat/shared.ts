@@ -373,6 +373,7 @@ export function buildHourlySeriesFromOrders(orders: Array<{ createdAt: Date; tot
     const bucketStart = start + index * 60 * 60 * 1000;
     return {
       label: new Date(bucketStart).toISOString(),
+      revenue: 0,
       total: 0,
       orders: 0,
     };
@@ -382,7 +383,9 @@ export function buildHourlySeriesFromOrders(orders: Array<{ createdAt: Date; tot
     const timestamp = new Date(order.createdAt).getTime();
     const index = Math.floor((timestamp - start) / (60 * 60 * 1000));
     if (index >= 0 && index < buckets.length) {
-      buckets[index].total += Number(order.total ?? 0);
+      const revenue = Number(order.total ?? 0);
+      buckets[index].revenue += revenue;
+      buckets[index].total += revenue;
       buckets[index].orders += 1;
     }
   }
