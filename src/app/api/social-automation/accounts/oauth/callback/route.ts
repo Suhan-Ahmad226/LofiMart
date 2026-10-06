@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function oauthRedirect(env: { FRONTEND_URL: string }, query: Record<string, string>) {
-  const url = new URL('/social-automation', env.FRONTEND_URL);
+  const url = new URL('/seller/social-automation', env.FRONTEND_URL);
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   return NextResponse.redirect(url);
 }

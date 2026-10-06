@@ -78,8 +78,8 @@ const sellerSections: DashboardConfig['sections'] = [
   { title: 'Marketing', items: [
     { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
     { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
-    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
-    { icon: <Repeat size={20} />, label: 'Automation', path: '/social-automation/products' },
+    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/seller/social-automation' },
+    { icon: <Repeat size={20} />, label: 'Automation', path: '/seller/social-automation/products' },
   ] },
   { title: 'Customers', items: [
     { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
@@ -108,8 +108,8 @@ const sellerMoreHubGroups: DashboardMoreGroup[] = [
   { title: 'Marketing', items: [
     { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
     { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
-    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
-    { icon: <Repeat size={20} />, label: 'Automation', path: '/social-automation/products' },
+    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/seller/social-automation' },
+    { icon: <Repeat size={20} />, label: 'Automation', path: '/seller/social-automation/products' },
   ] },
   { title: 'Customers', items: [
     { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
@@ -191,7 +191,7 @@ const sellerMobileActions: DashboardMobileAction[] = [
   { label: 'Products', path: '/seller/products', icon: <Package size={16} /> },
   { label: 'Inventory', path: '/seller/inventory', icon: <BarChart3 size={16} /> },
   { label: 'Courier', path: '/seller/courier', icon: <Truck size={16} /> },
-  { label: 'Social', path: '/social-automation', icon: <Share2 size={16} /> },
+  { label: 'Social', path: '/seller/social-automation', icon: <Share2 size={16} /> },
   { label: 'Finance', path: '/seller/earnings', icon: <Wallet size={16} /> },
   { label: 'More', path: '/seller/more', icon: <MoreHorizontal size={16} /> },
 ];

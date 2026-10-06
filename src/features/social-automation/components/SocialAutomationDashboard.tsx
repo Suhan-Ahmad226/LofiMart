@@ -277,15 +277,15 @@ export function SocialAutomationDashboard() {
         setPendingOAuthState(state);
         void loadPendingPages(state);
       }
-      void router.replace('/social-automation');
+      void router.replace('/seller/social-automation');
     } else if (oauth === 'success') {
       setOauthMessage('Facebook Page connected successfully!');
       setOauthError(null);
-      void router.replace('/social-automation');
+      void router.replace('/seller/social-automation');
     } else if (oauth === 'error' && msg) {
       setOauthError(oauthErrorMessage(msg));
       setOauthMessage(null);
-      void router.replace('/social-automation');
+      void router.replace('/seller/social-automation');
     }
   }, [searchParams, router, loadPendingPages]);
 
