@@ -307,7 +307,7 @@ export function describeFacebookError(error: unknown): { kind: FacebookErrorKind
     'revoked',
     'access token',
     'access_token',
-    'oAuthException',
+    'oauthexception',
     'session has expired',
   ])
     ? 'token'
