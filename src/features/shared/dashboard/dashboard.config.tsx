@@ -7,6 +7,7 @@ import {
   Heart,
   Image as ImageIcon,
   LayoutDashboard,
+  Lock,
   Mail,
   MapPin,
   Megaphone,
@@ -55,97 +56,76 @@ const customerSections: DashboardConfig['sections'] = [
 // overview group, then operations, growth and service groups. Every path below
 // resolves to a real route under src/app/(seller).
 const sellerSections: DashboardConfig['sections'] = [
-  {
-    title: 'Overview',
-    items: [
-      { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/seller/dashboard' },
-      { icon: <Sparkles size={20} />, label: 'Onboarding', path: '/seller/onboarding' },
-    ],
-  },
-  {
-    title: 'Orders',
-    items: [
-      { icon: <ShoppingBag size={20} />, label: 'All Orders', path: '/seller/orders' },
-      { icon: <FileText size={20} />, label: 'Manual Orders', path: '/seller/manual-orders' },
-    ],
-  },
-  {
-    title: 'Products',
-    items: [
-      { icon: <Package size={20} />, label: 'All Products', path: '/seller/products' },
-      { icon: <Sparkles size={20} />, label: 'Add Product', path: '/seller/products/add' },
-      { icon: <BarChart3 size={20} />, label: 'Bulk Upload', path: '/seller/products/bulk' },
-    ],
-  },
-  {
-    title: 'Operations & Logistics',
-    items: [
-      { icon: <Package size={20} />, label: 'Stock Control', path: '/seller/inventory' },
-      { icon: <Truck size={20} />, label: 'Delivery Shipments', path: '/seller/courier' },
-      { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
-    ],
-  },
-  {
-    title: 'Growth & Finance',
-    items: [
-      { icon: <Wallet size={20} />, label: 'Earnings', path: '/seller/earnings' },
-      { icon: <CreditCard size={20} />, label: 'Payouts', path: '/seller/payouts' },
-      { icon: <Zap size={20} />, label: 'Flash Sales', path: '/seller/flash-sale' },
-      { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
-      { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
-      { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
-      { icon: <Repeat size={20} />, label: 'Automation Queue', path: '/social-automation/products' },
-    ],
-  },
-  {
-    title: 'Customer Service & Store',
-    items: [
-      { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
-      { icon: <MessageCircle size={20} />, label: 'Support Tickets', path: '/seller/support/tickets' },
-      { icon: <Undo2 size={20} />, label: 'Returns', path: '/seller/support/returns' },
-      { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/notifications' },
-      { icon: <Settings size={20} />, label: 'Store Settings & KYC', path: '/seller/settings' },
-    ],
-  },
+  { title: 'Overview', items: [{ icon: <LayoutDashboard size={20} />, label: 'Overview', path: '/seller/dashboard' }] },
+  { title: 'Sales', items: [
+    { icon: <ShoppingBag size={20} />, label: 'Orders', path: '/seller/orders' },
+    { icon: <FileText size={20} />, label: 'Manual Orders', path: '/seller/manual-orders' },
+  ] },
+  { title: 'Products', items: [
+    { icon: <Package size={20} />, label: 'All Products', path: '/seller/products' },
+    { icon: <Sparkles size={20} />, label: 'Add Product', path: '/seller/products/add' },
+    { icon: <BarChart3 size={20} />, label: 'Inventory', path: '/seller/inventory' },
+    { icon: <FileText size={20} />, label: 'Bulk Upload', path: '/seller/products/bulk' },
+  ] },
+  { title: 'Delivery', items: [
+    { icon: <Truck size={20} />, label: 'Shipments', path: '/seller/courier' },
+    { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
+  ] },
+  { title: 'Finance', items: [
+    { icon: <Wallet size={20} />, label: 'Earnings', path: '/seller/earnings' },
+    { icon: <CreditCard size={20} />, label: 'Payouts', path: '/seller/payouts' },
+  ] },
+  { title: 'Marketing', items: [
+    { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
+    { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
+    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
+    { icon: <Repeat size={20} />, label: 'Automation', path: '/social-automation/products' },
+  ] },
+  { title: 'Customers', items: [
+    { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
+    { icon: <Undo2 size={20} />, label: 'Returns', path: '/seller/support/returns' },
+    { icon: <MessageCircle size={20} />, label: 'Support', path: '/seller/support/tickets' },
+  ] },
+  { title: 'Settings', items: [
+    { icon: <User size={20} />, label: 'Profile & Business', path: '/seller/settings?section=profile' },
+    { icon: <Store size={20} />, label: 'Store', path: '/seller/settings?section=storefront' },
+    { icon: <MapPin size={20} />, label: 'Pickup & Delivery', path: '/seller/settings?section=addresses' },
+    { icon: <ShieldCheck size={20} />, label: 'Verification', path: '/seller/settings?section=verification' },
+    { icon: <CreditCard size={20} />, label: 'Payments & Payout', path: '/seller/settings?section=payout' },
+    { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/settings?section=telegram' },
+    { icon: <Lock size={20} />, label: 'Security', path: '/seller/settings?section=security' },
+  ] },
 ];
-
-// The More hub hosts everything that does not fit the four-item mobile tab bar
-// (Home / Orders / Products / More). Grouping mirrors the Stitch More Hub
-// screen: Operations, Growth & Finance, then Customer Service & Store.
 const sellerMoreHubGroups: DashboardMoreGroup[] = [
-  {
-    title: 'Operations & Logistics',
-    items: [
-      { icon: <Package size={20} />, label: 'Inventory & Stock Health', path: '/seller/inventory' },
-      { icon: <Truck size={20} />, label: 'Delivery & Shipments', path: '/seller/courier' },
-      { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
-      { icon: <FileText size={20} />, label: 'Manual Orders', path: '/seller/manual-orders' },
-    ],
-  },
-  {
-    title: 'Growth & Finance',
-    items: [
-      { icon: <Wallet size={20} />, label: 'Finance & Payouts', path: '/seller/earnings' },
-      { icon: <CreditCard size={20} />, label: 'Payout History', path: '/seller/payouts' },
-      { icon: <Zap size={20} />, label: 'Flash Sales', path: '/seller/flash-sale' },
-      { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
-      { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
-      { icon: <Share2 size={20} />, label: 'Social Commerce Automator', path: '/social-automation' },
-      { icon: <Sparkles size={20} />, label: 'Store Onboarding', path: '/seller/onboarding' },
-    ],
-  },
-  {
-    title: 'Customer Service & Store',
-    items: [
-      { icon: <Star size={20} />, label: 'Customer Feedback & Reviews', path: '/seller/support/reviews' },
-      { icon: <MessageCircle size={20} />, label: 'Helpdesk & Support Tickets', path: '/seller/support/tickets' },
-      { icon: <Undo2 size={20} />, label: 'Returns & Disputes', path: '/seller/support/returns' },
-      { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/notifications' },
-      { icon: <ShieldCheck size={20} />, label: 'Store Settings & KYC', path: '/seller/settings' },
-    ],
-  },
+  { title: 'Delivery', items: [
+    { icon: <Truck size={20} />, label: 'Shipments', path: '/seller/courier' },
+    { icon: <MapPin size={20} />, label: 'Pickup Locations', path: '/seller/pickup-locations' },
+  ] },
+  { title: 'Finance', items: [
+    { icon: <Wallet size={20} />, label: 'Earnings', path: '/seller/earnings' },
+    { icon: <CreditCard size={20} />, label: 'Payouts', path: '/seller/payouts' },
+  ] },
+  { title: 'Marketing', items: [
+    { icon: <Tag size={20} />, label: 'Coupons', path: '/seller/marketing' },
+    { icon: <Megaphone size={20} />, label: 'Promotions', path: '/seller/marketing/promotions' },
+    { icon: <Share2 size={20} />, label: 'Social Commerce', path: '/social-automation' },
+    { icon: <Repeat size={20} />, label: 'Automation', path: '/social-automation/products' },
+  ] },
+  { title: 'Customers', items: [
+    { icon: <Star size={20} />, label: 'Reviews', path: '/seller/support/reviews' },
+    { icon: <Undo2 size={20} />, label: 'Returns', path: '/seller/support/returns' },
+    { icon: <MessageCircle size={20} />, label: 'Support', path: '/seller/support/tickets' },
+  ] },
+  { title: 'Settings', items: [
+    { icon: <User size={20} />, label: 'Profile & Business', path: '/seller/settings?section=profile' },
+    { icon: <Store size={20} />, label: 'Store', path: '/seller/settings?section=storefront' },
+    { icon: <MapPin size={20} />, label: 'Pickup & Delivery', path: '/seller/settings?section=addresses' },
+    { icon: <ShieldCheck size={20} />, label: 'Verification', path: '/seller/settings?section=verification' },
+    { icon: <CreditCard size={20} />, label: 'Payments & Payout', path: '/seller/settings?section=payout' },
+    { icon: <Bell size={20} />, label: 'Notifications', path: '/seller/settings?section=telegram' },
+    { icon: <Lock size={20} />, label: 'Security', path: '/seller/settings?section=security' },
+  ] },
 ];
-
 const adminSections: DashboardConfig['sections'] = [
   { title: 'Overview', items: [
     { icon: <LayoutDashboard size={20} />, label: 'Admin Panel', path: '/admin/dashboard' },
