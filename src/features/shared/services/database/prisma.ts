@@ -22,9 +22,31 @@ function withTenantFilter(args: Record<string, any>, tenantId: string) {
   return nextArgs;
 }
 
+function buildRuntimeDatabaseUrl() {
+  const raw = process.env.DATABASE_URL?.trim();
+  if (!raw) {
+    throw new Error('DATABASE_URL is required');
+  }
+
+  try {
+    const url = new URL(raw);
+    // Vercel/serverless creates many short-lived Prisma clients. Prisma's
+    // default pool (often 15 connections) can exhaust Supabase session-pooler
+    // limits under normal concurrency. Start with one connection per function
+    // and let the external pooler absorb concurrency.
+    url.searchParams.set('connection_limit', '1');
+    return url.toString();
+  } catch {
+    // Preserve the existing value if a non-standard DATABASE_URL is supplied;
+    // env validation will report the malformed URL elsewhere.
+    return raw;
+  }
+}
+
 const basePrisma =
   globalThis.__amarshopPrisma__ ??
   new PrismaClient({
+    datasourceUrl: buildRuntimeDatabaseUrl(),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 
