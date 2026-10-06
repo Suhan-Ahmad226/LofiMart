@@ -174,5 +174,5 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     refundAmount: result.refundAmount,
   });
 
-  return NextResponse.json({ success: true, request: serializeAccountActionRequest(updated) });
+  return NextResponse.json({ success: true, request: serializeAccountActionRequest(result.request) });
 }
