@@ -1,6 +1,6 @@
 import { DashboardLayout } from '../../../../features/shared/layout/DashboardLayout';
-import { requireDashboardAccess } from '../../../server/next/requireDashboardAccess';
-import { ClientRedirect } from '../../../features/shared/app/ClientRedirect';
+import { requireDashboardAccess } from '../../../../server/next/requireDashboardAccess';
+import { ClientRedirect } from '../../../../features/shared/app/ClientRedirect';
 
 export default async function SocialAutomationLayout({ children }: { children: React.ReactNode }) {
   const access = await requireDashboardAccess(['seller'], '/seller/social-automation');
