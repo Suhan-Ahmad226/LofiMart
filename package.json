@@ -16,7 +16,7 @@
     "worker": "cross-env NODE_ENV=development APP_ENV=development tsx src/workers/index.ts",
     "start:worker": "cross-env NODE_ENV=production node dist/src/workers/index.js",
     "clean": "node scripts/clean.cjs",
-    "lint": "eslint src/ --max-warnings 50",
+    "lint": "eslint src/ --max-warnings 0",
     "lint:types": "tsc --noEmit -p tsconfig.lint.json",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
