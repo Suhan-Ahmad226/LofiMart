@@ -24,6 +24,15 @@ function serializeAccountActionRequest(request: any) {
 }
 
 async function handleAuditLog(userId: string | null | undefined, action: string, entityType: string, entityId?: string | null, metadata?: Record<string, unknown>) {
+  await prisma.auditLog.create({
+    data: {
+      userId: userId ? String(userId) : null,
+      action,
+      entityType,
+      entityId: entityId || null,
+      metadata: metadata ?? {},
+    },
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -46,73 +55,86 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Please add a short rejection note for the customer.' }, { status: 400 });
   }
 
-  const requestRecord = await prisma.accountActionRequest.findFirst({
-    where: {
-      id,
-      type: 'return_request',
-    },
-  });
+  const result = await prisma.$transaction(async (tx) => {
+    const requestRecord = await tx.accountActionRequest.findFirst({
+      where: { id, type: 'return_request' },
+    });
+    if (!requestRecord) return { error: 'Return request not found.', status: 404 as const };
 
-  if (!requestRecord) {
-    return NextResponse.json({ error: 'Return request not found.' }, { status: 404 });
-  }
+    const currentStatus = String(requestRecord.status || 'pending').toLowerCase();
+    if (currentStatus === 'refunded') return { error: 'This return request has already been marked as refunded.', status: 409 as const };
+    if (nextStatus === 'approved' && currentStatus !== 'pending') return { error: 'Only pending return requests can be approved.', status: 409 as const };
+    if (nextStatus === 'refunded' && currentStatus !== 'approved') return { error: 'Only approved return requests can be marked as refunded.', status: 409 as const };
+    if (nextStatus === 'rejected' && !['pending', 'approved'].includes(currentStatus)) return { error: 'This return request cannot be rejected anymore.', status: 409 as const };
 
-  const currentStatus = String(requestRecord.status || 'pending').toLowerCase();
-  const linkedOrder = requestRecord.orderId
-    ? await prisma.order.findUnique({
-        where: { id: String(requestRecord.orderId) },
-        include: {
-          transactions: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            include: {
-              refunds: true,
-            },
-          },
-        },
-      })
-    : null;
+    const linkedOrder = requestRecord.orderId
+      ? await tx.order.findUnique({
+          where: { id: String(requestRecord.orderId) },
+          select: { id: true, userId: true, tenantId: true, total: true },
+        })
+      : null;
 
-  if (currentStatus === 'refunded') {
-    return NextResponse.json({ error: 'This return request has already been marked as refunded.' }, { status: 409 });
-  }
+    if (nextStatus === 'refunded' && !linkedOrder) {
+      return { error: 'A linked order is required before this return can be marked as refunded.', status: 400 as const };
+    }
 
-  if (nextStatus === 'approved' && currentStatus !== 'pending') {
-    return NextResponse.json({ error: 'Only pending return requests can be approved.' }, { status: 409 });
-  }
-
-  if (nextStatus === 'refunded' && currentStatus !== 'approved') {
-    return NextResponse.json({ error: 'Only approved return requests can be marked as refunded.' }, { status: 409 });
-  }
-
-  if (nextStatus === 'refunded' && !linkedOrder) {
-    return NextResponse.json({ error: 'A linked order is required before this return can be marked as refunded.' }, { status: 400 });
-  }
-
-  if (nextStatus === 'rejected' && !['pending', 'approved'].includes(currentStatus)) {
-    return NextResponse.json({ error: 'This return request cannot be rejected anymore.' }, { status: 409 });
-  }
-
-  const updated = await prisma.accountActionRequest.update({
-    where: { id: requestRecord.id },
-    data: {
-      status: nextStatus,
-      resolutionNote: resolutionNote || null,
-      processedById: String(user.id),
-      processedAt: new Date(),
-    } as any,
-  });
-
-  if (nextStatus === 'refunded' && linkedOrder) {
-    await prisma.order.update({
-      where: { id: linkedOrder.id },
+    const claimed = await tx.accountActionRequest.updateMany({
+      where: { id: requestRecord.id, status: currentStatus },
       data: {
-        paymentStatus: 'refunded',
-        failureReason: null,
+        status: nextStatus,
+        resolutionNote: resolutionNote || null,
+        processedById: String(user.id),
+        processedAt: new Date(),
       },
     });
+    if (claimed.count !== 1) return { error: 'Return request changed by another request. Please refresh.', status: 409 as const };
+
+    let refundAmount = 0;
+    if (nextStatus === 'refunded' && linkedOrder) {
+      refundAmount = Number(linkedOrder.total);
+      await tx.order.update({
+        where: { id: linkedOrder.id },
+        data: { paymentStatus: 'refunded', failureReason: null },
+      });
+
+      if (linkedOrder.userId) {
+        const walletUser = await tx.user.update({
+          where: { id: linkedOrder.userId },
+          data: { walletBalance: { increment: refundAmount } },
+          select: { walletBalance: true, tenantId: true },
+        });
+        await tx.walletTransaction.create({
+          data: {
+            userId: linkedOrder.userId,
+            tenantId: linkedOrder.tenantId ?? walletUser.tenantId ?? null,
+            type: 'credit',
+            amount: refundAmount,
+            currency: 'BDT',
+            status: 'completed',
+            source: 'return_refund',
+            description: `Refund for order ${linkedOrder.id}`,
+            balanceAfter: walletUser.walletBalance,
+            metadata: { returnRequestId: requestRecord.id, orderId: linkedOrder.id, actor: 'admin' },
+          },
+        });
+      }
+    }
+
+    return {
+      request: { ...requestRecord, status: nextStatus, resolutionNote: resolutionNote || null, processedById: String(user.id) },
+      order: linkedOrder,
+      currentStatus,
+      refundAmount,
+    };
+  });
+
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
+  const requestRecord = result.request;
+  const currentStatus = result.currentStatus;
+  const linkedOrder = result.order;
   const orderActionUrl = requestRecord.orderId
     ? `/account/orders/${requestRecord.orderId}?return=${requestRecord.id}`
     : '/account/orders';
@@ -149,6 +171,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     previousStatus: currentStatus,
     status: nextStatus,
     resolutionNote: resolutionNote || null,
+    refundAmount: result.refundAmount,
   });
 
   return NextResponse.json({ success: true, request: serializeAccountActionRequest(updated) });
