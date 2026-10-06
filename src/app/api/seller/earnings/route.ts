@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   const [orderItems, products] = await Promise.all([
     prisma.orderItem.findMany({
       where: {
-        product: { sellerId },
+        product: { sellerId, tenantId: user.tenantId ?? undefined },
         order: {
           createdAt: { gte: startDate, lt: now },
           status: 'delivered',
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         order: { select: { createdAt: true, paymentStatus: true } },
       },
     }),
-    prisma.product.count({ where: { sellerId } }),
+    prisma.product.count({ where: { sellerId, tenantId: user.tenantId ?? undefined } }),
   ]);
 
   const totalEarnings = orderItems.reduce(
