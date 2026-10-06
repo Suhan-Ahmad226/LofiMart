@@ -90,7 +90,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (userRole === 'seller') {
       const sellerId = String(user.id);
       const sellerShipments = await prisma.orderShipment.findMany({
-        where: { orderId, sellerId },
+        where: {
+          orderId,
+          sellerId,
+          order: { tenantId: user.tenantId ?? undefined },
+        },
         select: { id: true },
       });
 
@@ -109,7 +113,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
 
       await prisma.orderShipment.updateMany({
-        where: { orderId, sellerId },
+        where: {
+          orderId,
+          sellerId,
+          order: { tenantId: user.tenantId ?? undefined },
+        },
         data: {
           status: status as any,
           courierProvider: undefined,
@@ -120,7 +128,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       if (typeof courierProvider === 'string' && courierProvider.trim()) {
         await prisma.orderShipment.updateMany({
-          where: { orderId, sellerId },
+          where: {
+            orderId,
+            sellerId,
+            order: { tenantId: user.tenantId ?? undefined },
+          },
           data: { courierProvider: courierProvider.trim() },
         });
       }
@@ -132,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
 
       const shipments = await prisma.orderShipment.findMany({
-        where: { orderId },
+        where: { orderId, order: { tenantId: user.tenantId ?? undefined } },
         select: { status: true },
       });
       const statuses = shipments.map((shipment) => String(shipment.status));
