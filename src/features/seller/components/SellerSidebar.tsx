@@ -4,7 +4,7 @@ import React from 'react';
 import { Link } from '../../../lib/navigation';
 import { cn } from '../../../lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/features/shared/ui/tooltip';
-import { ChevronDown, HelpCircle, LayoutGrid, Menu, X } from 'lucide-react';
+import { ChevronDown, HelpCircle, LayoutGrid, X } from 'lucide-react';
 import type { DashboardMenuSection } from '@/features/shared/dashboard/dashboard.types';
 
 interface SellerSidebarProps {
@@ -24,13 +24,7 @@ interface SellerSidebarProps {
   moreLabel?: string;
 }
 
-/**
- * Seller Center navigation.
- *
- * Visual language follows the supplied dashboard reference: soft surface rail,
- * compact section headers, indented children with a guide line, numeric chips,
- * clear primary active state, and touch-friendly mobile drawer behavior.
- */
+/** Seller Center navigation with compact section icons, nested guide rails, badges and accessible mobile drawer. */
 export function SellerSidebar({
   collapsed,
   currentSections,
@@ -58,7 +52,6 @@ export function SellerSidebar({
     if (!mobileOpen || typeof window === 'undefined') return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMobileOpen(false);
@@ -67,9 +60,7 @@ export function SellerSidebar({
       if (event.key !== 'Tab') return;
       const panel = drawerPanelRef.current;
       if (!panel) return;
-      const focusable = panel.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      const focusable = panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -81,7 +72,6 @@ export function SellerSidebar({
         first.focus();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -89,10 +79,7 @@ export function SellerSidebar({
     };
   }, [mobileOpen, setMobileOpen]);
 
-  const isActivePath = (itemPath: string) => {
-    if (itemPath === pathname) return true;
-    return pathname.startsWith(`${itemPath}/`);
-  };
+  const isActivePath = (itemPath: string) => itemPath === pathname || pathname.startsWith(`${itemPath}/`);
 
   const renderBadge = (count: number, compact = false) => {
     if (count <= 0) return null;
@@ -100,9 +87,7 @@ export function SellerSidebar({
       <span
         className={cn(
           'lm-numeric inline-flex shrink-0 items-center justify-center rounded-full font-bold',
-          compact
-            ? 'h-1.5 w-1.5 bg-lm-primary p-0'
-            : 'min-w-6 bg-lm-canvas px-2 py-0.5 text-[11px] text-lm-meta',
+          compact ? 'h-1.5 w-1.5 bg-lm-primary p-0' : 'min-w-6 bg-lm-canvas px-2 py-0.5 text-[11px] text-lm-meta',
         )}
         aria-label={`${count} items`}
       >
@@ -134,9 +119,7 @@ export function SellerSidebar({
                     )}
                   >
                     <span aria-hidden="true">{firstItem.icon}</span>
-                    {sectionBadgeTotal > 0 ? (
-                      <span className="absolute right-1 top-1">{renderBadge(sectionBadgeTotal, true)}</span>
-                    ) : null}
+                    {sectionBadgeTotal > 0 ? <span className="absolute right-1 top-1">{renderBadge(sectionBadgeTotal, true)}</span> : null}
                   </Link>
                 }
               />
@@ -156,21 +139,12 @@ export function SellerSidebar({
                 sectionActive ? 'text-lm-heading' : 'text-lm-meta hover:bg-lm-canvas hover:text-lm-heading',
               )}
             >
-              <span
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
-                  sectionActive ? 'bg-lm-primary-soft text-lm-primary-active' : 'bg-lm-canvas text-lm-primary',
-                )}
-              >
+              <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors', sectionActive ? 'bg-lm-primary-soft text-lm-primary-active' : 'bg-lm-canvas text-lm-primary')}>
                 {firstItem.icon ?? <LayoutGrid size={18} />}
               </span>
               <span className="flex-1 truncate font-semibold">{section.title}</span>
               {sectionBadgeTotal > 0 ? renderBadge(sectionBadgeTotal) : null}
-              <ChevronDown
-                size={15}
-                aria-hidden="true"
-                className={cn('shrink-0 text-slate-400 transition-transform duration-200', !isOpen && '-rotate-90')}
-              />
+              <ChevronDown size={15} aria-hidden="true" className={cn('shrink-0 text-slate-400 transition-transform duration-200', !isOpen && '-rotate-90')} />
             </button>
 
             {isOpen ? (
@@ -186,9 +160,7 @@ export function SellerSidebar({
                         aria-current={itemActive ? 'page' : undefined}
                         className={cn(
                           'flex min-h-10 items-center justify-between gap-2 rounded-lg px-3 text-[13px] transition-colors',
-                          itemActive
-                            ? 'bg-lm-primary-soft font-semibold text-lm-primary-active'
-                            : 'text-lm-meta hover:bg-lm-canvas hover:text-lm-heading',
+                          itemActive ? 'bg-lm-primary-soft font-semibold text-lm-primary-active' : 'text-lm-meta hover:bg-lm-canvas hover:text-lm-heading',
                         )}
                       >
                         <span className="truncate">{item.label}</span>
@@ -209,14 +181,10 @@ export function SellerSidebar({
           aria-current={isActivePath(morePath) ? 'page' : undefined}
           className={cn(
             'mt-2 flex min-h-10 items-center gap-2 rounded-xl px-3 text-[13px] font-semibold transition-colors',
-            isActivePath(morePath)
-              ? 'bg-lm-primary-soft text-lm-primary-active'
-              : 'text-lm-meta hover:bg-lm-canvas hover:text-lm-heading',
+            isActivePath(morePath) ? 'bg-lm-primary-soft text-lm-primary-active' : 'text-lm-meta hover:bg-lm-canvas hover:text-lm-heading',
           )}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lm-canvas text-lm-primary">
-            <LayoutGrid size={18} />
-          </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lm-canvas text-lm-primary"><LayoutGrid size={18} /></span>
           <span className="flex-1 truncate">{moreLabel}</span>
           {moreBadgeCount > 0 ? renderBadge(moreBadgeCount) : null}
         </Link>
@@ -224,35 +192,9 @@ export function SellerSidebar({
     </div>
   );
 
-  const sidebarFooter = (
-    <div className="shrink-0 border-t border-slate-200 bg-white/70 p-3">
-      <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-between gap-2')}>
-        {!collapsed ? (
-          <Link to="/help" className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-lm-meta transition hover:bg-lm-canvas hover:text-lm-heading">
-            <HelpCircle size={17} />
-            <span className="truncate text-[12px] font-semibold">Help Center</span>
-          </Link>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => collapsed && setMobileOpen(false)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-lm-meta transition hover:bg-lm-canvas hover:text-lm-heading"
-          aria-label={collapsed ? 'Open seller navigation' : 'Collapse seller navigation'}
-        >
-          {collapsed ? <Menu size={18} /> : <ChevronDown size={18} className="rotate-90" />}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <TooltipProvider>
-      <aside
-        className={cn(
-          'seller-sidebar-wrap sticky top-16 hidden h-[calc(100vh-4rem)] self-start overflow-hidden transition-[width] duration-300 lg:block',
-          collapsed ? 'lg:w-[var(--lm-rail-width-collapsed)]' : 'lg:w-[var(--lm-rail-width)]',
-        )}
-      >
+      <aside className={cn('seller-sidebar-wrap sticky top-16 hidden h-[calc(100vh-4rem)] self-start overflow-hidden transition-[width] duration-300 lg:block', collapsed ? 'lg:w-[var(--lm-rail-width-collapsed)]' : 'lg:w-[var(--lm-rail-width)]')}>
         <div className="seller-sidebar-shell flex h-full min-h-0 flex-col overflow-hidden">
           {!collapsed ? (
             <div className="shrink-0 border-b border-slate-200 px-4 py-3">
@@ -260,10 +202,13 @@ export function SellerSidebar({
               <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-lm-meta">Seller Center</div>
             </div>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200">
-            {renderNavContent()}
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200">{renderNavContent()}</div>
+          <div className="shrink-0 border-t border-slate-200 bg-white/70 p-3">
+            <Link to="/help" className="flex min-h-9 items-center gap-2 rounded-lg px-2 py-2 text-lm-meta transition hover:bg-lm-canvas hover:text-lm-heading">
+              <HelpCircle size={17} />
+              {!collapsed ? <span className="truncate text-[12px] font-semibold">Help Center</span> : null}
+            </Link>
           </div>
-          {sidebarFooter}
         </div>
       </aside>
 
@@ -283,10 +228,7 @@ export function SellerSidebar({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">{renderNavContent()}</div>
               <div className="border-t border-slate-200 bg-slate-50/70 p-3">
-                <Link to="/help" className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-lm-meta hover:bg-white hover:text-lm-heading">
-                  <HelpCircle size={18} />
-                  Help Center
-                </Link>
+                <Link to="/help" className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-lm-meta hover:bg-white hover:text-lm-heading"><HelpCircle size={18} />Help Center</Link>
               </div>
             </div>
           </div>
