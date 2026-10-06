@@ -236,12 +236,12 @@ export async function publishFacebookPagePost(
   const endpoint = input.imageUrl ? 'photos' : 'feed';
   const url = new URL(`https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/${encodeURIComponent(pageId)}/${endpoint}`);
   const body: Record<string, string | boolean> = {
-    caption: input.caption,
     appsecret_proof: getAppSecretProof(pageAccessToken, config.appSecret),
   };
 
   if (input.imageUrl) {
     body.url = input.imageUrl;
+    body.caption = input.caption;
     body.published = true;
   } else {
     body.message = input.caption;
