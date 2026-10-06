@@ -230,11 +230,23 @@ function validateProductionServerEnv(
 
   const facebookAppId = serverEnv.FACEBOOK_APP_ID || serverEnv.FACEBOOK_CLIENT_ID;
   const facebookAppSecret = serverEnv.FACEBOOK_APP_SECRET || serverEnv.FACEBOOK_CLIENT_SECRET;
-  if (facebookAppId || facebookAppSecret) {
+  const facebookRedirectUri =
+    serverEnv.FACEBOOK_REDIRECT_URI ||
+    `${serverEnv.FRONTEND_URL}/api/social-automation/accounts/oauth/callback`;
+
+  if (facebookAppId || facebookAppSecret || serverEnv.FACEBOOK_REDIRECT_URI) {
     if (!facebookAppId || !facebookAppSecret) {
       errors.push(
-        'Facebook OAuth is partially configured. Set both FACEBOOK_APP_ID and FACEBOOK_APP_SECRET (or the FACEBOOK_CLIENT_ID/FACEBOOK_CLIENT_SECRET aliases).',
+        'Facebook OAuth is partially configured. Set both FACEBOOK_APP_ID and FACEBOOK_APP_SECRET (legacy CLIENT_ID/CLIENT_SECRET aliases are accepted temporarily).',
       );
+    }
+
+    if (!facebookRedirectUri.startsWith('https://')) {
+      errors.push('FACEBOOK_REDIRECT_URI must use HTTPS in production.');
+    }
+
+    if (facebookRedirectUri.includes('localhost')) {
+      errors.push('FACEBOOK_REDIRECT_URI must not point to localhost in production.');
     }
   }
 
