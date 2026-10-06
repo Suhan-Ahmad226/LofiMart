@@ -17,6 +17,8 @@ type GeminiResponse = {
   };
 };
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+
 export function createGeminiCaptionProvider(): SocialCaptionProvider {
   return {
     async generate(
@@ -40,9 +42,11 @@ export function createGeminiCaptionProvider(): SocialCaptionProvider {
         };
       }
 
+      const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+
       try {
         const response = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
           {
             method: 'POST',
             headers: {
