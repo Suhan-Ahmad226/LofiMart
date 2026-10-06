@@ -41,6 +41,7 @@ interface AdminDashboardInsights {
   salesSeries: Array<{ label: string; revenue: number; orders: number }>;
   activityHeatmap: Array<{ day: string; hours: Array<{ hour: number; count: number }> }>;
   lowStockProducts: Array<{ id: string; name: string; stock: number }>;
+  lowStockCount: number;
   activeShipments: number;
   activeRiskFlags: number;
   readinessSummary?: {
@@ -124,6 +125,7 @@ const emptyInsights: AdminDashboardInsights = {
   salesSeries: [],
   activityHeatmap: [],
   lowStockProducts: [],
+  lowStockCount: 0,
   activeShipments: 0,
   activeRiskFlags: 0,
   readinessSummary: emptyReadinessSummary,
@@ -180,6 +182,7 @@ export const AdminDashboard = () => {
               salesSeries: Array.isArray(insightsPayload.salesSeries) ? insightsPayload.salesSeries : [],
               activityHeatmap: Array.isArray(insightsPayload.activityHeatmap) ? insightsPayload.activityHeatmap : [],
               lowStockProducts: Array.isArray(insightsPayload.lowStockProducts) ? insightsPayload.lowStockProducts : [],
+              lowStockCount: Number(insightsPayload.lowStockCount || 0),
               activeShipments: Number(insightsPayload.activeShipments || 0),
               activeRiskFlags: Number(insightsPayload.activeRiskFlags || 0),
               readinessSummary: insightsPayload.readinessSummary || emptyReadinessSummary,
@@ -315,7 +318,7 @@ export const AdminDashboard = () => {
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 sm:col-span-2">
               <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-700">Low Stock Products</p>
-              <p className="text-2xl font-bold text-slate-950">{insights.lowStockProducts.length}</p>
+              <p className="text-2xl font-bold text-slate-950">{insights.lowStockCount}</p>
             </div>
           </div>
         </div>
@@ -355,7 +358,7 @@ export const AdminDashboard = () => {
                 <div className="flex-1">
                   <p className="text-sm">
                     <span className="font-bold">{order.customer_name || order.user_name || 'Customer'}</span>{' '}
-                    placed order <span className="font-bold">#ASB-{order.id}</span> for{' '}
+                    placed order <span className="font-bold">#{order.id}</span> for{' '}
                     <span className="font-bold">{formatPrice(order.total)}</span>
                   </p>
                   <p className="mt-1 text-xs text-slate-400">
