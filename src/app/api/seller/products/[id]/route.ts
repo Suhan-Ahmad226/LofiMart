@@ -17,6 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     where: {
       id,
       sellerId: String(user.id),
+      tenantId: user.tenantId ?? undefined,
     },
   });
 
