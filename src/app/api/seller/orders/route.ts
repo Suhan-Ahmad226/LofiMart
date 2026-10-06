@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
   const sellerId = String(user.id);
   const orders = await prisma.order.findMany({
     where: {
+      tenantId: user.tenantId ?? undefined,
       items: {
         some: {
-          product: { sellerId },
+          product: { sellerId, tenantId: user.tenantId ?? undefined },
         },
       },
     },
