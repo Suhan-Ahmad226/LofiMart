@@ -221,7 +221,11 @@ export async function publishOneTimePost(opts: {
   } catch (error) {
     const { kind, message } = describeFacebookError(error);
     const accountStatus =
-      kind === 'token' ? SocialAccountStatus.EXPIRED : SocialAccountStatus.ERROR;
+      kind === 'token'
+        ? SocialAccountStatus.EXPIRED
+        : kind === 'permission'
+          ? SocialAccountStatus.ERROR
+          : undefined;
     await failPost(message, accountStatus);
     throw new SocialAutomationPublishError(message);
   }
