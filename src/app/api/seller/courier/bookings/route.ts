@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const bookings = await prisma.orderShipment.findMany({
-      where: { sellerId },
+      where: { sellerId, order: { tenantId: user.tenantId ?? undefined } },
       orderBy: { createdAt: 'desc' },
       include: {
         order: {
@@ -138,11 +138,14 @@ export async function POST(request: NextRequest) {
 
   const sellerId = String(user.id);
   const isAdmin = user.role === 'admin';
+  if (!isAdmin && !user.tenantId) {
+    return NextResponse.json({ error: 'Seller tenant context is required.' }, { status: 403 });
+  }
 
   try {
     const shipment = shipmentId
-      ? await findSellerShipment(shipmentId, sellerId, isAdmin)
-      : await findOrCreateShipmentFromOrder({ orderId, sellerId, warehouseId, isAdmin });
+      ? await findSellerShipment(shipmentId, sellerId, isAdmin, user.tenantId)
+      : await findOrCreateShipmentFromOrder({ orderId, sellerId, warehouseId, isAdmin, tenantId: user.tenantId });
 
     if (!shipment) {
       return NextResponse.json({ error: 'Shipment not found.' }, { status: 404 });
@@ -218,9 +221,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function findSellerShipment(shipmentId: string, sellerId: string, isAdmin: boolean) {
+async function findSellerShipment(shipmentId: string, sellerId: string, isAdmin: boolean, tenantId: string | null) {
   return prisma.orderShipment.findFirst({
-    where: { id: shipmentId, ...(isAdmin ? {} : { sellerId }) },
+    where: { id: shipmentId, order: tenantId ? { tenantId } : undefined, ...(isAdmin ? {} : { sellerId }) },
     select: { id: true, orderId: true, warehouseId: true, status: true },
   });
 }
@@ -237,6 +240,13 @@ async function findOrCreateShipmentFromOrder({
   sellerId,
   warehouseId,
   isAdmin,
+  tenantId,
+}: {
+  orderId: string;
+  sellerId: string;
+  warehouseId: string;
+  isAdmin: boolean;
+  tenantId: string | null;
 }: {
   orderId: string;
   sellerId: string;
