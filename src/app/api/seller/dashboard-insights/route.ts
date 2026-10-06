@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
           where: { product: { sellerId } },
         },
       },
-      take: 12,
+      // Bound chart input while covering substantially more than the old 12-order sample.
+      take: 1000,
     }),
     prisma.product.findMany({
       where: { sellerId },
