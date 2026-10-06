@@ -134,6 +134,7 @@ async function runAutomationCycle(automation: AutomationWithProduct, now: Date):
     if (!nextRunAt) {
       await completeAutomation(automation.id, 'SKIPPED_OUT_OF_STOCK');
     }
+    await releaseClaim(automation.id);
     return { status: 'skipped_out_of_stock' };
   }
 
@@ -162,6 +163,7 @@ async function runAutomationCycle(automation: AutomationWithProduct, now: Date):
       data: { status: SocialAutomationRunStatus.CLAIMED, attempts: { increment: 1 } },
     });
     if (refreshed.count === 0) {
+      await releaseClaim(automation.id);
       return { status: 'skipped_not_claimed' };
     }
     runId = existingRun.id;
@@ -247,11 +249,43 @@ async function runAutomationCycle(automation: AutomationWithProduct, now: Date):
     });
 
     if (publishResult.status === SocialPostStatus.FAILED) {
+      const message = publishResult.errorMessage ?? 'Facebook publishing failed.';
       await prisma.socialAutomationRun.update({
         where: { id: runId },
-        data: { status: SocialAutomationRunStatus.FAILED, errorCode: 'PUBLISH_FAILED', errorMessage: publishResult.errorMessage, completedAt: now },
+        data: {
+          status: SocialAutomationRunStatus.FAILED,
+          errorCode: 'PUBLISH_FAILED',
+          errorMessage: message,
+          completedAt: now,
+        },
       });
-      return { status: 'failed', retryable: true, message: publishResult.errorMessage ?? 'Facebook publishing failed.' };
+
+      const nextAttempt = automation.attempts + 1;
+      await prisma.socialPostAutomation.update({
+        where: { id: automation.id },
+        data: {
+          lastRunAt: now,
+          lastStatus: 'FAILED',
+          lastError: message,
+          attempts: nextAttempt,
+        },
+      });
+
+      await releaseClaim(automation.id);
+
+      if (nextAttempt >= SOCIAL_AUTOMATION_MAX_ATTEMPTS) {
+        await pauseAutomation(
+          automation.id,
+          'Publishing failed repeatedly. Reconnect Facebook to resume.',
+          sellerId,
+        );
+      }
+
+      return {
+        status: 'failed',
+        retryable: true,
+        message,
+      };
     }
 
     const postsCreated = automation.postsCreated + 1;
@@ -301,11 +335,19 @@ async function runAutomationCycle(automation: AutomationWithProduct, now: Date):
   } catch (error) {
     const { kind, message } = describeFacebookError(error);
     const retryable = kind !== 'token';
-    const accountStatus = kind === 'token' ? SocialAccountStatus.EXPIRED : SocialAccountStatus.ERROR;
-    await prisma.socialAccount.updateMany({
-      where: { id: account.id },
-      data: { status: accountStatus, updatedAt: now },
-    });
+    const accountStatus =
+      kind === 'token'
+        ? SocialAccountStatus.EXPIRED
+        : kind === 'permission'
+          ? SocialAccountStatus.ERROR
+          : null;
+
+    if (accountStatus) {
+      await prisma.socialAccount.updateMany({
+        where: { id: account.id },
+        data: { status: accountStatus, updatedAt: now },
+      });
+    }
 
     await prisma.socialAutomationRun.update({
       where: { id: runId },
