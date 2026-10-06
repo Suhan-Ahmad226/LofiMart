@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
         INNER JOIN "Product" p ON p."id" = oi."productId"
         INNER JOIN "Order" o ON o."id" = oi."orderId"
         WHERE p."sellerId" = ${sellerId}
+          AND p."tenantId" = ${tenantId}
+          AND o."tenantId" = ${tenantId}
           AND o."status" <> 'cancelled'
         GROUP BY oi."productId"
         ORDER BY revenue DESC, sales DESC
@@ -68,6 +70,8 @@ export async function GET(request: NextRequest) {
         INNER JOIN "Product" p ON p."id" = oi."productId"
         INNER JOIN "Order" o ON o."id" = oi."orderId"
         WHERE p."sellerId" = ${sellerId}
+          AND p."tenantId" = ${tenantId}
+          AND o."tenantId" = ${tenantId}
           AND o."status" <> 'cancelled'
           AND o."createdAt" >= ${thirtyDaysAgo}
       `,
@@ -77,6 +81,8 @@ export async function GET(request: NextRequest) {
         INNER JOIN "Product" p ON p."id" = oi."productId"
         INNER JOIN "Order" o ON o."id" = oi."orderId"
         WHERE p."sellerId" = ${sellerId}
+          AND p."tenantId" = ${tenantId}
+          AND o."tenantId" = ${tenantId}
           AND o."status" <> 'cancelled'
           AND o."createdAt" >= ${sixtyDaysAgo}
           AND o."createdAt" < ${thirtyDaysAgo}
@@ -108,20 +114,20 @@ export async function GET(request: NextRequest) {
 
   const [liveProducts, lowStockCount, outOfStockCount, pendingOrders, deliveredOrders, cancelledOrders, activeShipments, deliveredShipments, last30Orders] =
     await Promise.all([
-      prisma.product.count({ where: { sellerId, productStatus: 'published' } }),
-      prisma.product.count({ where: { sellerId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
-      prisma.product.count({ where: { sellerId, stock: { lte: 0 } } }),
+      prisma.product.count({ where: { sellerId, tenantId, productStatus: 'published' } }),
+      prisma.product.count({ where: { sellerId, tenantId, stock: { lte: LOW_STOCK_THRESHOLD } } }),
+      prisma.product.count({ where: { sellerId, tenantId, stock: { lte: 0 } } }),
       prisma.order.count({
         where: {
           createdAt: { gte: thirtyDaysAgo },
-          items: { some: { product: { sellerId } } },
+          items: { some: { product: { sellerId, tenantId } } },
           status: { in: ['pending', 'processing', 'packed', 'ready_for_pickup', 'pickup_requested'] },
         },
       }),
-      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } }, status: 'delivered' } }),
+      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId, tenantId } } }, status: 'delivered' } }),
       prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } }, status: 'cancelled' } }),
-      prisma.orderShipment.count({ where: { sellerId, status: { in: ACTIVE_SHIPMENT_STATUSES } } }),
-      prisma.orderShipment.count({ where: { sellerId, status: 'delivered' } }),
+      prisma.orderShipment.count({ where: { sellerId, order: { tenantId }, status: { in: ACTIVE_SHIPMENT_STATUSES } } }),
+      prisma.orderShipment.count({ where: { sellerId, order: { tenantId }, status: 'delivered' } }),
       prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, status: { not: 'cancelled' }, items: { some: { product: { sellerId } } } } }),
     ]);
 
