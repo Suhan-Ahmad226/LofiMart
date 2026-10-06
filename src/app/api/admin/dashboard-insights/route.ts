@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   };
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [recentOrders, lowStockProducts, activeShipments, riskFlags, sellers, resellers, payoutMethodCounts, warehouses, referrals, resellerMarkups] =
+  const [recentOrders, lowStockProducts, lowStockCount, activeShipments, riskFlags, sellers, resellers, payoutMethodCounts, warehouses, referrals, resellerMarkups] =
     await Promise.all([
       safe(
         'recentOrders',
@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, name: true, stock: true },
         }),
       ),
+      safe('lowStockCount', 0, prisma.product.count({ where: { stock: { lte: LOW_STOCK_THRESHOLD } } })),
       safe(
         'activeShipments',
         0,
@@ -135,6 +136,7 @@ export async function GET(request: NextRequest) {
       name: product.name,
       stock: product.stock,
     })),
+    lowStockCount,
     activeShipments,
     activeRiskFlags: riskFlags,
     readinessSummary: {
