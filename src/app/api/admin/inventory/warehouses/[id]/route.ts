@@ -27,7 +27,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
     }
 
-    if (user.role === 'seller' && warehouse.managerId && warehouse.managerId !== String(user.id)) {
+    if (user.role === 'seller' && warehouse.managerId !== String(user.id)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
