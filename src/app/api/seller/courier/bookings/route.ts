@@ -257,6 +257,17 @@ async function findOrCreateShipmentFromOrder({
   const ownsOrder = order.items.some((item) => item.product?.sellerId === sellerId);
   if (!ownsOrder && !isAdmin) return null;
 
+  if (!isAdmin && warehouseId) {
+    const warehouse = await prisma.warehouse.findFirst({
+      where: {
+        id: warehouseId,
+        managerId: sellerId,
+      },
+      select: { id: true },
+    });
+    if (!warehouse) return null;
+  }
+
   const existing = await prisma.orderShipment.findFirst({
     where: { orderId, sellerId },
     orderBy: { createdAt: 'asc' },
