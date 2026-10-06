@@ -16,6 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     where: {
       id,
       userId: String(user.id),
+      tenantId: user.tenantId ?? undefined,
     },
     include: {
       items: {
