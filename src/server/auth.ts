@@ -133,7 +133,7 @@ export function requireSellerRole(user: AuthenticatedUser): NextResponse | null 
 }
 
 export function requireRole(user: AuthenticatedUser, roles: Role[]): NextResponse | null {
-  if (user.role !== 'admin' && !roles.includes(user.role)) {
+  if (!roles.includes(user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return null;

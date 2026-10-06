@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         : await prisma.courierStoreMapping.findMany({
             where: {
               provider: providerCode,
-              warehouse: { managerId: String(user.id) },
+              warehouse: { managerId: String(user.id), tenantId: user.tenantId ?? undefined },
               ...(warehouseId ? { warehouseId } : {}),
             },
             orderBy: { createdAt: 'desc' },
@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
       secondaryContact: true,
       otpNumber: true,
       managerId: true,
+      tenantId: true,
     },
   });
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Warehouse not found.' }, { status: 404 });
   }
 
-  if (user.role !== 'admin' && warehouse.managerId !== String(user.id)) {
+  if (user.role !== 'admin' && (warehouse.managerId !== String(user.id) || warehouse.tenantId !== user.tenantId)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 

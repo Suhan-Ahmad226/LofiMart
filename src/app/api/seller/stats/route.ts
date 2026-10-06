@@ -125,10 +125,10 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId, tenantId } } }, status: 'delivered' } }),
-      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId } } }, status: 'cancelled' } }),
+      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, items: { some: { product: { sellerId, tenantId } } }, status: 'cancelled' } }),
       prisma.orderShipment.count({ where: { sellerId, order: { tenantId }, status: { in: ACTIVE_SHIPMENT_STATUSES } } }),
       prisma.orderShipment.count({ where: { sellerId, order: { tenantId }, status: 'delivered' } }),
-      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, status: { not: 'cancelled' }, items: { some: { product: { sellerId } } } } }),
+      prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo }, status: { not: 'cancelled' }, items: { some: { product: { sellerId, tenantId } } } } }),
     ]);
 
   const revenue30d = Number(periodRevenue[0]?.total ?? 0);

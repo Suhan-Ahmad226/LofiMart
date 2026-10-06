@@ -138,7 +138,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       if (typeof trackingId === 'string' && trackingId.trim()) {
         await prisma.orderShipment.updateMany({
-          where: { orderId, sellerId },
+          where: { orderId, sellerId, order: { tenantId: user.tenantId ?? undefined } },
           data: { trackingId: trackingId.trim() },
         });
       }
@@ -190,7 +190,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: orderId, ...(user.tenantId ? { tenantId: user.tenantId } : {}) },
       data: {
         status: status as any,
         courierProvider: typeof courierProvider === 'string' && courierProvider.trim() ? courierProvider.trim() : undefined,
