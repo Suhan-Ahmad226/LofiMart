@@ -13,7 +13,7 @@ import {
 } from './facebook.service';
 
 vi.mock('@/lib/env', () => ({
-  getServerEnv: vi.fn(() => ({ FRONTEND_URL: 'https://shop.test' })),
+  getServerEnv: vi.fn(() => ({ FRONTEND_URL: 'https://shop.test/' })),
 }));
 
 describe('getFacebookConfig', () => {
@@ -58,10 +58,18 @@ describe('getFacebookConfig', () => {
     expect(config?.appSecret).toBe('client-secret');
   });
 
-  it('honors an explicit FACEBOOK_REDIRECT_URI override', () => {
+  it('normalizes trailing slashes on the fallback redirect URI', () => {
     process.env['FACEBOOK_APP_ID'] = 'app-id';
     process.env['FACEBOOK_APP_SECRET'] = 'app-secret';
-    process.env['FACEBOOK_REDIRECT_URI'] = 'https://shop.test/custom/callback';
+
+    const config = getFacebookConfig();
+    expect(config?.redirectUri).toBe('https://shop.test/api/social-automation/accounts/oauth/callback');
+  });
+
+  it('normalizes trailing slashes on an explicit FACEBOOK_REDIRECT_URI override', () => {
+    process.env['FACEBOOK_APP_ID'] = 'app-id';
+    process.env['FACEBOOK_APP_SECRET'] = 'app-secret';
+    process.env['FACEBOOK_REDIRECT_URI'] = 'https://shop.test/custom/callback///';
 
     const config = getFacebookConfig();
     expect(config?.redirectUri).toBe('https://shop.test/custom/callback');
