@@ -8,6 +8,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function handleAuditLog(userId: string | null | undefined, action: string, entityType: string, entityId?: string | null, metadata?: Record<string, unknown>) {
+  await prisma.auditLog.create({
+    data: {
+      userId: userId ? String(userId) : null,
+      action,
+      entityType,
+      entityId: entityId || null,
+      metadata: metadata ?? {},
+    },
+  });
 }
 
 function serializePayoutTransaction(transaction: any) {
@@ -44,27 +53,48 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const notes = typeof body?.notes === 'string' ? body.notes.trim() : null;
 
-  const transaction = await prisma.payoutTransaction.update({
+  const transaction = await prisma.payoutTransaction.findUnique({
     where: { id },
+    include: { user: { select: { id: true, tenantId: true, role: true } } },
+  });
+  if (!transaction) {
+    return NextResponse.json({ error: 'Payout transaction not found' }, { status: 404 });
+  }
+
+  const currentStatus = String(transaction.status);
+  const allowedTransitions: Record<string, string[]> = {
+    pending: ['approved', 'rejected'],
+    approved: ['paid', 'rejected'],
+    processing: ['paid', 'rejected'],
+  };
+  if (!allowedTransitions[currentStatus]?.includes(status)) {
+    return NextResponse.json(
+      { error: `Cannot change payout from ${currentStatus} to ${status}` },
+      { status: 409 },
+    );
+  }
+
+  const updated = await prisma.payoutTransaction.updateMany({
+    where: { id, status: currentStatus },
     data: {
       status,
       notes: notes || undefined,
-      processedAt: new Date(),
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          tenantId: true,
-          role: true,
-        },
-      },
+      processedAt: status === 'paid' || status === 'rejected' ? new Date() : null,
     },
   });
+  if (updated.count !== 1) {
+    return NextResponse.json({ error: 'Payout changed by another request. Please refresh.' }, { status: 409 });
+  }
+
+  const transactionAfter = await prisma.payoutTransaction.findUnique({
+    where: { id },
+    include: { user: { select: { id: true, tenantId: true, role: true } } },
+  });
+  if (!transactionAfter) return NextResponse.json({ error: 'Payout transaction not found' }, { status: 404 });
 
   await createNotification({
-    userId: transaction.user.id,
-    tenantId: transaction.user.tenantId ?? null,
+    userId: transactionAfter.user.id,
+    tenantId: transactionAfter.user.tenantId ?? null,
     type: 'payout',
     title: status === 'approved' ? 'Payout request approved' : status === 'rejected' ? 'Payout request rejected' : 'Payout sent',
     message:
@@ -73,13 +103,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         : status === 'rejected'
           ? notes || 'Your payout request could not be approved.'
           : 'Your payout has been marked as paid.',
-    actionUrl: `/settings/${transaction.user.role}/payout`,
+    actionUrl: `/settings/${transactionAfter.user.role}/payout`,
     metadata: {
-      payoutTransactionId: transaction.id,
+      payoutTransactionId: transactionAfter.id,
       status,
     },
   });
 
-  await handleAuditLog(String(user.id), 'admin.payout.reviewed', 'payout_transaction', transaction.id, { status });
-  return NextResponse.json({ success: true, transaction: serializePayoutTransaction(transaction) });
+  await handleAuditLog(String(user.id), 'admin.payout.reviewed', 'payout_transaction', transactionAfter.id, {
+    previousStatus: currentStatus,
+    status,
+    tenantId: transactionAfter.user.tenantId ?? null,
+  });
+  return NextResponse.json({ success: true, transaction: serializePayoutTransaction(transactionAfter) });
 }
