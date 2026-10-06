@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
     prisma.orderItem.findMany({
       where: {
         product: { sellerId },
-        order: { createdAt: { gte: startDate, lt: now } },
+        order: {
+          createdAt: { gte: startDate, lt: now },
+          status: 'delivered',
+        },
       },
       include: {
         product: { select: { id: true, name: true } },
