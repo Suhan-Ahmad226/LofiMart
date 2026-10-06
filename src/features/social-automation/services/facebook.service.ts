@@ -49,13 +49,18 @@ function getTrimmedEnv(name: string) {
   return value?.trim() || undefined;
 }
 
+function normalizeRedirectUri(value: string) {
+  return value.trim().replace(/\/+$/, '');
+}
+
 export function getFacebookConfig(): FacebookConfig | null {
   const env = getServerEnv();
   const appId = getTrimmedEnv('FACEBOOK_APP_ID') || getTrimmedEnv('FACEBOOK_CLIENT_ID');
   const appSecret = getTrimmedEnv('FACEBOOK_APP_SECRET') || getTrimmedEnv('FACEBOOK_CLIENT_SECRET');
-  const redirectUri =
-    getTrimmedEnv('FACEBOOK_REDIRECT_URI') ||
-    `${env.FRONTEND_URL}/api/social-automation/accounts/oauth/callback`;
+  const configuredRedirectUri = getTrimmedEnv('FACEBOOK_REDIRECT_URI');
+  const redirectUri = normalizeRedirectUri(
+    configuredRedirectUri || `${env.FRONTEND_URL}/api/social-automation/accounts/oauth/callback`,
+  );
 
   if (!appId || !appSecret) return null;
 
