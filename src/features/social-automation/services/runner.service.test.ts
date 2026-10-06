@@ -199,7 +199,9 @@ describe('processDueAutomations', () => {
   it('skips out-of-stock cycles without publishing or counting them', async () => {
     const automation = makeAutomation({ product: { ...makeAutomation().product, stock: 0 } });
     prisma.socialPostAutomation.findMany.mockResolvedValue([automation]);
-    prisma.socialPostAutomation.updateMany.mockResolvedValueOnce({ count: 1 });
+    prisma.socialPostAutomation.updateMany
+      .mockResolvedValueOnce({ count: 1 }) // claim
+      .mockResolvedValueOnce({ count: 1 }); // release
     prisma.socialPostAutomation.update.mockResolvedValue(automation);
     prisma.product.findFirst.mockResolvedValue(automation.product);
 
@@ -224,6 +226,38 @@ describe('processDueAutomations', () => {
 
     expect(outcomes).toEqual([{ status: 'skipped_not_claimed' }]);
     expect(vi.mocked(publishOneTimePost)).not.toHaveBeenCalled();
+  });
+
+  it('releases the claim when an existing failed post result is returned', async () => {
+    const automation = makeAutomation();
+    prisma.socialPostAutomation.findMany.mockResolvedValue([automation]);
+    prisma.socialPostAutomation.updateMany
+      .mockResolvedValueOnce({ count: 1 }) // claim
+      .mockResolvedValueOnce({ count: 1 }); // release
+    prisma.socialAutomationRun.findFirst.mockResolvedValue(null);
+    prisma.socialAutomationRun.create.mockResolvedValue({ id: 'run-1' });
+    prisma.socialAutomationRun.update.mockResolvedValue({ id: 'run-1' });
+    prisma.product.findFirst.mockResolvedValue(automation.product);
+    prisma.socialAccount.findFirst.mockResolvedValue({ id: 'account-1', accountId: 'page-1' });
+    vi.mocked(publishOneTimePost).mockResolvedValue({
+      postId: 'post-1',
+      duplicate: true,
+      status: 'FAILED',
+      externalPostId: null,
+      publishedAt: null,
+      errorMessage: 'Facebook publishing failed.',
+    });
+    prisma.socialPostAutomation.update.mockResolvedValue(automation);
+
+    const outcomes = await processDueAutomations(new Date('2026-09-12T00:00:00.000Z'));
+
+    expect(outcomes).toEqual([
+      { status: 'failed', retryable: true, message: 'Facebook publishing failed.' },
+    ]);
+    expect(prisma.socialPostAutomation.updateMany).toHaveBeenLastCalledWith({
+      where: { id: 'automation-1' },
+      data: { claimedAt: null, claimExpiresAt: null, claimNonce: null },
+    });
   });
 
   it('pauses the automation and notifies the seller when the token is expired', async () => {
