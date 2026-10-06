@@ -14,6 +14,7 @@ const staticRoutes: MetadataRoute.Sitemap = [
   { url: `${siteUrl}/help`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
   { url: `${siteUrl}/returns`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
   { url: `${siteUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+  { url: `${siteUrl}/privacy/data-deletion`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.2 },
   { url: `${siteUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
   { url: `${siteUrl}/reseller`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
   { url: `${siteUrl}/seller`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
