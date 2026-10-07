@@ -356,10 +356,8 @@ export function SocialAutomationDashboard() {
   }, [loadDashboard]);
 
   useEffect(() => {
-    const openSettings = () => setActiveTab('settings');
-    window.addEventListener('social-automation-settings', openSettings);
-    return () => window.removeEventListener('social-automation-settings', openSettings);
-  }, []);
+    if (searchParams.get('settings') === '1') setActiveTab('settings');
+  }, [searchParams]);
 
   const saveSettings = async () => {
     if (!token || !settings) return;
