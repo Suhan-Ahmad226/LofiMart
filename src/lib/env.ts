@@ -96,6 +96,7 @@ const ServerEnvSchema = z.object({
   FACEBOOK_APP_SECRET: optionalString(),
   FACEBOOK_REDIRECT_URI: optionalString(),
   SOCIAL_AUTOMATION_WORKER_TOKEN: optionalString(),
+  CRON_SECRET: optionalString(),
   SOCIAL_AUTOMATION_LEASE_SECONDS: intFromString('SOCIAL_AUTOMATION_LEASE_SECONDS', 5 * 60),
   SOCIAL_AUTOMATION_SWEEP_MS: intFromString('SOCIAL_AUTOMATION_SWEEP_MS', 5 * 60 * 1000),
   WHATSAPP_PHONE_NUMBER_ID: optionalString(),
