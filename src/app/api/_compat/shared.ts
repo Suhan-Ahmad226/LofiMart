@@ -273,6 +273,7 @@ export async function getProfilePayload(userId: string) {
           role: verification.role,
           status: verification.status,
           document_type: verification.documentType,
+          document_number: verification.documentNumber ?? null,
           business_name: verification.businessName ?? null,
           business_license_url: verification.businessLicenseUrl ?? null,
           notes: verification.notes ?? null,
