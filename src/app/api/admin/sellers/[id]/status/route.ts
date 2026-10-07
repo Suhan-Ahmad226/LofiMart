@@ -7,7 +7,6 @@ import {
   getMissingSellerApprovalRequirements,
   isKycComplete,
   normalizeSellerStatus,
-  isKycComplete,
 } from '@/lib/sellerApproval';
 
 export const runtime = 'nodejs';
@@ -60,9 +59,7 @@ export async function POST(request: NextRequest, context: { params: Params }) {
     phoneVerified: seller.phoneVerified,
     hasStoreInfo: Boolean(seller.storeName?.trim() && seller.storefrontSlug?.trim()),
     hasPickupLocation: seller.warehouses.length > 0,
-    hasKycSubmission: Boolean(
-      seller.verificationSubmission && isKycComplete(seller.verificationSubmission.status),
-    ),
+    hasKycSubmission: isKycComplete(seller.verificationSubmission),
     hasPayoutMethod: seller.payoutMethods.length > 0,
   });
 
