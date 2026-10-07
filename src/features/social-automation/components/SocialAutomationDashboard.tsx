@@ -422,7 +422,7 @@ export function SocialAutomationDashboard() {
         title="Social Automation"
         description="Automate your product promotion across social channels."
         actions={
-          <Link to="/social-automation/products" className="btn-primary inline-flex h-11 items-center gap-2">
+          <Link to="/seller/social-automation/products" className="btn-primary inline-flex h-11 items-center gap-2">
             <Zap size={18} />
             <span>Post Products</span>
           </Link>
@@ -431,20 +431,6 @@ export function SocialAutomationDashboard() {
 
       <SocialAutomationNav active="overview" />
 
-      <div className="flex max-w-md rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-        {(['overview', 'settings'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`h-10 flex-1 rounded-xl px-4 text-sm font-bold capitalize transition ${
-              activeTab === tab ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
-            }`}
-          >
-            {tab === 'overview' ? 'Overview' : 'Automation Settings'}
-          </button>
-        ))}
-      </div>
 
       {error ? (
         <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
