@@ -4,7 +4,7 @@ import { requireApiUser, requireSellerRole } from '../../_compat/shared';
 import {
   buildSellerApprovalRequirements,
   getMissingSellerApprovalRequirements,
-  isKycSubmittedStatus,
+  isKycComplete,
 } from '@/lib/sellerApproval';
 
 export const runtime = 'nodejs';
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       storefrontSlug: true,
       warehouses: { select: { id: true }, take: 1 },
       payoutMethods: { select: { id: true }, take: 1 },
-      verificationSubmission: { select: { status: true } },
+      verificationSubmission: { select: { status: true, documentNumber: true, documents: { select: { type: true } } } },
       sellerStatus: true,
     },
   });
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     hasStoreInfo: Boolean(seller.storeName?.trim() && seller.storefrontSlug?.trim()),
     hasPickupLocation: seller.warehouses.length > 0,
     hasKycSubmission: Boolean(
-      seller.verificationSubmission && isKycSubmittedStatus(seller.verificationSubmission.status),
+      seller.verificationSubmission && isKycComplete(seller.verificationSubmission.status),
     ),
     hasPayoutMethod: seller.payoutMethods.length > 0,
   });
