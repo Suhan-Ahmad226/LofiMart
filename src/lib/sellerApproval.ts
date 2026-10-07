@@ -44,15 +44,13 @@ export type SellerApprovalCapability =
   | "marketplace_visibility";
 
 const SELLER_STATUS_SET = new Set<string>(Object.values(SELLER_STATUSES));
+const KYC_SUBMITTED_STATUSES = new Set(["pending", "submitted", "under_review", "approved", "verified"]);
+const REQUIRED_KYC_DOCUMENT_TYPES = new Set(["front", "back", "selfie"]);
 
 export function normalizeSellerStatus(status: unknown): SellerStatus {
   const value = String(status || "").trim().toLowerCase();
-  if (SELLER_STATUS_SET.has(value)) {
-    return value as SellerStatus;
-  }
-  if (value === "active") {
-    return SELLER_STATUSES.approved;
-  }
+  if (SELLER_STATUS_SET.has(value)) return value as SellerStatus;
+  if (value === "active") return SELLER_STATUSES.approved;
   return SELLER_STATUSES.draft;
 }
 
@@ -77,16 +75,22 @@ export function getSellerStatusTone(status: unknown) {
   return "neutral";
 }
 
-/**
- * A KYC submission is considered present once the seller has successfully
- * submitted it. `pending` is the normal initial review state created by the
- * KYC submission API; `under_review` and `approved` are also valid submitted
- * states. Rejected KYC is intentionally not considered complete.
- */
 export function isKycSubmittedStatus(status: unknown) {
-  return ["pending", "submitted", "under_review", "approved"].includes(
-    String(status || "").trim().toLowerCase(),
+  return KYC_SUBMITTED_STATUSES.has(String(status || "").trim().toLowerCase());
+}
+
+export function isKycComplete(submission: {
+  status?: unknown;
+  documentNumber?: unknown;
+  documents?: Array<{ type?: unknown }>;
+} | null | undefined) {
+  if (!submission || !isKycSubmittedStatus(submission.status)) return false;
+  if (!String(submission.documentNumber ?? "").trim()) return false;
+
+  const types = new Set(
+    (submission.documents ?? []).map((document) => String(document.type ?? "").trim().toLowerCase()),
   );
+  return [...REQUIRED_KYC_DOCUMENT_TYPES].every((type) => types.has(type));
 }
 
 export function buildSellerApprovalRequirements(input: {
@@ -98,36 +102,12 @@ export function buildSellerApprovalRequirements(input: {
   hasPayoutMethod: boolean;
 }): SellerApprovalRequirement[] {
   return [
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.email_verified,
-      label: "Email verified",
-      completed: Boolean(input.emailVerified),
-    },
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.phone_verified,
-      label: "Phone verified",
-      completed: Boolean(input.phoneVerified),
-    },
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.store_info_completed,
-      label: "Store info completed",
-      completed: Boolean(input.hasStoreInfo),
-    },
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.pickup_location_added,
-      label: "Pickup location added",
-      completed: Boolean(input.hasPickupLocation),
-    },
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.kyc_submitted,
-      label: "KYC submitted",
-      completed: Boolean(input.hasKycSubmission),
-    },
-    {
-      id: SELLER_APPROVAL_REQUIREMENT_IDS.payout_method_added,
-      label: "Payout method added",
-      completed: Boolean(input.hasPayoutMethod),
-    },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.email_verified, label: "Email verified", completed: Boolean(input.emailVerified) },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.phone_verified, label: "Phone verified", completed: Boolean(input.phoneVerified) },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.store_info_completed, label: "Store info completed", completed: Boolean(input.hasStoreInfo) },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.pickup_location_added, label: "Pickup location added", completed: Boolean(input.hasPickupLocation) },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.kyc_submitted, label: "KYC submitted", completed: Boolean(input.hasKycSubmission) },
+    { id: SELLER_APPROVAL_REQUIREMENT_IDS.payout_method_added, label: "Payout method added", completed: Boolean(input.hasPayoutMethod) },
   ];
 }
 
@@ -149,23 +129,14 @@ export function getSellerApprovalBlockedActionLabel(capability: SellerApprovalCa
     courier_booking: "book courier pickups",
     marketplace_visibility: "appear publicly in the marketplace",
   };
-
   return labels[capability];
 }
 
 export function getSellerApprovalBlockedMessage(capability: SellerApprovalCapability, status: unknown) {
   const action = getSellerApprovalBlockedActionLabel(capability);
   const normalized = normalizeSellerStatus(status);
-
-  if (normalized === SELLER_STATUSES.rejected) {
-    return `Your seller account needs fixes before you can ${action}. Update the required information and submit again.`;
-  }
-  if (normalized === SELLER_STATUSES.suspended) {
-    return `Your seller account is suspended. Contact an admin before you can ${action}.`;
-  }
-  if (normalized === SELLER_STATUSES.pending_review || normalized === SELLER_STATUSES.under_review) {
-    return `Your seller account is still under admin review. You can complete setup, but you cannot ${action} yet.`;
-  }
-
+  if (normalized === SELLER_STATUSES.rejected) return `Your seller account needs fixes before you can ${action}. Update the required information and submit again.`;
+  if (normalized === SELLER_STATUSES.suspended) return `Your seller account is suspended. Contact an admin before you can ${action}.`;
+  if (normalized === SELLER_STATUSES.pending_review || normalized === SELLER_STATUSES.under_review) return `Your seller account is still under admin review. You can complete setup, but you cannot ${action} yet.`;
   return `Complete onboarding and admin approval before you can ${action}.`;
 }
