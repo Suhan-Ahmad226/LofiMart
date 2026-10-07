@@ -263,6 +263,14 @@ export function ProfileManager({ role, title, description, enabledSections, show
       }
 
       setProfile(profileData);
+      if (profileData.verification) {
+        setVerificationMeta({
+          document_type: profileData.verification.document_type || 'nid',
+          document_number: profileData.verification.document_number || '',
+          business_name: profileData.verification.business_name || '',
+          notes: profileData.verification.notes || '',
+        });
+      }
       setProfileForm({
         name: profileData.user?.name || '',
         phone: profileData.user?.phone || '',
