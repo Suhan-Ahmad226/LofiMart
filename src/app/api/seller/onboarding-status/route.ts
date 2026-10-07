@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
   }
 
+  const verificationStatus = String(seller.verificationSubmission?.status || '').toLowerCase();
   const hasKycSubmission = isKycComplete(seller.verificationSubmission);
 
   const requirements = buildSellerApprovalRequirements({
