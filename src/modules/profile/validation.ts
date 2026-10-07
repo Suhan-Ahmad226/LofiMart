@@ -111,7 +111,7 @@ const verificationDocumentSchema = z.union([
 ]);
 
 export const verificationSubmissionSchema = z.object({
-  document_number: z.string().trim().max(80).optional().or(z.literal('')),
+  document_number: z.string().trim().min(1, 'Document number is required').max(80),
   document_type: z.enum(['nid', 'birth_certificate', 'passport']).default('nid'),
   business_name: z.string().trim().max(160).optional(),
   notes: z.string().trim().max(500).optional(),
