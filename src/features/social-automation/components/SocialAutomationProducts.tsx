@@ -6,6 +6,7 @@ import { TableSkeleton } from '@/features/shared/ui/DataSkeletons';
 import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import { formatPrice } from '@/lib/utils';
 import toast from '@/lib/toast';
+import { SocialAutomationNav } from '@/features/social-automation/components/SocialAutomationNav';
 
 type SocialAutomation = {
   id: string;
@@ -551,10 +552,11 @@ export function SocialAutomationProducts() {
   return (
     <div className="space-y-6">
       <SellerPageHeader
-        eyebrow="Social Automation > Products"
-        title="Social Products"
-        description="Select existing seller products and schedule Facebook posts or recurring automations."
+        eyebrow="Social Automation"
+        title="Products"
+        description="Choose products to publish now, schedule once, or automate recurring posts."
       />
+      <SocialAutomationNav active="products" />
 
       {error ? (
         <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm font-semibold text-rose-700">

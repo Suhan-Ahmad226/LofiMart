@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/features/shared/state/UserContext';
 import { SellerEmptyState, SellerPageHeader, SellerStatCard } from '@/features/seller/components/SellerPageHeader';
 import { ListCardSkeleton } from '@/features/shared/ui/DataSkeletons';
+import { SocialAutomationNav } from '@/features/social-automation/components/SocialAutomationNav';
 import toast from '@/lib/toast';
 
 type DashboardPayload = {
@@ -354,6 +355,10 @@ export function SocialAutomationDashboard() {
     void loadDashboard();
   }, [loadDashboard]);
 
+  useEffect(() => {
+    if (searchParams.get('settings') === '1') setActiveTab('settings');
+  }, [searchParams]);
+
   const saveSettings = async () => {
     if (!token || !settings) return;
     setSaving(true);
@@ -424,7 +429,9 @@ export function SocialAutomationDashboard() {
         }
       />
 
-      <div className="flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+      <SocialAutomationNav active="overview" />
+
+      <div className="flex max-w-md rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
         {(['overview', 'settings'] as const).map((tab) => (
           <button
             key={tab}
@@ -434,7 +441,7 @@ export function SocialAutomationDashboard() {
               activeTab === tab ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
             }`}
           >
-            {tab}
+            {tab === 'overview' ? 'Overview' : 'Automation Settings'}
           </button>
         ))}
       </div>
