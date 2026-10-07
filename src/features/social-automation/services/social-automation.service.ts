@@ -374,7 +374,8 @@ export async function createPostOrAutomation(sellerId: string, rawInput: unknown
   if (input.postingType === 'recurring') {
     const intervalDays = input.intervalDays ?? settings.defaultIntervalDays;
     const startAt = scheduledAt ?? new Date();
-    const nextRunAt = calculateNextRun(startAt, intervalDays);
+    // The selected schedule time is the first run. Subsequent runs advance by intervalDays.
+    const nextRunAt = startAt;
     const automation = await prisma.socialPostAutomation.create({
       data: {
         sellerId,
