@@ -5,8 +5,9 @@ import {
   SELLER_STATUSES,
   buildSellerApprovalRequirements,
   getMissingSellerApprovalRequirements,
-  isKycSubmittedStatus,
+  isKycComplete,
   normalizeSellerStatus,
+  isKycComplete,
 } from '@/lib/sellerApproval';
 
 export const runtime = 'nodejs';
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest, context: { params: Params }) {
       storefrontSlug: true,
       warehouses: { select: { id: true }, take: 1 },
       payoutMethods: { select: { id: true }, take: 1 },
-      verificationSubmission: { select: { id: true, status: true } },
+      verificationSubmission: { select: { id: true, status: true, documentNumber: true, documents: { select: { type: true } } } },
     },
   });
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest, context: { params: Params }) {
     hasStoreInfo: Boolean(seller.storeName?.trim() && seller.storefrontSlug?.trim()),
     hasPickupLocation: seller.warehouses.length > 0,
     hasKycSubmission: Boolean(
-      seller.verificationSubmission && isKycSubmittedStatus(seller.verificationSubmission.status),
+      seller.verificationSubmission && isKycComplete(seller.verificationSubmission.status),
     ),
     hasPayoutMethod: seller.payoutMethods.length > 0,
   });
