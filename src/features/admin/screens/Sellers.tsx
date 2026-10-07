@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle, ExternalLink, Eye, Loader2, Search, ShieldAlert, Store, XCircle } from 'lucide-react';
+import { CheckCircle, FileText, ExternalLink, Eye, Loader2, Search, ShieldAlert, Store, XCircle } from 'lucide-react';
 import toast from '@/lib/toast';
 import { useNavigate } from '../../../lib/navigation';
 import { useUser } from '../../../features/shared/state/UserContext';
