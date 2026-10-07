@@ -106,6 +106,7 @@
    Source of truth: Google Stitch project 5778808678858409263, design system
    "LofiMart Seller Center" (Corporate Modern SaaS, teal primary).
 
+
    The legacy platform palette above stays untouched so the customer, reseller
    and admin surfaces keep their current appearance. Every seller-surface
    component reads these variables instead, which lets later seller phases
