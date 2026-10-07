@@ -11,7 +11,7 @@
   "crons": [
     {
       "path": "/api/cron/social-automation",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
