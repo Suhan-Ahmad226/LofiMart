@@ -3,7 +3,7 @@ import { requireApiUser } from '@/app/api/products/shared';
 import { requireRole } from '@/app/api/_compat/shared';
 import { prisma } from '@/lib/server';
 import { serializeUser, serializeAddress, serializeNotificationPreference } from '@/app/api/_compat/shared';
-import { normalizeSellerStatus } from '@/lib/sellerApproval';
+import { buildSellerApprovalRequirements, isKycComplete, normalizeSellerStatus } from '@/lib/sellerApproval';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -167,6 +167,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             : null,
           rejection_reason: targetUser.rejectionReason ?? null,
           suspension_reason: targetUser.suspensionReason ?? null,
+          requirements: buildSellerApprovalRequirements({
+            emailVerified: Boolean(targetUser.emailVerified),
+            phoneVerified: Boolean(targetUser.phoneVerified),
+            hasStoreInfo: Boolean(targetUser.storeName?.trim() && targetUser.storefrontSlug?.trim()),
+            hasPickupLocation: targetUser.warehouses.length > 0,
+            hasKycSubmission: isKycComplete(targetUser.verificationSubmission),
+            hasPayoutMethod: targetUser.payoutMethods.length > 0,
+          }),
         }
       : null,
   });
