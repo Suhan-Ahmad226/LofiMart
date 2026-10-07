@@ -6,6 +6,7 @@ import {
   getMissingSellerApprovalRequirements,
   canSellerSubmitForReview,
   normalizeSellerStatus,
+  isKycComplete,
 } from '@/lib/sellerApproval';
 
 export const runtime = 'nodejs';
@@ -50,16 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
   }
 
-  const verificationStatus = String(seller.verificationSubmission?.status || '').toLowerCase();
-  const verificationDocumentTypes = new Set(
-    (seller.verificationSubmission?.documents || []).map((document) => String(document.type).toLowerCase()),
-  );
-  const hasKycSubmission =
-    ['pending', 'submitted', 'under_review', 'approved', 'verified'].includes(verificationStatus) &&
-    Boolean(seller.verificationSubmission?.documentNumber?.trim()) &&
-    verificationDocumentTypes.has('front') &&
-    verificationDocumentTypes.has('back') &&
-    verificationDocumentTypes.has('selfie');
+  const hasKycSubmission = isKycComplete(seller.verificationSubmission);
 
   const requirements = buildSellerApprovalRequirements({
     emailVerified: seller.emailVerified,
