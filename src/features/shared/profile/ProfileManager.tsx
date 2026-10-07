@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Camera,
+  CheckCircle2,
+  FileText,
   ChevronDown,
   CreditCard,
   Lock,
@@ -477,14 +479,25 @@ export function ProfileManager({ role, title, description, enabledSections, show
   const submitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     await runAction(async () => {
+      const existingDocuments = new Map(
+        (verification?.documents || []).map((document: any) => [String(document.type || document.kind || '').toLowerCase(), document]),
+      );
+
+      if (!verificationMeta.document_number.trim()) {
+        throw new Error('Document number is required before submitting KYC.');
+      }
+
       const requiredFiles = {
         front: verificationFiles.front,
         back: verificationFiles.back,
         selfie: verificationFiles.selfie,
       };
 
-      if (!requiredFiles.front || !requiredFiles.back || !requiredFiles.selfie) {
-        throw new Error('Front, back, and selfie files are required for verification.');
+      const missingDocument = (['front', 'back', 'selfie'] as const).find(
+        (key) => !requiredFiles[key] && !existingDocuments.get(key)?.url && !existingDocuments.get(key)?.file_url,
+      );
+      if (missingDocument) {
+        throw new Error('Document front, document back, and selfie are required. Upload any missing document.');
       }
 
       const uploadVerificationFile = async (file: File, fieldName: string) => {
@@ -517,9 +530,23 @@ export function ProfileManager({ role, title, description, enabledSections, show
       };
 
       const uploadedDocuments: Record<string, any> = {};
-      for (const [fieldName, file] of Object.entries(verificationFiles)) {
-        if (!file) continue;
-        uploadedDocuments[fieldName] = await uploadVerificationFile(file, fieldName);
+      for (const fieldName of ['front', 'back', 'selfie', 'business_license']) {
+        const file = verificationFiles[fieldName];
+        if (file) {
+          uploadedDocuments[fieldName] = await uploadVerificationFile(file, fieldName);
+          continue;
+        }
+
+        const existing = existingDocuments.get(fieldName);
+        const existingUrl = existing?.url || existing?.file_url;
+        if (existingUrl) {
+          uploadedDocuments[fieldName] = {
+            url: String(existingUrl),
+            public_id: undefined,
+            mime_type: existing?.mime_type || existing?.mimeType || 'image/jpeg',
+            size_bytes: Number(existing?.size_bytes || existing?.sizeBytes || 1),
+          };
+        }
       }
 
       const response = await fetch('/api/users/verification', {
@@ -1009,6 +1036,27 @@ export function ProfileManager({ role, title, description, enabledSections, show
             onToggle={toggleSection}
           >
             <form onSubmit={submitVerification}>
+              <div className="mb-4 grid gap-3 rounded-[1.5rem] border border-primary/10 bg-primary/[0.04] p-4 sm:grid-cols-3">
+                {[
+                  ['front', 'Document front'],
+                  ['back', 'Document back'],
+                  ['selfie', 'Identity selfie'],
+                ].map(([key, label]) => {
+                  const saved = (verification?.documents || []).some((document: any) => String(document.type || document.kind || '').toLowerCase() === key && (document.url || document.file_url));
+                  const ready = Boolean(verificationFiles[key]) || saved;
+                  return (
+                    <div key={key} className="flex items-center gap-3 rounded-2xl bg-white px-3 py-3 shadow-sm">
+                      <CheckCircle2 size={18} className={ready ? 'text-emerald-600' : 'text-gray-300'} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-900">{label}</p>
+                        <p className={`text-[11px] ${ready ? 'text-emerald-700' : 'text-gray-500'}`}>
+                          {ready ? 'Ready' : 'Required'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               <div className="mb-4 rounded-2xl bg-bg-light px-4 py-3 text-sm text-gray-600">
                 Current status:{' '}
                 <span className="font-bold capitalize text-primary">{verification?.status || 'not submitted'}</span>
@@ -1027,11 +1075,12 @@ export function ProfileManager({ role, title, description, enabledSections, show
                   <option value="passport">Passport</option>
                 </select>
                 <input
+                  required
                   value={verificationMeta.document_number}
                   onChange={(e) => setVerificationMeta((current) => ({ ...current, document_number: e.target.value.replace(/[^0-9A-Za-z-]/g, '').slice(0, 80) }))}
                   placeholder="NID / document number"
-                  inputMode="numeric"
-                  className="rounded-xl bg-bg-light px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"
+                  inputMode="text"
+                  className="rounded-xl bg-bg-light px-4 py-3 outline-none ring-1 ring-black/5 focus:ring-2 focus:ring-primary/20"
                 />
                 <input
                   value={verificationMeta.business_name}
