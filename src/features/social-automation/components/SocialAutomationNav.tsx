@@ -34,14 +34,13 @@ export function SocialAutomationNav({ active }: { active?: string }) {
           );
         })}
         <span className="mx-1 hidden h-10 w-px bg-slate-100 sm:block" />
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent('social-automation-settings'))}
+        <Link
+          to="/seller/social-automation?settings=1"
           className="inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-950 sm:px-4"
         >
           <Settings2 size={16} />
           <span>Settings</span>
-        </button>
+        </Link>
       </div>
     </nav>
   );
