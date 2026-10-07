@@ -13,6 +13,10 @@ function serializeVerificationSubmission(submission: any) {
   return {
     id: submission.id,
     status: submission.status,
+    document_type: submission.documentType ?? null,
+    document_number: submission.documentNumber ?? null,
+    business_name: submission.businessName ?? null,
+    business_license_url: submission.businessLicenseUrl ?? null,
     submitted_at: submission.submittedAt ? new Date(submission.submittedAt).toISOString() : undefined,
     reviewed_at: submission.reviewedAt ? new Date(submission.reviewedAt).toISOString() : null,
     rejection_reason: submission.rejectionReason ?? null,
@@ -21,8 +25,10 @@ function serializeVerificationSubmission(submission: any) {
     documents: submission.documents?.map((doc: any) => ({
       id: doc.id,
       type: doc.type,
+      kind: doc.type,
       url: doc.url,
-      status: doc.status,
+      file_url: doc.url,
+      status: doc.status ?? 'uploaded',
     })) ?? [],
     reviewed_by: submission.reviewedBy
       ? {
