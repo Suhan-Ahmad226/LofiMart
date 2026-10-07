@@ -135,7 +135,17 @@ export const AdminSellersPage = () => {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.error?.message || data?.error || 'Failed to update seller status');
+        const missing = Array.isArray(data?.error?.missing_requirements) ? data.error.missing_requirements : [];
+        const labels: Record<string, string> = {
+          email_verified: 'Email verified',
+          phone_verified: 'Phone verified',
+          store_info_completed: 'Store information',
+          pickup_location_added: 'Pickup location',
+          kyc_submitted: 'Complete KYC',
+          payout_method_added: 'Payout method',
+        };
+        const detail = missing.map((item: string) => labels[item] || item).join(', ');
+        throw new Error(detail ? `Complete before approval: ${detail}` : (data?.error?.message || data?.error || 'Failed to update seller status'));
       }
       toast.success(`Seller moved to ${reviewAction.replaceAll('_', ' ')}.`);
       await Promise.all([fetchSellers(), fetchSellerDetail(selectedSellerId)]);
@@ -297,6 +307,26 @@ export const AdminSellersPage = () => {
                 </div>
               ) : null}
 
+              <section className="rounded-[1.75rem] border border-black/5 bg-slate-50/70 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold text-slate-950">Approval readiness</p>
+                    <p className="mt-1 text-xs text-slate-500">Every item must be complete before the final approval action.</p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm">
+                    {(selectedSeller.seller_approval?.requirements || []).filter((item: any) => item.completed).length}/6
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {(selectedSeller.seller_approval?.requirements || []).map((item: any) => (
+                    <div key={item.id} className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${item.completed ? 'border-emerald-100 bg-emerald-50/70' : 'border-amber-100 bg-amber-50/70'}`}>
+                      <CheckCircle size={17} className={item.completed ? 'text-emerald-600' : 'text-slate-300'} />
+                      <span className={`text-xs font-semibold ${item.completed ? 'text-emerald-800' : 'text-amber-800'}`}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-950">Review actions</h3>
                 <div className="flex flex-wrap gap-2">
@@ -337,18 +367,33 @@ export const AdminSellersPage = () => {
               </div>
 
               <div className="space-y-4">
+                <section className="rounded-[1.75rem] border border-black/5 bg-white">
+                  <div className="flex items-center justify-between gap-4 border-b border-black/5 px-4 py-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-950">KYC identity details</h3>
+                      <p className="mt-1 text-xs text-slate-500">Submitted identity information for manual review.</p>
+                    </div>
+                    <FileText size={18} className="text-primary" />
+                  </div>
+                  <div className="grid gap-3 p-4 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50 p-3"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Document</p><p className="mt-1 text-sm font-semibold text-slate-900">{selectedSeller.verification?.document_type || 'N/A'}</p></div>
+                    <div className="rounded-2xl bg-slate-50 p-3"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Document number</p><p className="mt-1 text-sm font-semibold text-slate-900">{selectedSeller.verification?.document_number || 'Missing'}</p></div>
+                    <div className="rounded-2xl bg-slate-50 p-3 sm:col-span-2"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Business</p><p className="mt-1 text-sm font-semibold text-slate-900">{selectedSeller.verification?.business_name || 'Not provided'}</p></div>
+                  </div>
+                </section>
+
                 <section>
                   <h3 className="text-sm font-bold text-slate-950">KYC documents</h3>
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
                     {(selectedSeller.verification?.documents || []).map((document: any) => (
                       <a
                         key={document.id}
-                        href={document.file_url || '#'}
+                        href={document.file_url || document.url || '#'}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-2xl border border-border bg-secondary/20 p-4 text-sm text-slate-700"
                       >
-                        <p className="font-semibold capitalize">{String(document.kind || 'document').replaceAll('_', ' ')}</p>
+                        <p className="font-semibold capitalize">{String(document.kind || document.type || 'document').replaceAll('_', ' ')}</p>
                         <p className="mt-1 text-xs text-muted-foreground">Open uploaded file</p>
                       </a>
                     ))}
