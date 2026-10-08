@@ -336,7 +336,7 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
      * with no pickup point to collect from and pushes every parcel into a manual
      * flow.
      */
-    const warehouseIdByProductId = new Map<string, string>();
+    const allocationsByProductId = new Map<string, Array<{ warehouseId: string; quantity: number }>>();
     const quoteWarehouseIds = new Set((quote.shipments || []).map((parcel) => parcel.warehouseId));
 
     for (const item of pricedItems) {
@@ -350,60 +350,78 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
         throw new Error(`Insufficient stock for ${product?.name || item.productId}`);
       }
 
-      const quotedWarehouseId = (quote.shipments || []).find((parcel) =>
-        (parcel.allocations || []).some((allocation) => allocation.productId === item.productId),
-      )?.warehouseId;
-      if (!quotedWarehouseId) {
-        throw new Error('Shipping quote is missing the exact warehouse allocation for this item. Please refresh checkout.');
-      }
-      const inventoryItem = await tx.inventoryItem.findFirst({
-        where: {
-          productId: item.productId,
-          warehouseId: quotedWarehouseId,
-          quantity: { gte: item.quantity },
-        },
-        orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }, { warehouseId: 'asc' }],
-      });
-
-      if (!inventoryItem) {
+      const quotedAllocations = (quote.shipments || []).flatMap((parcel) =>
+        (parcel.allocations || [])
+          .filter((allocation) => allocation.productId === item.productId)
+          .map((allocation) => ({
+            warehouseId: parcel.warehouseId,
+            quantity: allocation.quantity,
+          })),
+      );
+      const quotedQuantity = quotedAllocations.reduce((sum, allocation) => sum + allocation.quantity, 0);
+      if (quotedQuantity !== item.quantity) {
         throw new Error(
-          `Insufficient warehouse inventory for ${productById.get(item.productId)?.name || item.productId}`,
+          'Shipping quote is missing the exact warehouse allocation for this item. Please refresh checkout.',
         );
       }
 
-      warehouseIdByProductId.set(item.productId, inventoryItem.warehouseId);
+      const actualAllocations: Array<{ warehouseId: string; quantity: number }> = [];
 
-      const inventoryUpdated = await tx.inventoryItem.updateMany({
-        where: {
-          id: inventoryItem.id,
-          quantity: { gte: item.quantity },
-        },
-        data: {
-          quantity: { decrement: item.quantity },
-        },
-      });
+      for (const allocation of quotedAllocations) {
+        const inventoryItem = await tx.inventoryItem.findFirst({
+          where: {
+            productId: item.productId,
+            warehouseId: allocation.warehouseId,
+            quantity: { gte: allocation.quantity },
+          },
+          orderBy: [{ quantity: 'desc' }, { updatedAt: 'desc' }, { warehouseId: 'asc' }],
+        });
 
-      if (inventoryUpdated.count !== 1) {
-        throw new Error(
-          `Inventory changed while placing the order for ${productById.get(item.productId)?.name || item.productId}. Please try again.`,
-        );
-      }
+        if (!inventoryItem) {
+          throw new Error(
+            `Insufficient warehouse inventory for ${productById.get(item.productId)?.name || item.productId}`,
+          );
+        }
 
-      await tx.inventoryMovement.create({
-        data: {
-          inventoryItemId: inventoryItem.id,
-          productId: item.productId,
+        const inventoryUpdated = await tx.inventoryItem.updateMany({
+          where: {
+            id: inventoryItem.id,
+            quantity: { gte: allocation.quantity },
+          },
+          data: {
+            quantity: { decrement: allocation.quantity },
+          },
+        });
+
+        if (inventoryUpdated.count !== 1) {
+          throw new Error(
+            `Inventory changed while placing the order for ${productById.get(item.productId)?.name || item.productId}. Please try again.`,
+          );
+        }
+
+        actualAllocations.push({
           warehouseId: inventoryItem.warehouseId,
-          type: 'sale',
-          quantityDelta: -item.quantity,
-          reason: 'order_created',
-          reference: created.id,
-        },
-      });
+          quantity: allocation.quantity,
+        });
+
+        await tx.inventoryMovement.create({
+          data: {
+            inventoryItemId: inventoryItem.id,
+            productId: item.productId,
+            warehouseId: inventoryItem.warehouseId,
+            type: 'sale',
+            quantityDelta: -allocation.quantity,
+            reason: 'order_created',
+            reference: created.id,
+          },
+        });
+      }
+
+      allocationsByProductId.set(item.productId, actualAllocations);
 
       const product = productById.get(item.productId)!;
       const nextStock = product.stock - item.quantity;
-      const threshold = inventoryItem?.reorderLevel ?? Number(process.env.LOW_STOCK_THRESHOLD || 5);
+      const threshold = Number(process.env.LOW_STOCK_THRESHOLD || 5);
       if (product.sellerId && nextStock <= threshold) {
         lowStockAlerts.push({
           sellerId: product.sellerId,
@@ -414,19 +432,37 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
       }
     }
 
-    // The quote and the order must use the exact same warehouse allocation.
-    // If stock changed between quote and order placement and a different
-    // warehouse would now be selected, abort the transaction instead of silently
-    // charging the customer for one pickup point and booking another.
-    const quoteAllocationByProductId = new Map(
-      (quote.shipments || []).flatMap((parcel) =>
-        (parcel.allocations || []).map((allocation) => [allocation.productId, parcel.warehouseId] as const),
+    // The quote and the order must use the exact same warehouse + quantity
+    // allocation. If stock changed between quote and placement, abort instead of
+    // silently charging the customer for one pickup plan and booking another.
+    const normalizeAllocations = (allocations: Array<{ warehouseId: string; quantity: number }>) =>
+      allocations
+        .filter((allocation) => allocation.quantity > 0)
+        .sort((a, b) => a.warehouseId.localeCompare(b.warehouseId))
+        .map((allocation) => `${allocation.warehouseId}:${allocation.quantity}`)
+        .join('|');
+
+    const quoteAllocationByProductId = new Map<string, Array<{ warehouseId: string; quantity: number }>>();
+    for (const parcel of quote.shipments || []) {
+      for (const allocation of parcel.allocations || []) {
+        const list = quoteAllocationByProductId.get(allocation.productId) || [];
+        const existing = list.find((entry) => entry.warehouseId === parcel.warehouseId);
+        if (existing) existing.quantity += allocation.quantity;
+        else list.push({ warehouseId: parcel.warehouseId, quantity: allocation.quantity });
+        quoteAllocationByProductId.set(allocation.productId, list);
+      }
+    }
+
+    const exactAllocationMatches = pricedItems.every(
+      (item) =>
+        normalizeAllocations(quoteAllocationByProductId.get(item.productId) || []) ===
+        normalizeAllocations(allocationsByProductId.get(item.productId) || []),
+    );
+    const allocatedWarehouseIds = new Set(
+      [...allocationsByProductId.values()].flatMap((allocations) =>
+        allocations.map((allocation) => allocation.warehouseId),
       ),
     );
-    const exactAllocationMatches = pricedItems.every(
-      (item) => quoteAllocationByProductId.get(item.productId) === warehouseIdByProductId.get(item.productId),
-    );
-    const allocatedWarehouseIds = new Set([...warehouseIdByProductId.values()]);
     if (
       !exactAllocationMatches ||
       quoteWarehouseIds.size !== allocatedWarehouseIds.size ||
@@ -449,11 +485,21 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     const quoteByWarehouse = new Map((quote?.shipments || []).map((parcel) => [parcel.warehouseId, parcel]));
 
     for (const [sellerId, sellerItems] of itemsBySeller.entries()) {
-      // Group this seller's items by the warehouse that will actually ship them.
-      const itemsByWarehouse = new Map<string, typeof sellerItems>();
+      // Split each seller line across every warehouse allocation frozen by the quote.
+      const itemsByWarehouse = new Map<string, Array<(typeof sellerItems)[number]>>();
       for (const item of sellerItems) {
-        const warehouseId = warehouseIdByProductId.get(item.productId) || '';
-        itemsByWarehouse.set(warehouseId, [...(itemsByWarehouse.get(warehouseId) || []), item]);
+        const allocations = allocationsByProductId.get(item.productId) || [];
+        for (const allocation of allocations) {
+          const warehouseItem = {
+            ...item,
+            quantity: allocation.quantity,
+            lineTotal: item.price * allocation.quantity,
+          };
+          itemsByWarehouse.set(allocation.warehouseId, [
+            ...(itemsByWarehouse.get(allocation.warehouseId) || []),
+            warehouseItem,
+          ]);
+        }
       }
 
       for (const [warehouseId, warehouseItems] of itemsByWarehouse.entries()) {

@@ -261,50 +261,76 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
       product.weightKg && product.weightKg > 0 ? product.weightKg : defaultWeightKg;
     if (!product.weightKg || product.weightKg <= 0) assumedWeight = true;
 
-    const lineWeight = productWeight * item.quantity;
-    const lineSubtotal = toNumber(product.price) * item.quantity;
+    // Allocate the requested quantity across real warehouse stock. Prefer a
+    // single warehouse when possible, but split the line when stock is spread
+    // across warehouses. Each allocation becomes part of the frozen quote so
+    // checkout and order placement use exactly the same fulfillment plan.
+    let remaining = item.quantity;
+    const candidates = [...product.inventoryItems]
+      .filter((inventory) => Number(inventory.quantity) > 0)
+      .sort(
+        (a, b) =>
+          Number(b.quantity) - Number(a.quantity) ||
+          a.warehouse.id.localeCompare(b.warehouse.id),
+      );
 
-    // Choose a single warehouse that can actually fulfill the requested quantity.
-    // Checkout currently creates one shipment allocation per product/warehouse,
-    // so picking a warehouse with only a partial quantity would make the preview
-    // look valid and then fail during order placement.
-    const source =
-      [...product.inventoryItems]
-        .filter((inventory) => Number(inventory.quantity) >= item.quantity)
-        .sort((a, b) => b.quantity - a.quantity || a.warehouse.id.localeCompare(b.warehouse.id))[0]?.warehouse ?? null;
+    for (const inventory of candidates) {
+      if (remaining <= 0) break;
+      const available = Math.max(0, Math.floor(Number(inventory.quantity)));
+      const allocationQuantity = Math.min(remaining, available);
+      if (allocationQuantity <= 0) continue;
 
-    if (!source) {
+      const warehouse = inventory.warehouse;
+      const allocatedWeight = productWeight * allocationQuantity;
+      const allocatedSubtotal = toNumber(product.price) * allocationQuantity;
+      const existing = byWarehouse.get(warehouse.id);
+
+      if (existing) {
+        existing.itemCount += allocationQuantity;
+        existing.weightKg += allocatedWeight;
+        existing.subtotal += allocatedSubtotal;
+        const existingAllocation = existing.allocations.find(
+          (allocation) => allocation.productId === item.productId,
+        );
+        if (existingAllocation) {
+          existingAllocation.quantity += allocationQuantity;
+        } else {
+          existing.allocations.push({
+            productId: item.productId,
+            quantity: allocationQuantity,
+          });
+        }
+      } else {
+        byWarehouse.set(warehouse.id, {
+          warehouseId: warehouse.id,
+          name: warehouse.name,
+          itemCount: allocationQuantity,
+          weightKg: allocatedWeight,
+          subtotal: allocatedSubtotal,
+          store: await resolveStoreForWarehouse(warehouse, providerCode),
+          flatFee: toNumber(
+            insideDhaka ? warehouse.insideDhakaFee : warehouse.outsideDhakaFee,
+            fallbackFee,
+          ),
+          threshold: toNumber(
+            warehouse.freeShippingThresholdOverride,
+            freeShippingThreshold,
+          ),
+          allocations: [{ productId: item.productId, quantity: allocationQuantity }],
+        });
+      }
+
+      remaining -= allocationQuantity;
+    }
+
+    if (remaining > 0) {
       unavailableItems.push(item.productId);
-      continue;
     }
-    const existing = byWarehouse.get(source.id);
-    if (existing) {
-      existing.itemCount += item.quantity;
-      existing.weightKg += lineWeight;
-      existing.subtotal += lineSubtotal;
-      existing.allocations.push({ productId: item.productId, quantity: item.quantity });
-      continue;
-    }
-
-    byWarehouse.set(source.id, {
-      warehouseId: source.id,
-      name: source.name,
-      itemCount: item.quantity,
-      weightKg: lineWeight,
-      subtotal: lineSubtotal,
-      store: await resolveStoreForWarehouse(source, providerCode),
-      flatFee: toNumber(
-        insideDhaka ? source.insideDhakaFee : source.outsideDhakaFee,
-        fallbackFee,
-      ),
-      threshold: toNumber(source.freeShippingThresholdOverride, freeShippingThreshold),
-      allocations: [{ productId: item.productId, quantity: item.quantity }],
-    });
   }
 
   if (unavailableItems.length > 0) {
     throw new Error(
-      'One or more cart items do not have enough stock in a single warehouse to fulfill the requested quantity.',
+      'One or more cart items do not have enough total warehouse stock to fulfill the requested quantity.',
     );
   }
 

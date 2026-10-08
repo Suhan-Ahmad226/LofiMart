@@ -178,36 +178,57 @@ describe('warehouse quantity selection', () => {
     expect(quote.shipments[0].warehouseId).toBe('wh-full');
   });
 
-  it('returns a controlled fallback when no single warehouse can fulfill the line', async () => {
+  it('splits a line across warehouses when no single warehouse has enough stock', async () => {
     seedProduct({
       inventoryItems: [
         {
-          quantity: 2,
+          quantity: 3,
           warehouse: {
-            id: 'wh-a', name: 'A', city: 'Dhaka',
-            insideDhakaFee: { toNumber: () => 80 }, outsideDhakaFee: { toNumber: () => 130 },
+            id: 'wh-partial-a',
+            name: 'Mirpur Hub',
+            city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 },
+            outsideDhakaFee: { toNumber: () => 130 },
             freeShippingThresholdOverride: null,
-            courierStores: [{ provider: 'pathao', externalStoreId: '111', externalStoreName: 'A', isActive: true, status: 'active' }], pathaoStoreId: 111,
+            courierStores: [{ provider: 'pathao', externalStoreId: '554', externalStoreName: 'Mirpur', isActive: true, status: 'active' }],
+            pathaoStoreId: 554,
           },
         },
         {
           quantity: 2,
           warehouse: {
-            id: 'wh-b', name: 'B', city: 'Dhaka',
-            insideDhakaFee: { toNumber: () => 80 }, outsideDhakaFee: { toNumber: () => 130 },
+            id: 'wh-partial-b',
+            name: 'Uttara Hub',
+            city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 },
+            outsideDhakaFee: { toNumber: () => 130 },
             freeShippingThresholdOverride: null,
-            courierStores: [{ provider: 'pathao', externalStoreId: '222', externalStoreName: 'B', isActive: true, status: 'active' }], pathaoStoreId: 222,
+            courierStores: [{ provider: 'pathao', externalStoreId: '555', externalStoreName: 'Uttara', isActive: true, status: 'active' }],
+            pathaoStoreId: 555,
           },
         },
       ],
     });
 
-    await expect(
-      getShippingQuote({
-        items: [{ productId: 'prod-1', quantity: 5 }],
-        destination: { city: 'Chattogram' },
-      }),
-    ).rejects.toThrow(/enough stock in a single warehouse/i);
+    const quote = await getShippingQuote({
+      items: [{ productId: 'prod-1', quantity: 5 }],
+      destination: { city: 'Chattogram' },
+    });
+
+    expect(quote.shipments).toHaveLength(2);
+    expect(
+      quote.shipments.reduce(
+        (sum, shipment) =>
+          sum + shipment.allocations.reduce((allocationSum, allocation) => allocationSum + allocation.quantity, 0),
+        0,
+      ),
+    ).toBe(5);
+    expect(quote.shipments.flatMap((shipment) => shipment.allocations)).toEqual(
+      expect.arrayContaining([
+        { productId: 'prod-1', quantity: 3 },
+        { productId: 'prod-1', quantity: 2 },
+      ]),
+    );
   });
 });
 
