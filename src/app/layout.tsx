@@ -7,7 +7,6 @@ import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics'
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { serializeJsonLd } from '../lib/product-description';
 import { cn } from "@/lib/utils";
-import { Analytics } from '@vercel/analytics/next';
 
 const fontVariables = 'font-inter font-poppins font-bengali';
 
@@ -186,7 +185,6 @@ export default function RootLayout({
             <AppChrome>{children}</AppChrome>
           </AppProviders>
         </ErrorBoundary>
-        <Analytics />
       </body>
     </html>
   );
