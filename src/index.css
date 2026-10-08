@@ -22,9 +22,9 @@
 }
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-poppins), sans-serif;
-  --font-bengali: var(--font-bengali), 'Noto Sans Bengali', var(--font-inter), sans-serif;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-display: ui-sans-serif, system-ui, sans-serif;
+  --font-bengali: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -105,6 +105,7 @@
    LofiMart Seller Center tokens
    Source of truth: Google Stitch project 5778808678858409263, design system
    "LofiMart Seller Center" (Corporate Modern SaaS, teal primary).
+
 
    The legacy platform palette above stays untouched so the customer, reseller
    and admin surfaces keep their current appearance. Every seller-surface
@@ -2045,9 +2046,7 @@
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
-  --font-bengali: var(--font-bengali);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

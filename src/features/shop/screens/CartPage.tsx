@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronRight, Heart, Home, Info, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from '@/lib/navigation';
@@ -7,9 +9,11 @@ import { useWishlist } from '@/features/shop/state/WishlistContext';
 import { cn, formatPrice } from '@/lib/utils';
 import { PLATFORM_FEE } from '@/lib/commerce-channels';
 import { ProductCard } from '@/features/shared/ui/product/ProductCard';
+import OptimizedImage from '@/features/shared/ui/OptimizedImage';
 import type { CartItem, Product } from '@/types';
 
 const DEALS_PAGE_SIZE = 8;
+const CHECKOUT_SELECTION_STORAGE_KEY = 'lofimart_checkout_selection';
 
 type SellerGroup = {
   id: string;
@@ -50,11 +54,17 @@ function getCartItemKey(item: Pick<CartItem, 'id' | 'selected_variant_key'>) {
 
 function getSellerKey(item: CartItem) {
   if (item.seller_id) return `seller:${item.seller_id}`;
-  return `seller:${(item.store_name || item.seller_name || item.category || 'Marketplace').trim().toLowerCase()}`;
+  // Never merge unrelated sellers just because they share a category/name.
+  return `item:${item.id}`;
+}
+
+function isCartItemUnavailable(item: CartItem) {
+  const stock = Number(item.stock);
+  return Number.isFinite(stock) && stock <= 0;
 }
 
 function getSellerName(item: CartItem) {
-  return item.store_name?.trim() || item.seller_name?.trim() || item.category || 'Marketplace';
+  return item.store_name?.trim() || item.seller_name?.trim() || 'Marketplace seller';
 }
 
 function getVariantLabel(item: CartItem) {
@@ -104,18 +114,21 @@ const Checkbox = ({
   checked,
   onChange,
   label,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: () => void;
   label: string;
+  disabled?: boolean;
 }) => (
   <button
     type="button"
     onClick={onChange}
+    disabled={disabled}
     aria-label={label}
     aria-pressed={checked}
     className={cn(
-      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-white transition',
+      'flex h-10 w-10 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-45',
       checked ? 'border-[#6366F1] bg-white text-[#6366F1]' : 'border-[#cfd4dc] bg-white text-transparent',
     )}
   >
@@ -131,27 +144,28 @@ const QuantityControl = ({
   onUpdate: (item: CartItem, quantity: number) => void;
 }) => {
   const stock = Number(item.stock);
-  const hasStockLimit = Number.isFinite(stock) && stock > 0;
+  const hasStockLimit = Number.isFinite(stock) && stock >= 0;
   const atMax = hasStockLimit && item.quantity >= stock;
+  const unavailable = isCartItemUnavailable(item);
 
   return (
-    <div className="flex h-[30px] overflow-hidden rounded border border-[#E2E8F0] bg-white">
+    <div className="flex h-10 overflow-hidden rounded border border-[#E2E8F0] bg-white">
       <button
         type="button"
-        disabled={item.quantity <= 1}
+        disabled={unavailable || item.quantity <= 1}
         onClick={() => onUpdate(item, item.quantity - 1)}
         aria-label={`Decrease quantity for ${item.name}`}
-        className="flex w-[28px] items-center justify-center px-2 text-[#2563EB] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c9ced8]"
+        className="flex min-w-10 items-center justify-center px-2 text-[#2563EB] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c9ced8]"
       >
         <Minus size={14} aria-hidden="true" />
       </button>
-      <span className="flex min-w-9 items-center justify-center border-x border-[#E2E8F0] px-3 text-sm text-[#0f172a]">{item.quantity}</span>
+      <span className="flex min-w-10 items-center justify-center border-x border-[#E2E8F0] px-3 text-sm text-[#0f172a]">{item.quantity}</span>
       <button
         type="button"
-        disabled={atMax}
+        disabled={unavailable || atMax}
         onClick={() => onUpdate(item, item.quantity + 1)}
         aria-label={`Increase quantity for ${item.name}`}
-        className="flex items-center justify-center px-2 text-[#2563EB] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c9ced8]"
+        className="flex min-w-10 items-center justify-center px-2 text-[#2563EB] transition hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c9ced8]"
       >
         <Plus size={14} aria-hidden="true" />
       </button>
@@ -180,20 +194,26 @@ const CartProduct = ({
   return (
     <div className="rounded-b-lg bg-white px-2 pb-2">
       <div className="flex flex-col gap-3 py-2 sm:flex-row">
-        <Checkbox checked={selected} onChange={() => onToggle(item)} label={`Select ${item.name}`} />
+        <Checkbox
+          checked={selected}
+          onChange={() => onToggle(item)}
+          label={isCartItemUnavailable(item) ? `${item.name} is out of stock` : `Select ${item.name}`}
+          disabled={isCartItemUnavailable(item)}
+        />
 
         <Link
           to={`/product/${item.slug}`}
           className="block h-[118px] w-[118px] shrink-0 overflow-hidden rounded-lg bg-[#f4f6f8] p-1"
           aria-label={`View ${item.name}`}
         >
-          <img
+          <OptimizedImage
             src={item.image || '/icon.svg'}
             alt={item.name}
+            widthHint={236}
+            heightHint={236}
+            sizes="118px"
+            fit="limit"
             className="h-full w-full rounded-md object-cover"
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
           />
         </Link>
 
@@ -210,7 +230,9 @@ const CartProduct = ({
               <span className="mr-1 text-black">●</span>
               {getVariantLabel(item)}
             </span>
-            <span className="text-[#15803D]">Fulfilled by Seller</span>
+            {isCartItemUnavailable(item) ? (
+              <span className="font-medium text-[#b42318]" role="status">Out of stock</span>
+            ) : null}
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-2">
@@ -224,10 +246,20 @@ const CartProduct = ({
             {oldLineTotal ? <p className="text-sm text-[#8a94a6] line-through">{formatPrice(oldLineTotal)}</p> : null}
           </div>
           <div className="flex items-center gap-4 pb-1 text-[#9aa3b1]">
-            <button type="button" onClick={() => onRemove(item)} aria-label={`Remove ${item.name}`} className="transition hover:text-[#2563EB]">
+            <button
+              type="button"
+              onClick={() => onRemove(item)}
+              aria-label={`Remove ${item.name}`}
+              className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f7f7f7] hover:text-[#2563EB]"
+            >
               <Trash2 size={20} aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => onWishlist(item)} aria-label={`Add ${item.name} to wishlist`} className="transition hover:text-[#2563EB]">
+            <button
+              type="button"
+              onClick={() => onWishlist(item)}
+              aria-label={`Add ${item.name} to wishlist`}
+              className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-[#f7f7f7] hover:text-[#2563EB]"
+            >
               <Heart size={22} fill="currentColor" aria-hidden="true" />
             </button>
           </div>
@@ -254,17 +286,21 @@ const SellerBlock = ({
   onRemove: (item: CartItem) => void;
   onWishlist: (item: CartItem) => void;
 }) => {
-  const allSelected = group.items.every((item) => selectedKeys.has(getCartItemKey(item)));
+  const selectableItems = group.items.filter((item) => !isCartItemUnavailable(item));
+  const allSelected = selectableItems.length > 0 && selectableItems.every((item) => selectedKeys.has(getCartItemKey(item)));
 
   return (
     <section className="overflow-hidden rounded-lg bg-[#eaf6ff]">
       <div className="flex h-[44px] items-center justify-between px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Checkbox checked={allSelected} onChange={() => onToggleSeller(group)} label={`Select all products from ${group.name}`} />
+          <Checkbox
+            checked={allSelected}
+            onChange={() => onToggleSeller(group)}
+            label={`Select all available products from ${group.name}`}
+            disabled={selectableItems.length === 0}
+          />
           <span className="truncate text-sm font-medium text-black">{group.name}</span>
-          {group.name.toLowerCase().includes('kiddy') ? (
-            <span className="rounded bg-[#ff2b77] px-2 py-1 text-[10px] font-bold uppercase text-white">Certified Store</span>
-          ) : null}
+
         </div>
         <span className="text-sm text-[#334155]">{group.items.length} items</span>
       </div>
@@ -282,7 +318,7 @@ const SellerBlock = ({
       ))}
 
       <div className="flex min-h-[62px] items-center justify-between px-3">
-        <span className="text-sm text-[#16A34A]">Standard Delivery</span>
+        <span className="text-sm text-[#64748B]">Delivery calculated at checkout</span>
       </div>
     </section>
   );
@@ -376,10 +412,11 @@ const ProductRailSkeleton = ({ title, count = 8 }: { title: string; count?: numb
 );
 
 export const CartPage = () => {
-  const { items, removeFromCart, updateQuantity, replaceCart, isReady } = useCart();
+  const { items, removeFromCart, updateQuantity, isReady } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const selectionInitializedRef = useRef(false);
   const [deals, setDeals] = useState<Product[]>([]);
   const [dealsHasMore, setDealsHasMore] = useState(false);
   const [dealsInitialLoading, setDealsInitialLoading] = useState(true);
@@ -393,10 +430,16 @@ export const CartPage = () => {
 
   const groups = useMemo(() => groupItemsBySeller(items), [items]);
 
-  const allKeys = useMemo(() => items.map(getCartItemKey), [items]);
-  const allSelected = items.length > 0 && allKeys.every((key) => selectedKeys.has(key));
+  const selectableKeys = useMemo(
+    () => items.filter((item) => !isCartItemUnavailable(item)).map(getCartItemKey),
+    [items],
+  );
+  const allSelected = selectableKeys.length > 0 && selectableKeys.every((key) => selectedKeys.has(key));
 
-  const selectedItems = useMemo(() => items.filter((item) => selectedKeys.has(getCartItemKey(item))), [items, selectedKeys]);
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedKeys.has(getCartItemKey(item)) && !isCartItemUnavailable(item)),
+    [items, selectedKeys],
+  );
   const productTotal = useMemo(() => selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [selectedItems]);
   const totalPayment = productTotal + PLATFORM_FEE;
 
@@ -416,33 +459,58 @@ export const CartPage = () => {
   );
 
   useEffect(() => {
-    const controller = new AbortController();
-    let cancelled = false;
+    if (!isReady || items.length === 0) {
+      setDealsInitialLoading(false);
+      return;
+    }
 
-    void (async () => {
-      try {
-        const { products, hasMore } = await fetchDealsPage(1, controller.signal);
-        if (cancelled || controller.signal.aborted) return;
-        setDeals(products);
-        setDealsHasMore(hasMore);
-        nextDealsPageRef.current = 2;
-      } catch (error) {
-        if (cancelled || controller.signal.aborted || (error as Error).name === 'AbortError') return;
-        setDeals([]);
-        setDealsHasMore(false);
-        setDealsInitialError(true);
-      } finally {
-        if (!cancelled && !controller.signal.aborted) {
-          setDealsInitialLoading(false);
+    // Recommendations are non-critical. Keep the cart itself interactive first,
+    // then fetch this secondary rail after the initial render has settled.
+    let cancelled = false;
+    let controller: AbortController | null = null;
+    let idleId: number | null = null;
+    let fallbackTimer: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    const start = () => {
+      if (cancelled) return;
+      controller = new AbortController();
+      void (async () => {
+        try {
+          const { products, hasMore } = await fetchDealsPage(1, controller?.signal);
+          if (cancelled || controller?.signal.aborted) return;
+          setDeals(products);
+          setDealsHasMore(hasMore);
+          nextDealsPageRef.current = 2;
+        } catch (error) {
+          if (cancelled || controller?.signal.aborted || (error as Error).name === 'AbortError') return;
+          setDeals([]);
+          setDealsHasMore(false);
+          setDealsInitialError(true);
+        } finally {
+          if (!cancelled && !controller?.signal.aborted) {
+            setDealsInitialLoading(false);
+          }
         }
-      }
-    })();
+      })();
+    };
+
+    if (typeof idleWindow.requestIdleCallback === 'function') {
+      idleId = idleWindow.requestIdleCallback(start, { timeout: 2000 });
+    } else {
+      fallbackTimer = window.setTimeout(start, 1200);
+    }
 
     return () => {
       cancelled = true;
-      controller.abort();
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId);
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+      controller?.abort();
     };
-  }, [fetchDealsPage]);
+  }, [fetchDealsPage, isReady, items.length]);
 
   useEffect(() => {
     return () => loadMoreControllerRef.current?.abort();
@@ -455,13 +523,16 @@ export const CartPage = () => {
       if (cancelled) return;
 
       setSelectedKeys((current) => {
-        if (allKeys.length === 0 || current.size === 0) {
-          return current.size === 0 && allKeys.length > 0 ? new Set(allKeys) : current;
+        if (!selectionInitializedRef.current && selectableKeys.length > 0) {
+          selectionInitializedRef.current = true;
+          return new Set(selectableKeys);
         }
+
+        if (selectableKeys.length === 0) return current;
 
         let next: Set<string> | null = null;
         for (const key of current) {
-          if (!allKeys.includes(key)) {
+          if (!selectableKeys.includes(key)) {
             if (!next) next = new Set(current);
             next.delete(key);
           }
@@ -474,19 +545,20 @@ export const CartPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [allKeys]);
+  }, [selectableKeys]);
 
   const toggleAll = useCallback(() => {
     setSelectedKeys((current) => {
-      const selectedEveryItem = allKeys.length > 0 && allKeys.every((key) => current.has(key));
-      return selectedEveryItem ? new Set() : new Set(allKeys);
+      const selectedEveryItem = selectableKeys.length > 0 && selectableKeys.every((key) => current.has(key));
+      return selectedEveryItem ? new Set() : new Set(selectableKeys);
     });
-  }, [allKeys]);
+  }, [selectableKeys]);
 
   const toggleSeller = useCallback((group: SellerGroup) => {
     setSelectedKeys((current) => {
       const next = new Set(current);
-      const sellerKeys = group.items.map(getCartItemKey);
+      const sellerKeys = group.items.filter((item) => !isCartItemUnavailable(item)).map(getCartItemKey);
+      if (sellerKeys.length === 0) return current;
       const selectedEveryItem = sellerKeys.every((key) => next.has(key));
 
       for (const key of sellerKeys) {
@@ -502,6 +574,7 @@ export const CartPage = () => {
   }, []);
 
   const toggleItem = useCallback((item: CartItem) => {
+    if (isCartItemUnavailable(item)) return;
     const key = getCartItemKey(item);
     setSelectedKeys((current) => {
       const next = new Set(current);
@@ -517,7 +590,8 @@ export const CartPage = () => {
   const handleUpdateQuantity = useCallback(
     (item: CartItem, quantity: number) => {
       const stock = Number(item.stock);
-      const max = Number.isFinite(stock) && stock > 0 ? stock : Number.POSITIVE_INFINITY;
+      const max = Number.isFinite(stock) && stock >= 0 ? stock : Number.POSITIVE_INFINITY;
+      if (max === 0) return;
       const nextQuantity = Math.min(Math.max(1, quantity), max);
       if (nextQuantity !== item.quantity) {
         updateQuantity(item.id, nextQuantity, item.selected_variant_key ?? undefined);
@@ -547,13 +621,20 @@ export const CartPage = () => {
 
   const handleCheckout = useCallback(() => {
     if (selectedItems.length === 0) return;
-    if (selectedItems.length === items.length) {
-      navigate('/checkout');
-      return;
+
+    if (typeof window !== 'undefined') {
+      if (selectedItems.length === items.length) {
+        window.sessionStorage.removeItem(CHECKOUT_SELECTION_STORAGE_KEY);
+      } else {
+        window.sessionStorage.setItem(
+          CHECKOUT_SELECTION_STORAGE_KEY,
+          JSON.stringify(selectedItems.map(getCartItemKey)),
+        );
+      }
     }
-    replaceCart(selectedItems);
+
     navigate('/checkout');
-  }, [items.length, navigate, replaceCart, selectedItems]);
+  }, [items.length, navigate, selectedItems]);
 
   const handleWishlist = useCallback(
     (item: CartItem) => {
@@ -673,7 +754,7 @@ export const CartPage = () => {
         <span className="font-medium text-black">Cart</span>
       </nav>
 
-      <div className="grid gap-4 px-2 py-0 sm:px-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mx-auto grid w-full max-w-[1440px] gap-4 px-2 py-3 sm:px-3 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="bg-white px-5 py-5">
           <header className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-5">
@@ -687,7 +768,7 @@ export const CartPage = () => {
               type="button"
               onClick={handleDeleteSelected}
               disabled={selectedItems.length === 0}
-              className="flex items-center gap-1 text-sm text-[#8a94a6] transition hover:text-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-10 items-center gap-2 rounded px-2 text-sm text-[#8a94a6] transition hover:text-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 size={16} aria-hidden="true" />
               Delete
@@ -736,7 +817,7 @@ export const CartPage = () => {
               type="button"
               onClick={handleCheckout}
               disabled={selectedItems.length === 0}
-              className="mt-10 flex h-[33px] w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#9b3bb0_0%,#2563EB_100%)] text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-8 flex min-h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#9b3bb0_0%,#2563EB_100%)] text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Checkout
             </button>
@@ -745,9 +826,7 @@ export const CartPage = () => {
       </div>
 
       <div className="mt-3 space-y-3 px-2 pb-6 sm:px-3">
-        {dealsInitialLoading ? (
-          <ProductRailSkeleton title="Deals you can't miss" />
-        ) : (
+        {dealsInitialLoading ? null : (
           <ProductRailSection
             title="Deals you can't miss"
             products={deals}
@@ -758,6 +837,23 @@ export const CartPage = () => {
             loadError={deals.length > 0 ? dealsLoadError : dealsInitialError}
           />
         )}
+      </div>
+
+      <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 md:hidden">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-xl backdrop-blur">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Selected total</p>
+            <p className="truncate text-lg font-bold text-slate-950">{formatPrice(totalPayment)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={selectedItems.length === 0}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(90deg,#9b3bb0_0%,#2563EB_100%)] px-5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Checkout
+          </button>
+        </div>
       </div>
     </main>
   );

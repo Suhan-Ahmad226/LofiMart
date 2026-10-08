@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Poppins, Noto_Sans_Bengali } from 'next/font/google';
 import Script from 'next/script';
 import '../index.css';
 import { AppProviders } from '../features/shared/app/AppProviders';
@@ -8,32 +7,9 @@ import MarketingAnalytics from '../features/shared/analytics/MarketingAnalytics'
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { serializeJsonLd } from '../lib/product-description';
 import { cn } from "@/lib/utils";
+import { Analytics } from '@vercel/analytics/next';
 
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-  weight: ['400', '500', '600', '700'],
-  fallback: ['system-ui', 'sans-serif'],
-});
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-poppins',
-  weight: ['500', '600', '700'],
-  preload: false,
-  fallback: ['Arial', 'sans-serif'],
-});
-
-const notoSansBengali = Noto_Sans_Bengali({
-  subsets: ['bengali'],
-  display: 'swap',
-  variable: '--font-bengali',
-  weight: ['400', '500', '600', '700'],
-  preload: false,
-  fallback: ['Inter', 'system-ui', 'sans-serif'],
-});
+const fontVariables = 'font-inter font-poppins font-bengali';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -157,12 +133,12 @@ export default function RootLayout({
   const structuredData = getStructuredData();
 
   return (
-    <html lang="en-BD" data-scroll-behavior="smooth" className={cn(inter.variable, poppins.variable, notoSansBengali.variable, "font-sans")}>
+    <html lang="en-BD" data-scroll-behavior="smooth" className={cn(fontVariables, "font-sans")}>
       <head>
         <Script
           id="lofimart-structured-data"
           type="application/ld+json"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
         />
         {preconnectOrigins.map((origin) => (
@@ -210,6 +186,7 @@ export default function RootLayout({
             <AppChrome>{children}</AppChrome>
           </AppProviders>
         </ErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );
