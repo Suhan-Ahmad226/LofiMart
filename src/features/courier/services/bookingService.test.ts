@@ -253,6 +253,27 @@ describe('bookShipment', () => {
     expect(request.pickup.store?.externalStoreId).toBe('554');
   });
 
+  it('refuses a pending mapping even when a legacy Pathao store id exists', async () => {
+    seedWarehouse({
+      courierStores: [
+        {
+          provider: 'pathao',
+          externalStoreId: '999',
+          externalStoreName: 'Pending Store',
+          isActive: false,
+          status: 'pending',
+          cityId: 1,
+          zoneId: 10,
+          areaId: 100,
+        },
+      ],
+      pathaoStoreId: 123,
+    });
+
+    await expect(bookShipment('ship-1', 'pathao')).rejects.toThrow(/no active pathao pickup store/i);
+    expect(createShipment).not.toHaveBeenCalled();
+  });
+
   it('returns the stored booking for a repeat call instead of creating a second parcel', async () => {
     await bookShipment('ship-1', 'pathao');
     vi.clearAllMocks();
