@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
       }
 
-      if (warehouse.managerId && warehouse.managerId !== String(user.id)) {
+      if (warehouse.managerId !== String(user.id)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
     }
