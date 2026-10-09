@@ -151,16 +151,29 @@ export const SellerPickupLocationsPage = () => {
     const normalizedWarehouseName = form.name.trim().toLowerCase();
     const normalizedCity = form.city.trim().toLowerCase();
 
-    const exactNameMatch = stores.find((store) => store.name.trim().toLowerCase() === normalizedWarehouseName);
+    const activeStores = stores.filter((store) => store.active !== false);
+    if (!normalizedWarehouseName) {
+      return activeStores.find(
+        (store) =>
+          normalizedCity &&
+          ((store.extra || '').toLowerCase().includes(normalizedCity) ||
+            (store.address || '').toLowerCase().includes(normalizedCity)),
+      ) || null;
+    }
+
+    const exactNameMatch = activeStores.find((store) => store.name.trim().toLowerCase() === normalizedWarehouseName);
     if (exactNameMatch) return exactNameMatch;
 
-    const partialNameMatch = stores.find((store) => store.name.trim().toLowerCase().includes(normalizedWarehouseName));
+    const partialNameMatch = activeStores.find((store) =>
+      store.name.trim().toLowerCase().includes(normalizedWarehouseName),
+    );
     if (partialNameMatch) return partialNameMatch;
 
-    const cityMatch = stores.find(
+    const cityMatch = activeStores.find(
       (store) =>
         normalizedCity &&
-        ((store.extra || '').toLowerCase().includes(normalizedCity) || (store.address || '').toLowerCase().includes(normalizedCity)),
+        ((store.extra || '').toLowerCase().includes(normalizedCity) ||
+          (store.address || '').toLowerCase().includes(normalizedCity)),
     );
     return cityMatch || null;
   }, [stores, form.name, form.city]);
@@ -824,8 +837,8 @@ export const SellerPickupLocationsPage = () => {
                 <select value={form.storeId} onChange={(e) => setForm((c) => ({ ...c, storeId: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
                   <option value="">No linked pickup point</option>
                   {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name} ({store.id}) {store.extra ? `- ${store.extra}` : ''}
+                    <option key={store.id} value={store.id} disabled={store.active === false}>
+                      {store.name} ({store.id}) {store.active === false ? '- inactive' : store.extra ? `- ${store.extra}` : ''}
                     </option>
                   ))}
                 </select>
