@@ -287,7 +287,9 @@ export const AdminLogisticsPage = () => {
     const needle = searchTerm.trim().toLowerCase();
     return asArray(data?.recentExceptions).filter((shipment) => {
       const provider = shipment.provider || '';
-      const matchesProvider = providerFilter === 'all' || provider === providerFilter;
+      const matchesProvider =
+        providerFilter === 'all' ||
+        (providerFilter === 'unassigned' ? !provider : provider === providerFilter);
 
       return (
         matchesProvider &&
@@ -310,7 +312,9 @@ export const AdminLogisticsPage = () => {
     const needle = searchTerm.trim().toLowerCase();
     return asArray(data?.syncWatchlist).filter((shipment) => {
       const provider = shipment.provider || '';
-      const matchesProvider = providerFilter === 'all' || provider === providerFilter;
+      const matchesProvider =
+        providerFilter === 'all' ||
+        (providerFilter === 'unassigned' ? !provider : provider === providerFilter);
 
       return (
         matchesProvider &&
@@ -1053,7 +1057,7 @@ export const AdminLogisticsPage = () => {
                 <p className="mt-3 text-sm text-slate-600">
                   Tracking {shipment.trackingId || 'pending'} • {shipment.warehouseName || 'Warehouse not linked'}
                 </p>
-                {shipment.providerStatus || shipment.providerStatus ? (
+                {shipment.providerStatus ? (
                   <p className="mt-2 text-xs font-medium text-rose-700">
                     Pathao event: {(shipment.providerStatus || 'event pending').replaceAll('_', ' ').replaceAll('.', ' ')}
                     {shipment.providerStatus
