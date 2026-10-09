@@ -119,11 +119,14 @@ async function resolveStoreForWarehouse(
   },
   providerCode: string,
 ): Promise<CourierStoreRef | null> {
-  const mapping = warehouse.courierStores.find(
-    (entry) => entry.provider === providerCode && entry.isActive && entry.status === 'active',
-  );
+  // A known but inactive/pending mapping must not be bypassed by a stale
+  // legacy Pathao ID. Legacy fallback is allowed only before a generic mapping
+  // exists for this provider.
+  const mapping = warehouse.courierStores.find((entry) => entry.provider === providerCode);
 
   if (mapping) {
+    if (!mapping.isActive || mapping.status !== 'active') return null;
+
     return {
       provider: providerCode,
       externalStoreId: mapping.externalStoreId,
@@ -204,7 +207,6 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
                 outsideDhakaFee: true,
                 freeShippingThresholdOverride: true,
                 courierStores: {
-                  where: { isActive: true, status: 'active' },
                   select: {
                     provider: true,
                     externalStoreId: true,
