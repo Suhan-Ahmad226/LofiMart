@@ -32,7 +32,9 @@ describe('middleware Supabase session refresh', () => {
   });
 
   it('keeps Supabase cookie claims refresh for requests without a bearer token', async () => {
-    const request = new NextRequest('http://localhost/seller/dashboard');
+    const request = new NextRequest('http://localhost/seller/dashboard', {
+      headers: { cookie: 'sb-example-auth-token=valid-session-cookie' },
+    });
 
     const response = await middleware(request);
 
