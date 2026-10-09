@@ -419,4 +419,73 @@ describe('orders.test.ts', () => {
       expect(rejectionReason.message).toMatch(/Insufficient stock/);
     });
   });
+  describe('idempotency key buyer isolation', () => {
+    it('rejects replaying another signed-in buyer’s idempotency key', async () => {
+      vi.mocked(prisma.order.findUnique).mockImplementation((args: any) =>
+        (args.where?.idempotencyKey
+          ? {
+              id: 'existing-order',
+              userId: 'buyer-a',
+              guestEmail: null,
+              guestPhone: null,
+              tenantId: null,
+            }
+          : null) as never,
+      );
+
+      await expect(
+        createMarketplaceOrder({
+          userId: 'buyer-b',
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          idempotencyKey: 'shared-idempotency-key-1',
+        }),
+      ).rejects.toThrow('Invalid idempotency key');
+    });
+
+    it('rejects a logged-in buyer replaying a guest order key', async () => {
+      vi.mocked(prisma.order.findUnique).mockImplementation((args: any) =>
+        (args.where?.idempotencyKey
+          ? {
+              id: 'guest-order',
+              userId: null,
+              guestEmail: 'guest@example.com',
+              guestPhone: '+8801700000000',
+              tenantId: null,
+            }
+          : null) as never,
+      );
+
+      await expect(
+        createMarketplaceOrder({
+          userId: 'signed-in-buyer',
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          idempotencyKey: 'guest-order-idempotency-1',
+        }),
+      ).rejects.toThrow('Invalid idempotency key');
+    });
+
+    it('rejects reusing the same key across tenants', async () => {
+      vi.mocked(prisma.order.findUnique).mockImplementation((args: any) =>
+        (args.where?.idempotencyKey
+          ? {
+              id: 'tenant-order',
+              userId: 'buyer-a',
+              guestEmail: null,
+              guestPhone: null,
+              tenantId: 'tenant-a',
+            }
+          : null) as never,
+      );
+
+      await expect(
+        createMarketplaceOrder({
+          userId: 'buyer-a',
+          tenantId: 'tenant-b',
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          idempotencyKey: 'tenant-order-idempotency-1',
+        }),
+      ).rejects.toThrow('Invalid idempotency key');
+    });
+  });
+
 });
