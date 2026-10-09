@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const cityId = optionalId(body?.cityId);
     const zoneId = optionalId(body?.zoneId);
     const areaId = optionalId(body?.areaId);
-    const storeId = optionalString(body?.storeId);
+    const storeId = optionalNullableString(body?.storeId);
 
     // Never promote an unapproved/deactivated remote store to an active local
     // mapping. A local status flag is not proof that Pathao currently allows
@@ -201,6 +201,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 function optionalString(value: unknown): string | null {
   if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+/** Preserve omitted fields so a contact-only update cannot clear a pickup link. */
+function optionalNullableString(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
   const text = String(value).trim();
   return text.length > 0 ? text : null;
 }
