@@ -301,6 +301,38 @@ describe('honest fallback', () => {
     expect(quote.shipments[0].weightKg).toBe(1);
   });
 
+  it('does not use a legacy store id to bypass a pending mapping', async () => {
+    seedProduct({
+      inventoryItems: [
+        {
+          quantity: 5,
+          warehouse: {
+            id: 'wh-pending',
+            name: 'Pending Hub',
+            city: 'Dhaka',
+            insideDhakaFee: { toNumber: () => 80 },
+            outsideDhakaFee: { toNumber: () => 130 },
+            freeShippingThresholdOverride: null,
+            courierStores: [
+              { provider: 'pathao', externalStoreId: '999', externalStoreName: 'Pending', isActive: false, status: 'pending' },
+            ],
+            pathaoStoreId: 111,
+          },
+        },
+      ],
+    });
+
+    const quote = await getShippingQuote({
+      items: [{ productId: 'prod-1', quantity: 1 }],
+      destination: { city: 'Chattogram' },
+    });
+
+    expect(providerStub.getQuote).not.toHaveBeenCalled();
+    expect(quote.verified).toBe(false);
+    expect(quote.shipments[0].courierStoreId).toBeNull();
+    expect(quote.shipments[0].reason).toMatch(/pickup store/i);
+  });
+
   it('falls back when the warehouse has no mapped courier store', async () => {
     seedProduct({
       inventoryItems: [
