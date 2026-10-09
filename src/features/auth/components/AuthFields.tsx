@@ -52,6 +52,8 @@ type FieldProps = {
   /** Email/phone style input: no autocapitalise, autocorrect or spellcheck. */
   identity?: boolean;
   name?: string;
+  /** Optional stable id when an external label owns the accessible name. */
+  id?: string;
   /** Trailing action rendered on the label row, e.g. "Forgot password?". */
   labelRight?: React.ReactNode;
 };
@@ -69,9 +71,11 @@ export function Field({
   autoFocus = false,
   identity = false,
   name,
+  id,
   labelRight,
 }: FieldProps) {
-  const fieldId = React.useId();
+  const generatedFieldId = React.useId();
+  const fieldId = id ?? generatedFieldId;
 
   return (
     <div className="space-y-1.5">
