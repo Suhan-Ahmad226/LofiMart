@@ -573,20 +573,20 @@ export const SellerPickupLocationsPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-5 sm:space-y-7 lg:space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary/70">Pickup operations</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-950">Pickup locations and warehouse mapping</h1>
+          <h1 className="mt-2 text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">Pickup locations and warehouse mapping</h1>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">
             Manage seller pickup points, save courier contact details, and keep the courier pickup point mapped for live shipment booking.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
           <button
             type="button"
             onClick={() => void loadWarehouses()}
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
           >
             <RefreshCw size={16} />
             <span>Refresh</span>
@@ -594,7 +594,7 @@ export const SellerPickupLocationsPage = () => {
           <button
             type="button"
             onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
           >
             <Plus size={16} />
             <span>New pickup location</span>
@@ -603,7 +603,7 @@ export const SellerPickupLocationsPage = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-        <section className="space-y-3 rounded-3xl border border-black/5 bg-white p-4 shadow-sm md:p-5">
+        <section className="min-w-0 space-y-3 rounded-3xl border border-black/5 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center gap-2">
             <Truck size={18} className="text-primary" />
             <h2 className="font-bold text-slate-950">Your pickup locations</h2>
@@ -628,22 +628,22 @@ export const SellerPickupLocationsPage = () => {
                       : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
                       <Building2 size={16} className="text-slate-500" />
-                      <span className="font-semibold text-slate-900">{warehouse.name}</span>
+                      <span className="break-words font-semibold text-slate-900">{warehouse.name}</span>
                     </div>
                     <div className="flex items-start gap-2 text-sm text-slate-500">
                       <MapPin size={14} className="mt-0.5 shrink-0" />
-                      <span>{warehouse.location.address}</span>
+                      <span className="break-words">{warehouse.location.address}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Phone size={14} />
                       <span>{warehouse.contact?.phone || 'No phone added yet'}</span>
                     </div>
                   </div>
-                  <div className="space-y-2 text-right">
+                  <div className="space-y-2 text-left sm:text-right">
                     <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
                       warehouse.courier?.storeId ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                     }`}>
@@ -676,7 +676,7 @@ export const SellerPickupLocationsPage = () => {
           )}
         </section>
 
-        <section className="rounded-3xl border border-black/5 bg-white p-4 shadow-sm md:p-6">
+        <section className="min-w-0 rounded-3xl border border-black/5 bg-white p-4 shadow-sm md:p-6">
           <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <h2 className="text-xl font-bold text-slate-950">
@@ -959,12 +959,12 @@ export const SellerPickupLocationsPage = () => {
             ) : null}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => void upsertWarehouse()}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50 sm:w-auto"
             >
               {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
               <span>{saving ? 'Saving...' : selectedWarehouse ? 'Save changes' : 'Create pickup location'}</span>
