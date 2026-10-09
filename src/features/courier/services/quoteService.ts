@@ -155,14 +155,22 @@ export async function getShippingQuote(request: ShippingQuoteRequest): Promise<S
   const applyFreeShipping = request.applyFreeShipping !== false;
   const deliverySpeed: CourierDeliverySpeed = request.deliverySpeed ?? 'standard';
 
+  // Merge repeated product lines before allocating inventory. Without this,
+  // two lines for the same product could each consume the same warehouse stock.
   const normalizedItems = Array.from(
-    (request.items || [])
-      .map((item) => ({
-        productId: String(item?.productId || '').trim(),
-        quantity: Math.max(1, Math.floor(Number(item?.quantity ?? 1))),
-      }))
-      .filter((item) => item.productId),
-      (item) => ({ productId: item.productId, quantity: item.quantity }),
+    (request.items || []).reduce((acc, item) => {
+      const productId = String(item?.productId || '').trim();
+      if (!productId) return acc;
+
+      const requestedQuantity = Number(item?.quantity ?? 1);
+      const quantity = Number.isFinite(requestedQuantity)
+        ? Math.max(1, Math.floor(requestedQuantity))
+        : 1;
+
+      acc.set(productId, (acc.get(productId) || 0) + quantity);
+      return acc;
+    }, new Map<string, number>()),
+    ([productId, quantity]) => ({ productId, quantity }),
   );
 
   if (normalizedItems.length === 0) {
