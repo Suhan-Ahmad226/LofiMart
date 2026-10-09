@@ -375,6 +375,33 @@ describe('free shipping', () => {
   });
 });
 
+describe('input normalization', () => {
+  it('combines duplicate product lines before checking warehouse stock', async () => {
+    seedProduct();
+
+    await expect(
+      getShippingQuote({
+        items: [
+          { productId: 'prod-1', quantity: 3 },
+          { productId: 'prod-1', quantity: 3 },
+        ],
+        destination: { city: 'Chattogram' },
+      }),
+    ).rejects.toThrow(/not have enough total warehouse stock/i);
+  });
+
+  it('treats a non-finite quantity as one instead of propagating NaN', async () => {
+    seedProduct();
+
+    const quote = await getShippingQuote({
+      items: [{ productId: 'prod-1', quantity: Number.NaN }],
+      destination: { city: 'Chattogram' },
+    });
+
+    expect(quote.shipments[0].itemCount).toBe(1);
+  });
+});
+
 describe('weighting', () => {
   it('scales weight with quantity', async () => {
     const quote = await getShippingQuote({
