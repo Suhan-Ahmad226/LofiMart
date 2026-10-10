@@ -829,6 +829,7 @@ export default function AuthModal() {
             autoComplete="username"
             placeholder="user@example.com"
             identity
+            id="identifier"
             label=""
           />
 

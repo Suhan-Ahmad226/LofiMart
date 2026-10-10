@@ -78,17 +78,19 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
   if (idempotencyKey.length < 16 || idempotencyKey.length > 128) throw new Error('A valid idempotency key is required');
   const existingByKey = await prisma.order.findUnique({ where: { idempotencyKey } });
   if (existingByKey) {
-    const sameUser = !existingByKey.userId || existingByKey.userId === input.userId;
-    const sameGuestEmail =
-      !existingByKey.guestEmail ||
-      !input.guestEmail ||
-      existingByKey.guestEmail.trim().toLowerCase() === input.guestEmail.trim().toLowerCase();
-    const sameGuestPhone =
-      !existingByKey.guestPhone ||
-      !input.guestPhone ||
-      existingByKey.guestPhone === input.guestPhone;
+    // An idempotency key is scoped to the exact buyer identity. Never let a
+    // logged-in buyer replay a guest order's key (or vice versa), and never
+    // treat missing identity fields as a successful match.
+    const sameBuyer = existingByKey.userId
+      ? input.userId === existingByKey.userId
+      : !input.userId &&
+        Boolean(input.guestEmail?.trim()) &&
+        Boolean(input.guestPhone?.trim()) &&
+        existingByKey.guestEmail?.trim().toLowerCase() === input.guestEmail!.trim().toLowerCase() &&
+        existingByKey.guestPhone?.trim() === input.guestPhone!.trim();
+    const sameTenant = (existingByKey.tenantId ?? null) === (input.tenantId ?? null);
 
-    if (!sameUser || !sameGuestEmail || !sameGuestPhone) {
+    if (!sameBuyer || !sameTenant) {
       throw new Error('Invalid idempotency key');
     }
 

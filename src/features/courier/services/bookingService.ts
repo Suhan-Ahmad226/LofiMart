@@ -186,7 +186,6 @@ async function loadBookingContext(shipmentId: string) {
           phone: true,
           contactName: true,
           courierStores: {
-            where: { isActive: true, status: 'active' },
             select: {
               provider: true,
               externalStoreId: true,
@@ -271,17 +270,18 @@ async function buildBookingRequest(
 
   const legacyStoreId = warehouse?.pathaoStoreId ?? null;
 
-  const pickupStore =
-    storeMapping && storeMapping.isActive && storeMapping.status === 'active'
+  const pickupStore = storeMapping
+    ? storeMapping.isActive && storeMapping.status === 'active'
       ? {
           provider: providerCode,
           externalStoreId: storeMapping.externalStoreId,
           externalStoreName: storeMapping.externalStoreName,
           active: true,
         }
-      : legacyStoreId !== null && providerCode === PATHAO_PROVIDER_CODE
-        ? { provider: providerCode, externalStoreId: String(legacyStoreId), active: true }
-        : null;
+      : null
+    : legacyStoreId !== null && providerCode === PATHAO_PROVIDER_CODE
+      ? { provider: providerCode, externalStoreId: String(legacyStoreId), active: true }
+      : null;
 
   const pickupLocation =
     warehouse && storeMapping

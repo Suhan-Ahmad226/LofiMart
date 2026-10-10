@@ -3,6 +3,7 @@ import { prisma } from '@/lib/server';
 import { requireApiUser } from '@/app/api/products/shared';
 import { requireRole } from '@/app/api/_compat/shared';
 import { getCourierProviderView } from '@/features/courier/registry/providerRegistry';
+import { listCourierStores } from '@/features/courier/services/courierAdminService';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return NextResponse.json({ error: 'Warehouse not found' }, { status: 404 });
       }
 
-      if (warehouse.managerId && warehouse.managerId !== String(user.id)) {
+      if (warehouse.managerId !== String(user.id)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
     }
@@ -65,7 +66,35 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const cityId = optionalId(body?.cityId);
     const zoneId = optionalId(body?.zoneId);
     const areaId = optionalId(body?.areaId);
-    const storeId = optionalString(body?.storeId);
+    const storeId = optionalNullableString(body?.storeId);
+
+    // Never promote an unapproved/deactivated remote store to an active local
+    // mapping. A local status flag is not proof that Pathao currently allows
+    // bookings against that Store ID.
+    if (storeId) {
+      let remoteStores;
+      try {
+        remoteStores = await listCourierStores(provider);
+      } catch (error) {
+        logger.warn('Could not verify the courier pickup store before linking it.', {
+          warehouseId: id,
+          provider,
+          reason: error instanceof Error ? error.message : 'Unknown error',
+        });
+        return NextResponse.json(
+          { error: 'Could not verify this pickup point with the courier. Please retry before saving the link.' },
+          { status: 503 },
+        );
+      }
+
+      const selectedStore = remoteStores.find((store) => store.externalStoreId === storeId);
+      if (!selectedStore || !selectedStore.active) {
+        return NextResponse.json(
+          { error: 'Only a pickup point currently listed as active by the courier can be linked for live booking.' },
+          { status: 409 },
+        );
+      }
+    }
 
     // The contact details belong to the warehouse and are courier-agnostic; the
     // ids belong to the courier and live on the mapping. Splitting them here means
@@ -172,6 +201,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 function optionalString(value: unknown): string | null {
   if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+/** Preserve omitted fields so a contact-only update cannot clear a pickup link. */
+function optionalNullableString(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
   const text = String(value).trim();
   return text.length > 0 ? text : null;
 }

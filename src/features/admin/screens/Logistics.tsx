@@ -287,7 +287,9 @@ export const AdminLogisticsPage = () => {
     const needle = searchTerm.trim().toLowerCase();
     return asArray(data?.recentExceptions).filter((shipment) => {
       const provider = shipment.provider || '';
-      const matchesProvider = providerFilter === 'all' || provider === providerFilter;
+      const matchesProvider =
+        providerFilter === 'all' ||
+        (providerFilter === 'unassigned' ? !provider : provider === providerFilter);
 
       return (
         matchesProvider &&
@@ -310,7 +312,9 @@ export const AdminLogisticsPage = () => {
     const needle = searchTerm.trim().toLowerCase();
     return asArray(data?.syncWatchlist).filter((shipment) => {
       const provider = shipment.provider || '';
-      const matchesProvider = providerFilter === 'all' || provider === providerFilter;
+      const matchesProvider =
+        providerFilter === 'all' ||
+        (providerFilter === 'unassigned' ? !provider : provider === providerFilter);
 
       return (
         matchesProvider &&
@@ -449,7 +453,7 @@ export const AdminLogisticsPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-5 sm:space-y-7 lg:space-y-8">
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
@@ -459,7 +463,7 @@ export const AdminLogisticsPage = () => {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary/70">Courier diagnostics</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-950">Logistics readiness and shipment health</h1>
+          <h1 className="mt-2 text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">Logistics readiness and shipment health</h1>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-500">
             Check provider setup, warehouse mapping coverage, delivery exceptions, and shipments that need sync attention before they become support issues.
           </p>
@@ -474,7 +478,7 @@ export const AdminLogisticsPage = () => {
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:flex-wrap md:items-center">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -489,7 +493,7 @@ export const AdminLogisticsPage = () => {
           onChange={(event) => setProviderFilter(event.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20 md:w-auto md:py-2"
         >
-          <option value="all">Pathao</option>
+          <option value="all">All providers</option>
           <option value="unassigned">Unassigned</option>
           {providerOptions.map((provider) => (
             <option key={provider} value={provider}>
@@ -531,7 +535,7 @@ export const AdminLogisticsPage = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm md:p-5">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Providers ready</p>
           <p className="mt-2 text-xl font-bold text-slate-950 md:text-2xl">
@@ -559,7 +563,7 @@ export const AdminLogisticsPage = () => {
       <div ref={deferredOpsRef} className="space-y-8">
         {showDeferredOpsPanels ? (
           <>
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+      <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-base font-black uppercase tracking-[0.18em] text-white shadow-sm">
@@ -649,8 +653,8 @@ export const AdminLogisticsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+      <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-500">Go-live</p>
             <h2 className="mt-2 text-lg font-bold text-slate-950">Exact launch checklist and blockers</h2>
@@ -765,7 +769,7 @@ export const AdminLogisticsPage = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <Truck size={18} className="text-primary" />
             <h2 className="font-bold text-slate-950">Pathao courier readiness</h2>
@@ -878,7 +882,7 @@ export const AdminLogisticsPage = () => {
           ) : null}
         </section>
 
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <MapPinned size={18} className="text-primary" />
             <h2 className="font-bold text-slate-950">Warehouse mapping health</h2>
@@ -904,7 +908,7 @@ export const AdminLogisticsPage = () => {
           <div className="mt-5 space-y-3">
             {data?.warehouseHealth.length ? data.warehouseHealth.map((warehouse) => (
               <div key={warehouse.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div>
                     <p className="font-semibold text-slate-950">{warehouse.name}</p>
                     <p className="mt-1 text-sm text-slate-500">{warehouse.city}</p>
@@ -968,7 +972,7 @@ export const AdminLogisticsPage = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <AlertTriangle size={18} className="text-rose-500" />
             <h2 className="font-bold text-slate-950">Recent shipment exceptions</h2>
@@ -976,7 +980,7 @@ export const AdminLogisticsPage = () => {
           <div className="mt-5 space-y-3">
             {renderedExceptions.length ? renderedExceptions.map((shipment) => (
               <div key={shipment.id} className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div>
                     <p className="font-semibold text-slate-950">Shipment #{shipment.id.slice(0, 8)}</p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -1031,7 +1035,7 @@ export const AdminLogisticsPage = () => {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={18} className="text-amber-500" />
             <h2 className="font-bold text-slate-950">Sync watchlist</h2>
@@ -1039,7 +1043,7 @@ export const AdminLogisticsPage = () => {
           <div className="mt-5 space-y-3">
             {renderedWatchlist.length ? renderedWatchlist.map((shipment) => (
               <div key={shipment.id} className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div>
                     <p className="font-semibold text-slate-950">Shipment #{shipment.id.slice(0, 8)}</p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -1053,7 +1057,7 @@ export const AdminLogisticsPage = () => {
                 <p className="mt-3 text-sm text-slate-600">
                   Tracking {shipment.trackingId || 'pending'} • {shipment.warehouseName || 'Warehouse not linked'}
                 </p>
-                {shipment.providerStatus || shipment.providerStatus ? (
+                {shipment.providerStatus ? (
                   <p className="mt-2 text-xs font-medium text-rose-700">
                     Pathao event: {(shipment.providerStatus || 'event pending').replaceAll('_', ' ').replaceAll('.', ' ')}
                     {shipment.providerStatus
