@@ -134,6 +134,7 @@ export default function RootLayout({
   return (
     <html lang="en-BD" data-scroll-behavior="smooth" className={cn(fontVariables, "font-sans")}>
       <head>
+        <meta name="facebook-domain-verification" content="376456e4razte9wx5ydsxzav67sp6q" />
         <Script
           id="lofimart-structured-data"
           type="application/ld+json"
