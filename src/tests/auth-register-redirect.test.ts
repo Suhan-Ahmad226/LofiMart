@@ -24,7 +24,6 @@ vi.mock('@/lib/env', () => ({
     FRONTEND_URL: 'https://lofimart.vercel.app',
     CORS_ALLOWED_ORIGINS: [
       'https://lofimart.vercel.app',
-      'https://lofimart-suhan-ahmad.vercel.app',
     ],
   })),
 }));
@@ -72,7 +71,6 @@ describe('register redirect origin allowlist', () => {
       expect(origins).toEqual(
         expect.arrayContaining([
           'https://lofimart.vercel.app',
-          'https://lofimart-suhan-ahmad.vercel.app',
         ]),
       );
     });
@@ -100,10 +98,6 @@ describe('register redirect origin allowlist', () => {
 
     it('allows https://lofimart.vercel.app', () => {
       expect(isRedirectUrlAllowed('https://lofimart.vercel.app/login', getTrustedRedirectOrigins())).toBe(true);
-    });
-
-    it('allows https://lofimart-suhan-ahmad.vercel.app (CORS_ALLOWED_ORIGINS preview domain)', () => {
-      expect(isRedirectUrlAllowed('https://lofimart-suhan-ahmad.vercel.app/login', getTrustedRedirectOrigins())).toBe(true);
     });
 
     it('allows the same-origin request', () => {
@@ -153,13 +147,6 @@ describe('POST /api/auth/supabase/register redirect integration', () => {
 
   it('accepts https://lofimart.vercel.app redirect', async () => {
     const request = buildRegisterRequest(buildRegistrationPayload('https://lofimart.vercel.app'));
-    const response = await POST(request);
-
-    expect(response.status).toBe(201);
-  });
-
-  it('accepts https://lofimart-suhan-ahmad.vercel.app redirect (preview domain via CORS_ALLOWED_ORIGINS)', async () => {
-    const request = buildRegisterRequest(buildRegistrationPayload('https://lofimart-suhan-ahmad.vercel.app'));
     const response = await POST(request);
 
     expect(response.status).toBe(201);
