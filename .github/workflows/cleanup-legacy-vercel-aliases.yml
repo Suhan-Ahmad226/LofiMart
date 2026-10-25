@@ -1,0 +1,72 @@
+name: Cleanup legacy Vercel aliases
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  schedule:
+    # Retry periodically because Vercel can recreate Git-branch aliases after deployment.
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-legacy-vercel-aliases
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove only the two legacy aliases
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TEAM_ID: team_cmbb4Q56AmqYO54sPuCdylwp
+    steps:
+      - name: Validate required secret
+        shell: bash
+        run: |
+          if [[ -z "${VERCEL_TOKEN}" ]]; then
+            echo "::error::Missing GitHub Actions secret VERCEL_TOKEN. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Remove legacy aliases via Vercel API
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          aliases=(
+            "lofimart-suhan-ahmad.vercel.app"
+            "lofimart-git-main-suhan-ahmad.vercel.app"
+          )
+
+          for alias in "${aliases[@]}"; do
+            echo "Checking legacy alias: ${alias}"
+            response_file="$(mktemp)"
+            status="$(curl --silent --show-error \
+              --output "${response_file}" \
+              --write-out "%{http_code}" \
+              --request DELETE \
+              --url "https://api.vercel.com/v2/aliases/${alias}?teamId=${VERCEL_TEAM_ID}" \
+              --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+              --header "Content-Type: application/json")"
+
+            case "${status}" in
+              200)
+                echo "Removed alias: ${alias}"
+                ;;
+              404)
+                echo "Alias already absent: ${alias}"
+                ;;
+              *)
+                echo "::error::Could not remove ${alias}; Vercel API returned HTTP ${status}."
+                cat "${response_file}"
+                rm -f "${response_file}"
+                exit 1
+                ;;
+            esac
+            rm -f "${response_file}"
+          done
