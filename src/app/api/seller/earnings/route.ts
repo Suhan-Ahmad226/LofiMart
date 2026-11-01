@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       },
       include: {
         product: { select: { id: true, name: true } },
-        order: { select: { createdAt: true, paymentStatus: true } },
+        order: { select: { createdAt: true, paymentStatus: true, status: true } },
       },
     }),
     prisma.product.count({ where: { sellerId, tenantId: user.tenantId ?? undefined } }),
@@ -85,8 +85,34 @@ export async function GET(request: NextRequest) {
     .map(([date, amount]) => ({ date, amount }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const transactions = orderItems.map((item) => ({
+    id: item.id,
+    order_id: item.orderId,
+    amount: Number(item.price) * item.qty,
+    status: item.order.status || 'delivered',
+    date: item.order.createdAt.toISOString(),
+  }));
+
+  let withdrawnAmount = 0;
+  try {
+    const withdrawnResult = await prisma.payoutTransaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId: sellerId,
+        status: { in: ['approved', 'completed', 'paid'] },
+      },
+    });
+    withdrawnAmount = Number(withdrawnResult._sum.amount ?? 0);
+  } catch {
+    withdrawnAmount = 0;
+  }
+
   return NextResponse.json({
+    totalEarnings,
     total_earnings: totalEarnings,
+    totalWithdrawn: withdrawnAmount,
+    withdrawnAmount,
+    transactions,
     total_units: totalUnits,
     total_products: products,
     range,
@@ -94,3 +120,4 @@ export async function GET(request: NextRequest) {
     top_products: topProducts,
   });
 }
+

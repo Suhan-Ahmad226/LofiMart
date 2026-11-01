@@ -242,15 +242,8 @@ export async function createMarketplaceOrder(input: CreateMarketplaceOrderInput)
     });
   }
 
-  if (!quote.verified) {
-    throw new Error(
-      quote.warnings[0] ||
-        'Live Pathao shipping price could not be verified. Please try again.',
-    );
-  }
-
   const deliveryFee = quote.totalCustomerDeliveryFee;
-  const deliveryFeeVerified = true;
+  const deliveryFeeVerified = Boolean(quote.verified);
   const deliveryQuoteWarnings = quote.warnings;
   const total = merchandisePayable + platformFee + deliveryFee;
   const collectibleAmount = total;

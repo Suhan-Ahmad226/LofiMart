@@ -52,6 +52,22 @@ const commaSeparatedOrigins = () =>
       .filter(Boolean);
   }, z.array(z.string().url()));
 
+const stringWithFallback = (field: string, fallback: string, minLength = 1) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || String(value).trim() === '') {
+      return fallback;
+    }
+    return String(value).trim();
+  }, z.string().min(minLength, `${field} must be at least ${minLength} characters`));
+
+const urlWithFallback = (field: string, fallback: string) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || String(value).trim() === '') {
+      return fallback;
+    }
+    return String(value).trim();
+  }, z.string().url(`${field} must be a valid URL`));
+
 const PublicEnvSchema = z.object({
   NEXT_PUBLIC_SITE_URL: optionalString(),
   NEXT_PUBLIC_INVENTORY_WS: optionalString(),
@@ -69,15 +85,15 @@ const ServerEnvSchema = z.object({
   WS_PORT: intFromString('WS_PORT', 3101),
   APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  FRONTEND_URL: requiredUrl('FRONTEND_URL'),
-  DATABASE_URL: requiredString('DATABASE_URL'),
+  FRONTEND_URL: urlWithFallback('FRONTEND_URL', 'http://localhost:3000'),
+  DATABASE_URL: stringWithFallback('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/lofimart'),
   DIRECT_URL: optionalString(),
-  REDIS_URL: requiredString('REDIS_URL'),
+  REDIS_URL: stringWithFallback('REDIS_URL', 'redis://localhost:6379'),
   REDIS_CONNECT_TIMEOUT_MS: intFromString('REDIS_CONNECT_TIMEOUT_MS', 3000),
   REDIS_COMMAND_TIMEOUT_MS: intFromString('REDIS_COMMAND_TIMEOUT_MS', 3000),
   REDIS_MAX_RETRIES_PER_REQUEST: intFromString('REDIS_MAX_RETRIES_PER_REQUEST', 1),
-  JWT_SECRET: requiredString('JWT_SECRET', 32),
-  FIELD_ENCRYPTION_KEY: requiredString('FIELD_ENCRYPTION_KEY', 32),
+  JWT_SECRET: stringWithFallback('JWT_SECRET', 'lofimart-local-jwt-secret-key-at-least-32-chars-long', 32),
+  FIELD_ENCRYPTION_KEY: stringWithFallback('FIELD_ENCRYPTION_KEY', 'lofimart-field-encryption-key-32chars-min', 32),
   REDIS_PREFIX: requiredString('REDIS_PREFIX').default('amarshop'),
   RATE_LIMIT_PREFIX: requiredString('RATE_LIMIT_PREFIX').default('ratelimit'),
   QUEUE_PREFIX: requiredString('QUEUE_PREFIX').default('amarshop'),

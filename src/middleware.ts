@@ -45,7 +45,6 @@ function isBotRequest(userAgent: string | null): boolean {
 function addSecurityHeaders(response: NextResponse, isProd: boolean): NextResponse {
   response.headers.set('X-DNS-Prefetch-Control', 'on');
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 

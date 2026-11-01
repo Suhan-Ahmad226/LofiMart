@@ -1,5 +1,5 @@
 import { createHmac } from 'crypto';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   buildFacebookOAuthUrl,
   classifyFacebookCode,
@@ -19,9 +19,8 @@ vi.mock('@/lib/env', () => ({
 describe('getFacebookConfig', () => {
   const saved = { ...process.env };
 
-  afterEach(() => {
+  const cleanEnv = () => {
     vi.unstubAllGlobals();
-    process.env = { ...saved };
     for (const key of [
       'FACEBOOK_APP_ID',
       'FACEBOOK_APP_SECRET',
@@ -31,6 +30,15 @@ describe('getFacebookConfig', () => {
     ]) {
       delete process.env[key];
     }
+  };
+
+  beforeEach(() => {
+    cleanEnv();
+  });
+
+  afterEach(() => {
+    process.env = { ...saved };
+    cleanEnv();
   });
 
   it('returns null when no Facebook variables are set', () => {

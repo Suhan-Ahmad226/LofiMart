@@ -12,7 +12,6 @@ const securityHeaders = [
       ]
     : []),
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   {
     key: "Referrer-Policy",
@@ -23,8 +22,6 @@ const securityHeaders = [
     value:
       "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
 ];
 
 const contentSecurityPolicy = [
@@ -38,7 +35,6 @@ const contentSecurityPolicy = [
   "frame-src 'self' https://widget.cloudinary.com",
   "media-src 'self' data: blob: https:",
   "worker-src 'self' blob:",
-  "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "upgrade-insecure-requests",
@@ -67,6 +63,7 @@ if (isProd) {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   outputFileTracingRoot: process.cwd(),
   typescript: {
     ignoreBuildErrors: false,

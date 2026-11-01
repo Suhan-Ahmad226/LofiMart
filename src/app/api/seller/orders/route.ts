@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server';
-import { requireApiUser, requireSellerRole, serializeOrder } from '../../_compat/shared';
+import { requireApiUser, requireSellerRole, serializeOrder, toPlainNumber } from '../../_compat/shared';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,16 @@ export async function GET(request: NextRequest) {
     },
     orderBy: { createdAt: 'desc' },
     include: {
+      items: {
+        where: {
+          product: { sellerId },
+        },
+        include: {
+          product: {
+            select: { id: true, name: true, image: true, price: true },
+          },
+        },
+      },
       shipments: {
         where: { sellerId },
         include: {
@@ -35,5 +45,28 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return NextResponse.json(orders.map(serializeOrder));
+  return NextResponse.json(
+    orders.map((order) => {
+      const sellerShipment = order.shipments?.[0];
+      const sellerItems = (order.items || []).map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        name: item.product?.name ?? 'Item',
+        image: item.product?.image ?? null,
+        price: toPlainNumber(item.price),
+        qty: item.qty,
+        total: toPlainNumber(Number(item.price) * item.qty),
+      }));
+      const sellerItemsTotal = sellerItems.reduce((acc, it) => acc + it.total, 0);
+      const sellerTotal = sellerShipment?.total != null ? toPlainNumber(sellerShipment.total) : sellerItemsTotal;
+
+      return {
+        ...serializeOrder(order),
+        total: sellerTotal,
+        seller_total: sellerTotal,
+        items: sellerItems,
+        shipment_status: sellerShipment?.status ?? order.status,
+      };
+    }),
+  );
 }

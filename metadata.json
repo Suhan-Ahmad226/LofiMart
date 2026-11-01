@@ -1,0 +1,8 @@
+{
+  "name": "LofiMart",
+  "description": "Shop fashion, electronics, groceries, and lifestyle essentials with fast delivery, trusted sellers, AI discovery, and a smoother checkout experience.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "permissions": []
+}

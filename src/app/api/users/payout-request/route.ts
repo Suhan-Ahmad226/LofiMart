@@ -64,17 +64,31 @@ export async function POST(request: NextRequest) {
 
   try {
     const transaction = await prisma.$transaction(async (tx) => {
-      const settledRevenueRows = await tx.$queryRaw<Array<{ total: unknown }>>`
-        SELECT COALESCE(SUM(oi."qty" * oi."price"), 0) AS total
-        FROM "OrderItem" oi
-        INNER JOIN "Product" p ON p."id" = oi."productId"
-        INNER JOIN "Order" o ON o."id" = oi."orderId"
-        WHERE p."sellerId" = ${String(user.id)}
-          AND p."tenantId" IS NOT DISTINCT FROM ${user.tenantId ?? null}
-          AND o."tenantId" IS NOT DISTINCT FROM ${user.tenantId ?? null}
-          AND o."status" = 'delivered'
-      `;
-      const grossAvailable = Number(settledRevenueRows[0]?.total ?? 0);
+      let grossAvailable = 0;
+      if (user.role === 'reseller') {
+        const resellerCommissions = await tx.resellerCommission.aggregate({
+          _sum: { amount: true },
+          where: {
+            resellerId: String(user.id),
+            status: { in: ['pending', 'eligible', 'approved', 'delivered'] },
+          },
+        });
+        grossAvailable = Number(resellerCommissions._sum.amount ?? 0);
+      } else {
+        const settledRevenueRows = await tx.$queryRaw<Array<{ total: unknown }>>`
+          SELECT COALESCE(SUM(oi."qty" * oi."price"), 0) AS total
+          FROM "OrderItem" oi
+          INNER JOIN "Product" p ON p."id" = oi."productId"
+          INNER JOIN "Order" o ON o."id" = oi."orderId"
+          WHERE p."sellerId" = ${String(user.id)}
+            AND p."tenantId" IS NOT DISTINCT FROM ${user.tenantId ?? null}
+            AND o."tenantId" IS NOT DISTINCT FROM ${user.tenantId ?? null}
+            AND o."status" = 'delivered'
+        `;
+        const grossSales = Number(settledRevenueRows[0]?.total ?? 0);
+        // Deduct 10% standard platform marketplace commission
+        grossAvailable = grossSales * 0.90;
+      }
 
       const committedRows = await tx.payoutTransaction.aggregate({
         _sum: { amount: true },

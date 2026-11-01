@@ -115,11 +115,11 @@ const ProductCardComponent = ({
   if (variant === 'compact') {
     return (
       <article
-        className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-[#EAEFF5] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_10px_28px_rgba(16,24,40,0.12)] ${className ?? ''}`}
+        className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/60 hover:shadow-md ${className ?? ''}`}
       >
-        <Link to={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-[#F4F6F8]">
+        <Link to={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-slate-50">
           {discount > 0 && (
-            <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+            <span className="absolute left-2 top-2 z-10 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
               -{discount}%
             </span>
           )}
@@ -128,11 +128,11 @@ const ProductCardComponent = ({
               type="button"
               onClick={handleWishlistToggle}
               aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-              className={`absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 shadow-sm transition-all duration-200 hover:scale-110 ${
-                isWishlisted ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'
+              className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 shadow-xs transition-transform duration-200 hover:scale-110 active:scale-90 ${
+                isWishlisted ? 'text-rose-500 bg-rose-50/90 border border-rose-200' : 'text-slate-600 hover:text-rose-500'
               }`}
             >
-              <Heart size={14} fill={isWishlisted ? 'currentColor' : 'none'} />
+              <Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} />
             </button>
           )}
           <OptimizedImage
@@ -146,17 +146,17 @@ const ProductCardComponent = ({
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </Link>
-        <div className="flex flex-1 flex-col p-2">
+        <div className="flex flex-1 flex-col p-2.5">
           <Link to={`/product/${product.slug}`} className="block">
-            <span className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 transition-colors hover:text-emerald-600">
+            <span className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 transition-colors hover:text-emerald-700">
               {product.name}
             </span>
           </Link>
-          <div className="mt-auto flex items-end justify-between gap-1 pt-2">
+          <div className="mt-auto flex items-end justify-between gap-1.5 pt-2">
             <div className="min-w-0 leading-tight">
-              <p className="text-sm font-bold text-emerald-600">{formatPrice(product.price)}</p>
+              <p className="text-sm font-bold text-slate-900 tabular-nums">{formatPrice(product.price)}</p>
               {discount > 0 && (
-                <p className="text-[11px] text-slate-400 line-through">{formatPrice(oldPrice)}</p>
+                <p className="text-[11px] text-slate-400 line-through tabular-nums">{formatPrice(oldPrice)}</p>
               )}
             </div>
             {showAddToCart && product.stock > 0 && (
@@ -164,9 +164,9 @@ const ProductCardComponent = ({
                 type="button"
                 onClick={handleAddToCart}
                 aria-label={`Add ${product.name} to cart`}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-all duration-200 hover:bg-emerald-700 active:scale-90"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs transition-all duration-200 hover:bg-emerald-700 active:scale-90"
               >
-                <ShoppingCart size={13} aria-hidden="true" />
+                <ShoppingCart size={14} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -177,8 +177,8 @@ const ProductCardComponent = ({
 
   if (variant === 'horizontal') {
     return (
-      <article className={`product-card-horizontal group flex gap-4 rounded-2xl border border-emerald-500/20 bg-white p-3 shadow-card-subtle hover:shadow-card-hover hover:border-emerald-500/50 transition-all ${className ?? ''}`}>
-        <Link to={`/product/${product.slug}`} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-50/70 sm:h-28 sm:w-28">
+      <article className={`product-card-horizontal group flex gap-4 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition-all duration-200 hover:border-emerald-500/60 hover:shadow-md ${className ?? ''}`}>
+        <Link to={`/product/${product.slug}`} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-50 sm:h-28 sm:w-28">
           <OptimizedImage
             src={product.image}
             alt={product.name}
@@ -187,10 +187,10 @@ const ProductCardComponent = ({
             fit="limit"
             eager={eager}
             sizes="112px"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           {discount > 0 && (
-            <span className="absolute left-1.5 top-1.5 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            <span className="absolute left-1.5 top-1.5 rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
               -{discount}%
             </span>
           )}
@@ -198,7 +198,7 @@ const ProductCardComponent = ({
         <div className="flex min-w-0 flex-1 flex-col justify-between">
           <div>
             <Link to={`/product/${product.slug}`}>
-              <h3 className="line-clamp-2 text-sm font-bold text-slate-900 transition-colors hover:text-emerald-600">
+              <h3 className="line-clamp-2 text-sm font-bold text-slate-900 transition-colors hover:text-emerald-700">
                 {product.name}
               </h3>
             </Link>
@@ -211,18 +211,19 @@ const ProductCardComponent = ({
           </div>
           <div className="mt-2 flex items-end justify-between gap-2">
             <div>
-              <p className="text-lg font-black text-emerald-600">{formatPrice(product.price)}</p>
+              <p className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">{formatPrice(product.price)}</p>
               {discount > 0 && (
-                <p className="text-xs text-slate-400 line-through">{formatPrice(oldPrice)}</p>
+                <p className="text-xs text-slate-400 line-through tabular-nums">{formatPrice(oldPrice)}</p>
               )}
             </div>
             {showAddToCart && (
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="shrink-0 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                disabled={product.stock <= 0}
+                className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all duration-200 hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isInCart ? 'Added' : 'Add'}
+                {isInCart ? 'In Cart' : product.stock <= 0 ? 'Out of Stock' : 'Add'}
               </button>
             )}
           </div>
@@ -233,28 +234,28 @@ const ProductCardComponent = ({
 
   return (
     <article
-      className={`product-card group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-emerald-300 bg-white p-2 shadow-[0_2px_8px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:shadow-[0_10px_24px_rgba(15,23,42,0.12)] ${className ?? ''}`}
+      className={`product-card group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3 shadow-[0_2px_10px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/60 hover:shadow-[0_14px_30px_-6px_rgba(15,23,42,0.12)] ${className ?? ''}`}
     >
-      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-slate-50 p-2">
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/80 p-2">
         {discount > 0 && (
-          <div className="absolute left-1.5 top-1.5 z-10 flex flex-col items-start gap-1">
+          <div className="absolute left-2 top-2 z-10 flex flex-col items-start gap-1">
+            <span className="inline-flex items-center rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
+              -{discount}%
+            </span>
             {savings > 0 && (
-              <span className="inline-flex items-center rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+              <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-600/90 px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
                 Save {formatPrice(savings)}
               </span>
             )}
-            <span className="inline-flex items-center rounded bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-              -{discount}%
-            </span>
           </div>
         )}
 
-        <div className="absolute right-1.5 top-1.5 z-10 flex flex-col gap-1.5">
+        <div className="absolute right-2 top-2 z-10 flex flex-col gap-1.5 opacity-90 transition-opacity duration-200 group-hover:opacity-100">
           {showWishlist && (
             <button
               type="button"
               onClick={handleWishlistToggle}
-              className={`action-btn-transition flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 shadow-sm hover:border-rose-300 hover:text-rose-500 ${isWishlisted ? 'text-rose-500' : 'text-slate-500'}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 shadow-sm transition-transform duration-200 hover:scale-110 active:scale-90 ${isWishlisted ? 'text-rose-500 border-rose-200 bg-rose-50/90' : 'text-slate-600 hover:text-rose-500'}`}
               aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
             >
               <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} className="transition-colors duration-200" />
@@ -264,17 +265,17 @@ const ProductCardComponent = ({
             <button
               type="button"
               onClick={handleCompareToggle}
-              className={`action-btn-transition flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 shadow-sm hover:border-emerald-300 hover:text-emerald-600 ${isCompared ? 'text-emerald-600' : 'text-slate-500'}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 shadow-sm transition-transform duration-200 hover:scale-110 active:scale-90 ${isCompared ? 'text-emerald-600 border-emerald-200 bg-emerald-50/90' : 'text-slate-600 hover:text-emerald-600'}`}
               aria-label={isCompared ? `Remove ${product.name} from compare` : `Add ${product.name} to compare`}
             >
-              <Scale size={16} />
+              <Scale size={15} />
             </button>
           )}
           {onQuickView && (
             <button
               type="button"
               onClick={handleQuickView}
-              className="action-btn-transition flex h-7 w-7 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 text-slate-500 shadow-sm hover:border-emerald-300 hover:text-emerald-600"
+              className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full border border-slate-200/80 bg-white/95 text-slate-600 shadow-sm transition-transform duration-200 hover:scale-110 hover:text-emerald-600 active:scale-90"
               aria-label={`Quick view ${product.name}`}
             >
               <Eye size={15} />
@@ -282,7 +283,7 @@ const ProductCardComponent = ({
           )}
         </div>
 
-        <Link to={`/product/${product.slug}`} className="relative w-full h-full flex items-center justify-center">
+        <Link to={`/product/${product.slug}`} className="relative h-full w-full flex items-center justify-center">
           <OptimizedImage
             src={product.image}
             alt={product.name}
@@ -296,40 +297,48 @@ const ProductCardComponent = ({
         </Link>
       </div>
 
-      <div className="flex min-h-[150px] flex-1 flex-col px-1 pt-2">
+      <div className="flex min-h-[148px] flex-1 flex-col pt-3">
         {(product.category || hasSeller) && (
-          <span className="mb-1 truncate text-[10px] font-bold uppercase text-slate-500">
-            {product.category || sellerName}
-          </span>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+            {product.category && <span className="font-medium text-slate-500">{product.category}</span>}
+            {product.category && hasSeller && <span>·</span>}
+            {hasSeller && (
+              <span className="truncate text-slate-600">
+                {sellerName}
+              </span>
+            )}
+          </div>
         )}
 
-        <Link to={`/product/${product.slug}`}>
-          <h2 className="mb-1.5 line-clamp-2 min-h-[2.5rem] text-xs font-bold leading-5 text-slate-900 transition-colors hover:text-emerald-600 sm:text-sm">
+        <Link to={`/product/${product.slug}`} className="group/title block">
+          <h2 className="mb-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-slate-900 transition-colors duration-150 group-hover/title:text-emerald-700">
             {product.name}
           </h2>
         </Link>
 
-        <div className="mb-2 flex items-center gap-1">
+        <div className="mb-2 flex items-center gap-1.5">
           <div className="flex items-center text-amber-400">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star
                 key={i}
                 size={12}
-                className={i < fullStars ? 'fill-current' : 'text-slate-300 fill-current'}
+                className={i < fullStars ? 'fill-current text-amber-400' : 'text-slate-200 fill-current'}
               />
             ))}
           </div>
-          {hasReviews && (
-            <span className="text-[10px] font-medium text-slate-400">({product.reviews_count})</span>
+          {hasReviews ? (
+            <span className="text-[11px] font-medium text-slate-500">({product.reviews_count})</span>
+          ) : (
+            <span className="text-[10px] text-slate-500">New</span>
           )}
         </div>
 
-        <div className="mb-2.5 flex items-baseline gap-2 pt-0.5">
-          <span className="text-base font-extrabold text-emerald-600">
+        <div className="mb-3 flex items-baseline gap-2 pt-0.5">
+          <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
             {formatPrice(product.price)}
           </span>
           {discount > 0 && (
-            <del className="text-xs font-medium text-slate-400 line-through">
+            <del className="text-xs font-normal text-slate-500 line-through tabular-nums">
               {formatPrice(oldPrice)}
             </del>
           )}
@@ -340,10 +349,16 @@ const ProductCardComponent = ({
             type="button"
             onClick={handleAddToCart}
             disabled={product.stock <= 0}
-            className="mt-auto inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-70"
+            className={`mt-auto inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold tracking-wide transition-all duration-200 active:scale-[0.98] ${
+              isInCart
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                : product.stock <= 0
+                ? 'bg-slate-100 text-slate-500 cursor-not-allowed border border-slate-200'
+                : 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:shadow-md'
+            }`}
           >
-            <ShoppingCart size={15} className="transition-transform group-hover:rotate-[-6deg]" />
-            <span>{isInCart ? 'Added to Cart' : product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}</span>
+            <ShoppingCart size={15} className="transition-transform group-hover:-translate-y-0.5" />
+            <span>{isInCart ? 'In Cart' : product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}</span>
           </button>
         )}
       </div>

@@ -10,6 +10,7 @@ import {
   CreditCard,
   Gift,
   Mail,
+  MessageCircle,
   Percent,
   RefreshCcw,
   ShieldCheck,
@@ -80,10 +81,10 @@ const categoryImagesByName: Record<string, string> = {
 };
 
 const serviceHighlights = [
-  { title: 'Verified sellers', detail: 'Curated stores with approval checks', icon: ShieldCheck },
-  { title: 'Fast delivery', detail: 'City and nationwide courier options', icon: Truck },
-  { title: 'Secure payments', detail: 'Cards, wallets, COD, and gateways', icon: CreditCard },
-  { title: 'Easy returns', detail: 'Clear support for refund requests', icon: RefreshCcw },
+  { title: 'Cash on Delivery', detail: 'Pay after receiving across Bangladesh', icon: ShieldCheck },
+  { title: 'Fast delivery', detail: '24-72 hours nationwide courier', icon: Truck },
+  { title: 'Secure payments', detail: 'bKash, Nagad, Cards & Wallets', icon: CreditCard },
+  { title: '7 Days Return', detail: 'Easy replacement and quick refund', icon: RefreshCcw },
 ];
 
 const sectionKickerClass = 'section-kicker text-primary/80';
@@ -314,12 +315,12 @@ const SectionHeader = memo(function SectionHeader({
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        <p className={sectionKickerClass}>{kicker}</p>
-        <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">{title}</h2>
+        <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">{kicker}</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{title}</h2>
       </div>
       {action ? (
-        <Link to={action.href} className="hidden items-center gap-1 text-sm font-bold text-primary hover:text-primary-dark sm:inline-flex">
-          {action.label}
+        <Link to={action.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors">
+          <span>{action.label}</span>
           <ArrowRight size={16} />
         </Link>
       ) : null}
@@ -331,9 +332,9 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
   return (
     <Link
       to={`/shop?category=${encodeURIComponent(category.name)}`}
-      className="group min-w-[9.25rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_-28px_rgba(15,23,42,0.45)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg md:min-w-0"
+      className="group min-w-[9.25rem] overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-lg md:min-w-0"
     >
-      <div className="aspect-[1.3] bg-slate-100">
+      <div className="aspect-[1.25] bg-slate-100 overflow-hidden">
         <OptimizedImage
           src={image}
           alt={category.name}
@@ -341,12 +342,12 @@ const CategoryCard = memo(function CategoryCard({ category, image }: { category:
           heightHint={280}
           fit="fill"
           sizes="148px"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
         />
       </div>
       <div className="p-3">
-        <h3 className="truncate text-sm font-bold text-slate-950">{category.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">Curated picks</p>
+        <h3 className="truncate text-sm font-bold text-slate-900 transition-colors group-hover:text-emerald-700">{category.name}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Curated department</p>
       </div>
     </Link>
   );
@@ -387,23 +388,24 @@ const CountdownTimer = memo(function CountdownTimer({ endsAt }: { endsAt?: strin
   if (!endsAt) return null;
 
   return (
-    <div role="timer" aria-label="Time remaining in the flash sale" className="flex items-center gap-1.5">
-      <Clock3 size={18} className="text-accent" aria-hidden="true" />
-      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
-        {pad(countdown.hours)}
-      </span>
-      <span aria-hidden="true" className="font-bold text-slate-950">
-        :
-      </span>
-      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
-        {pad(countdown.minutes)}
-      </span>
-      <span aria-hidden="true" className="font-bold text-slate-950">
-        :
-      </span>
-      <span aria-hidden="true" className="rounded-lg bg-slate-950 px-2.5 py-2 text-sm font-bold tabular-nums text-white">
-        {pad(countdown.seconds)}
-      </span>
+    <div role="timer" aria-label="Time remaining in the flash sale" className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        <Clock3 size={17} className="text-rose-600 shrink-0" aria-hidden="true" />
+        <span className="text-xs font-semibold text-slate-600 hidden sm:inline">Ends in:</span>
+      </div>
+      <div className="flex items-center gap-1 font-mono">
+        <span aria-hidden="true" className="rounded-lg bg-slate-900 px-2 py-1.5 text-xs sm:text-sm font-bold tabular-nums text-white shadow-xs">
+          {pad(countdown.hours)}h
+        </span>
+        <span aria-hidden="true" className="font-bold text-slate-400">:</span>
+        <span aria-hidden="true" className="rounded-lg bg-slate-900 px-2 py-1.5 text-xs sm:text-sm font-bold tabular-nums text-white shadow-xs">
+          {pad(countdown.minutes)}m
+        </span>
+        <span aria-hidden="true" className="font-bold text-slate-400">:</span>
+        <span aria-hidden="true" className="rounded-lg bg-rose-600 px-2 py-1.5 text-xs sm:text-sm font-bold tabular-nums text-white shadow-xs">
+          {pad(countdown.seconds)}s
+        </span>
+      </div>
       <span className="sr-only" aria-live="polite">
         {announcement}
       </span>
@@ -595,9 +597,9 @@ const DealsSection = memo(function DealsSection({
             type="button"
             onClick={onLoadMore}
             disabled={loadingMore}
-            className="inline-flex min-w-48 items-center justify-center rounded-full border-2 border-primary/20 bg-white px-8 py-3 text-sm font-bold text-primary transition-all duration-200 hover:border-primary hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-w-48 items-center justify-center rounded-xl bg-slate-900 px-8 py-3 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loadingMore ? 'Loading...' : 'Load More Products'}
+            {loadingMore ? 'Loading products...' : 'Load More Products'}
           </button>
         </div>
       )}
@@ -628,30 +630,32 @@ const NewsletterSection = memo(function NewsletterSection({
 }) {
   return (
     <section className="page-shell pb-10" data-reveal>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm md:p-8">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 p-6 text-white shadow-md md:p-8">
         <div className="grid gap-6 md:grid-cols-[1fr_0.9fr] md:items-center">
           <div>
-            <p className="section-kicker text-emerald-300">Newsletter</p>
-            <h2 className="mt-3 text-2xl font-bold md:text-3xl">Get private drops, seller launches, and flash sale alerts.</h2>
-            <div className="mt-5 flex flex-wrap gap-2 text-xs text-white/70">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5">
-                <Gift size={14} />
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Newsletter</p>
+            <h2 className="mt-2 text-2xl font-bold md:text-3xl">Get private drops, seller launches, and flash sale alerts.</h2>
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-white/80">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Gift size={15} className="text-emerald-400" />
                 Weekly vouchers
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5">
-                <Percent size={14} />
+              <span className="text-white/30 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Percent size={15} className="text-emerald-400" />
                 Early sale access
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5">
-                <Zap size={14} />
+              <span className="text-white/30 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Zap size={15} className="text-emerald-400" />
                 New store alerts
               </span>
             </div>
           </div>
-          <form onSubmit={onSubmit} className="rounded-xl bg-white p-3 shadow-lg">
+          <form onSubmit={onSubmit} className="rounded-2xl bg-white p-3 shadow-lg">
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
-                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={email}
@@ -660,13 +664,13 @@ const NewsletterSection = memo(function NewsletterSection({
                   autoComplete="email"
                   aria-label="Email address"
                   disabled={submitting}
-                  className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-12 items-center justify-center rounded-lg bg-primary px-5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {submitting ? 'Joining...' : 'Subscribe'}
               </button>
@@ -891,17 +895,33 @@ export const HomePage = ({ initialData }: { initialData?: HomepageInitialData })
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
                 to={activeBanner.link || '/shop'}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-950/25 hover:bg-primary-dark"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-md shadow-emerald-950/25 transition-all duration-200 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98]"
               >
                 {activeBanner.button_text || activeBanner.buttonText || 'Shop now'}
                 <ArrowRight size={16} />
               </Link>
               <Link
                 to="/flash-sale"
-                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-5 py-3 text-sm font-bold text-white backdrop-blur hover:bg-white/18"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition-all duration-200 hover:bg-white/20 active:scale-[0.98]"
               >
                 Today&apos;s deals
               </Link>
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5 text-xs text-white/80">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <Truck size={13} className="text-emerald-300" />
+                সারা দেশে ক্যাশ অন ডেলিভারি
+              </span>
+              <span className="text-white/30 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <ShieldCheck size={13} className="text-emerald-300" />
+                ১০০% আসল পণ্য
+              </span>
+              <span className="text-white/30 hidden sm:inline">·</span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <RefreshCcw size={13} className="text-emerald-300" />
+                সহজ রিটার্ন
+              </span>
             </div>
           </div>
 
@@ -952,14 +972,14 @@ export const HomePage = ({ initialData }: { initialData?: HomepageInitialData })
             return (
               <div
                 key={item.title}
-                className="flex min-h-[92px] items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_30px_-22px_rgba(15,23,42,0.35)] transition-transform duration-200 hover:-translate-y-0.5 hover:border-primary/15 md:p-5"
+                className="flex min-h-[92px] items-center gap-3.5 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-md md:p-5"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
                   <Icon size={20} />
                 </span>
 
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-950">
+                  <h3 className="text-sm font-bold text-slate-900">
                     {item.title}
                   </h3>
 
@@ -974,17 +994,20 @@ export const HomePage = ({ initialData }: { initialData?: HomepageInitialData })
       </section>
 
       <section className="page-shell pb-9" data-reveal>
-        <div className="overflow-hidden rounded-[1.5rem] border border-rose-100/80 bg-[linear-gradient(135deg,#fff7f7,#ffffff_42%,#f7fbf8)] p-4 shadow-[0_18px_50px_-36px_rgba(15,23,42,0.4)] md:p-6">
+        <div className="overflow-hidden rounded-2xl border border-rose-100/90 bg-[linear-gradient(135deg,#fff8f8,#ffffff_45%,#f8faf9)] p-4 shadow-sm md:p-6">
           <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="section-kicker text-accent">Flash sale</p>
-              <h2 className="mt-2 text-2xl font-bold text-slate-950 md:text-3xl">Limited-time marketplace deals</h2>
+              <div className="flex items-center gap-1.5">
+                <Zap size={14} className="text-rose-600 fill-rose-600" aria-hidden="true" />
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-600">Flash sale</p>
+              </div>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Limited-time marketplace deals</h2>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <CountdownTimer endsAt={flashSaleEndsAt} />
               <Link
                 to="/flash-sale"
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-rose-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-rose-600"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-4 text-xs sm:text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:bg-rose-700 active:scale-95"
               >
                 View all
                 <ArrowRight size={16} />
@@ -1003,9 +1026,9 @@ export const HomePage = ({ initialData }: { initialData?: HomepageInitialData })
                 <div key={index} className="h-72 animate-pulse rounded-lg bg-white" />
               ))}
             </div>
-          ) : productGroups.flashSale.length > 0 ? (
+          ) : (productGroups.flashSale.length > 0 || products.length > 0) ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-              {productGroups.flashSale.map((product) => (
+              {(productGroups.flashSale.length > 0 ? productGroups.flashSale : products.slice(0, 5)).map((product) => (
                 <div key={product.id} className="min-w-0">
                   <ProductCard product={product} />
                 </div>
@@ -1048,6 +1071,22 @@ export const HomePage = ({ initialData }: { initialData?: HomepageInitialData })
           onSubmit={submitNewsletter}
         />
       </DeferredSection>
+
+      {/* Floating WhatsApp Quick Order & Support Button */}
+      <aside aria-label="Quick Support via WhatsApp" className="fixed bottom-20 right-4 z-40 md:bottom-7 md:right-7">
+        <a
+          href="https://wa.me/8801700000000?text=Hello%20LofiMart%2C%20I%20want%20to%20order%20products%20or%20need%20help."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-2 rounded-full bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-900/25 transition-all duration-300 hover:bg-emerald-700 hover:scale-105 active:scale-95 sm:px-4 sm:py-3 sm:text-sm"
+          title="হোয়াটসঅ্যাপে সরাসরি অর্ডার বা সহায়তা পান"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
+            <MessageCircle size={16} className="text-white fill-white/30" />
+          </span>
+          <span className="hidden xs:inline sm:inline">WhatsApp Order</span>
+        </a>
+      </aside>
     </div>
   );
 };

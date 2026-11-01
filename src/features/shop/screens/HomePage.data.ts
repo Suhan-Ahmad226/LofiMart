@@ -48,72 +48,84 @@ function deriveCategoriesFromProducts(products: Array<{ category?: string | null
 }
 
 async function loadHomepageData(): Promise<HomepageInitialData> {
-  const now = new Date();
-  const productWhere = getPublicPublishedProductWhere();
+  try {
+    const now = new Date();
+    const productWhere = getPublicPublishedProductWhere();
 
-  const [products, productTotal, categories, banners, campaign] = await Promise.all([
-    prisma.product.findMany({
-      where: productWhere,
-      include: productSellerInclude,
-      orderBy: [{ reviewsCount: 'desc' }, { createdAt: 'desc' }],
-      take: HOME_PRODUCTS_PAGE_SIZE,
-    }),
-    prisma.product.count({ where: productWhere }),
-    prisma.category.findMany({
-      select: { id: true, name: true, icon: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.banner.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, title: true, subtitle: true, image: true, link: true, buttonText: true },
-    }),
-    prisma.flashSaleCampaign.findFirst({
-      where: {
-        status: { in: PUBLIC_CAMPAIGN_STATUSES },
-        startsAt: { lte: now },
-        endsAt: { gt: now },
-      },
-      orderBy: { endsAt: 'asc' },
-    }),
-  ]);
+    const [products, productTotal, categories, banners, campaign] = await Promise.all([
+      prisma.product.findMany({
+        where: productWhere,
+        include: productSellerInclude,
+        orderBy: [{ reviewsCount: 'desc' }, { createdAt: 'desc' }],
+        take: HOME_PRODUCTS_PAGE_SIZE,
+      }),
+      prisma.product.count({ where: productWhere }),
+      prisma.category.findMany({
+        select: { id: true, name: true, icon: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.banner.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, subtitle: true, image: true, link: true, buttonText: true },
+      }),
+      prisma.flashSaleCampaign.findFirst({
+        where: {
+          status: { in: PUBLIC_CAMPAIGN_STATUSES },
+          startsAt: { lte: now },
+          endsAt: { gt: now },
+        },
+        orderBy: { endsAt: 'asc' },
+      }),
+    ]);
 
-  const flashEntries = campaign
-    ? await prisma.flashSaleEntry.findMany({
-        where: { campaignId: campaign.id, status: { in: PUBLIC_ENTRY_STATUSES } },
-        orderBy: { createdAt: 'asc' },
-        take: FLASH_SALE_PAGE_SIZE,
-        include: { product: { include: productSellerInclude } },
+    const flashEntries = campaign
+      ? await prisma.flashSaleEntry.findMany({
+          where: { campaignId: campaign.id, status: { in: PUBLIC_ENTRY_STATUSES } },
+          orderBy: { createdAt: 'asc' },
+          take: FLASH_SALE_PAGE_SIZE,
+          include: { product: { include: productSellerInclude } },
+        })
+      : [];
+
+    const productPayload = products.map(serializeProduct);
+
+    const flashSaleProducts = flashEntries
+      .map((entry) => {
+        if (!entry.product) return null;
+
+        const base = serializeProduct(entry.product);
+        const salePrice = toPlainNumber(entry.salePrice);
+        const currentPrice = toPlainNumber(entry.product.price);
+        if (salePrice === null || salePrice <= 0) return base;
+
+        return {
+          ...base,
+          old_price: currentPrice ?? base.old_price,
+          price: salePrice,
+        };
       })
-    : [];
+      .filter((product) => product !== null) as unknown as Product[];
 
-  const productPayload = products.map(serializeProduct);
-
-  const flashSaleProducts = flashEntries
-    .map((entry) => {
-      if (!entry.product) return null;
-
-      const base = serializeProduct(entry.product);
-      const salePrice = toPlainNumber(entry.salePrice);
-      const currentPrice = toPlainNumber(entry.product.price);
-      if (salePrice === null || salePrice <= 0) return base;
-
-      return {
-        ...base,
-        old_price: currentPrice ?? base.old_price,
-        price: salePrice,
-      };
-    })
-    .filter((product) => product !== null) as unknown as Product[];
-
-  return {
-    products: productPayload,
-    categories: categories.length > 0 ? categories : deriveCategoriesFromProducts(productPayload),
-    hasMoreProducts: productTotal > productPayload.length,
-    banners: banners.map((banner) => ({ ...banner, button_text: banner.buttonText })),
-    flashSaleEndsAt: campaign?.endsAt ? new Date(campaign.endsAt).toISOString() : null,
-    flashSaleProducts,
-  };
+    return {
+      products: productPayload,
+      categories: categories.length > 0 ? categories : deriveCategoriesFromProducts(productPayload),
+      hasMoreProducts: productTotal > productPayload.length,
+      banners: banners.map((banner) => ({ ...banner, button_text: banner.buttonText })),
+      flashSaleEndsAt: campaign?.endsAt ? new Date(campaign.endsAt).toISOString() : null,
+      flashSaleProducts,
+    };
+  } catch (error) {
+    console.warn('[HomePage.data] Database query failed, returning fallback storefront payload:', error);
+    return {
+      products: [],
+      categories: [],
+      hasMoreProducts: false,
+      banners: [],
+      flashSaleEndsAt: null,
+      flashSaleProducts: [],
+    };
+  }
 }
 
 export const getHomepageData = unstable_cache(loadHomepageData, ['homepage-v1'], {

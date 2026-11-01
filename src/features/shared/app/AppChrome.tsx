@@ -15,9 +15,9 @@ import { initOfflineStorage, offlineStorage } from '../../../utils/offlineStorag
 import { useUser } from '../../../features/shared/state/UserContext';
 import SiteMotionEnhancer from '@/features/shared/animations/SiteMotionEnhancer';
 import { useAuthModal } from '@/features/auth/context/AuthModalContext';
-const CartRecoveryTracker = dynamic(() => import('@/features/shop/components/conversion/CartRecoveryTracker'), { ssr: false });
-const ExitIntentOffer = dynamic(() => import('@/features/shop/components/conversion/ExitIntentOffer'), { ssr: false });
-const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/PerformanceMonitor'), { ssr: false });
+const CartRecoveryTracker = dynamic(() => import('@/features/shop/components/conversion/CartRecoveryTracker'));
+const ExitIntentOffer = dynamic(() => import('@/features/shop/components/conversion/ExitIntentOffer'));
+const PerformanceMonitor = dynamic(() => import('@/features/shared/analytics/PerformanceMonitor'));
 
 
 
@@ -329,7 +329,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       <ScrollToTopButton />
       <NotificationContainer notifications={notifications} onClose={removeNotification} />
       {idleReady ? (
-        <>
+        <React.Suspense fallback={null}>
           <PWAInstallPrompt />
           <OfflineIndicator />
           {shouldLoadAnalytics ? <PerformanceMonitor /> : null}
@@ -339,7 +339,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
               <ExitIntentOffer />
             </>
           ) : null}
-        </>
+        </React.Suspense>
       ) : null}
       <Toaster position="top-right" />
     </div>

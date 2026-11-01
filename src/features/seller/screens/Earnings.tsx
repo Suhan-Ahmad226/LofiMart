@@ -13,11 +13,15 @@ interface SellerTransaction {
 
 interface SellerEarningsResponse {
   totalEarnings: number;
+  total_earnings?: number;
+  withdrawnAmount?: number;
+  totalWithdrawn?: number;
   transactions: SellerTransaction[];
 }
 
 const emptyData: SellerEarningsResponse = {
   totalEarnings: 0,
+  withdrawnAmount: 0,
   transactions: [],
 };
 
@@ -47,9 +51,12 @@ export const SellerEarningsPage = () => {
           throw new Error(payload?.error || 'Failed to load seller earnings');
         }
 
-        const payload = (await response.json()) as SellerEarningsResponse;
+        const payload = (await response.json()) as Record<string, any>;
+        const total = Number(payload.totalEarnings ?? payload.total_earnings ?? 0);
+        const withdrawn = Number(payload.withdrawnAmount ?? payload.totalWithdrawn ?? 0);
         setData({
-          totalEarnings: Number(payload.totalEarnings || 0),
+          totalEarnings: total,
+          withdrawnAmount: withdrawn,
           transactions: Array.isArray(payload.transactions) ? payload.transactions : [],
         });
       } catch (fetchError) {
@@ -76,8 +83,8 @@ export const SellerEarningsPage = () => {
   );
 
   const totalWithdrawn = useMemo(
-    () => Math.max(0, data.totalEarnings - pendingClearance),
-    [data.totalEarnings, pendingClearance],
+    () => Number(data.withdrawnAmount || 0),
+    [data.withdrawnAmount],
   );
 
   const handleExportReport = () => {
